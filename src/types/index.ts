@@ -413,10 +413,13 @@ export interface Deal {
   assignee?: Profile;
 }
 
-export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
+export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'completed' | 'cancelled';
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'replied' | 'failed';
 
 export interface Broadcast {
+  processed_count?: number | null;
+  campaign_id?: string | null;
+  parent_broadcast_id?: string | null;
   id: string;
   user_id: string;
   name: string;
@@ -443,6 +446,10 @@ export interface Broadcast {
 }
 
 export interface BroadcastRecipient {
+  phone_snapshot?: string | null;
+  name_snapshot?: string | null;
+  dispatch_state?: 'queued'|'sending'|'accepted'|'failed'|'unknown'|'cancelled'|null;
+  accepted_at?: string | null;
   id: string;
   broadcast_id: string;
   /**

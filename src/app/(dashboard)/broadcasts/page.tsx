@@ -228,6 +228,7 @@ export default function BroadcastsPage() {
                 </TableHead>
                 <TableHead className="hidden text-muted-foreground lg:table-cell">{t('table.delivery')}</TableHead>
                 <TableHead className="hidden text-muted-foreground lg:table-cell">{t('table.read')}</TableHead>
+                <TableHead className="text-muted-foreground">Processamento</TableHead>
                 <TableHead className="text-muted-foreground">{t('table.status')}</TableHead>
                 <TableHead className="hidden text-muted-foreground sm:table-cell">{t('table.date')}</TableHead>
               </TableRow>
@@ -264,6 +265,7 @@ export default function BroadcastsPage() {
                         color="bg-blue-500"
                       />
                     </TableCell>
+                    <TableCell><RateCell value={broadcast.processed_count ?? Math.min(broadcast.total_recipients,broadcast.sent_count+broadcast.failed_count)} total={broadcast.total_recipients} color="bg-indigo-500" /></TableCell>
                     <TableCell>
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium ${status.classes}`}

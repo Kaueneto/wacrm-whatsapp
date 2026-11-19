@@ -1,146 +1,90 @@
-// ============================================================
-// POST /api/whatsapp/broadcast/[id]/resume   (issue #472)
-//
-// Delivers the recipients of an existing broadcast that still need
-// sending, server-side. Three things use it:
-//
-//   - "Resume" on a campaign abandoned when its browser tab closed
-//     mid-send (the wizard drives the initial fan-out from the tab).
-//   - "Retry failed" — the reporter's ask.
-//   - Both at once (`scope: 'all'`).
-//
-// Responds 202 as soon as the pass is claimed and planned; the fan-out
-// runs in `after()`. Poll the broadcast row for progress, same as the
-// public API's create endpoint.
-// ============================================================
-
 import { NextResponse } from 'next/server';
-import { after } from 'next/server';
-
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
-import {
-  BroadcastError,
-  deliverBroadcast,
-  finalizeBroadcastStatus,
-} from '@/lib/whatsapp/broadcast-core';
-import {
-  claimBroadcastDelivery,
-  markBroadcastSending,
-  planBroadcastResume,
-  releaseBroadcastDelivery,
-  RESUME_SCOPES,
-  type ResumeScope,
-} from '@/lib/whatsapp/broadcast-resume';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
-import {
-  checkRateLimit,
-  rateLimitResponse,
-  RATE_LIMITS,
-} from '@/lib/rate-limit';
-import { getT } from '@/lib/i18n/translate';
+import { resolveTemplateRow } from '@/lib/whatsapp/template-body';
+import { POST as control } from '../queue/route';
 
-const t = getT('Api');
-
-// The fan-out below is sequential over up to 1 000 recipients.
-export const maxDuration = 300;
-
+// Backwards-compatible recovery entry point; no work runs in after().
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  let claimedId: string | null = null;
-
   try {
-    // Same gate as the batch send endpoint: running a broadcast is a
-    // write, and viewers are read-only. Resuming is no different — it
-    // puts real messages on real phones.
-    const { supabase, accountId, userId } = await requireRole('agent');
-
-    const limit = checkRateLimit(
-      `broadcast-resume:${userId}`,
-      RATE_LIMITS.broadcast
-    );
-    if (!limit.success) return rateLimitResponse(limit);
-
-    const { id } = await params;
+    const ctx = await requireRole('agent');
+    const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
-    const scope: ResumeScope = RESUME_SCOPES.includes(body?.scope)
-      ? body.scope
-      : 'pending';
-
-    // Claim BEFORE planning. Two clicks on Resume, or a click while an
-    // earlier pass is still running, would otherwise both build a plan
-    // from the same 'pending' rows and message everyone twice — and a
-    // WhatsApp message cannot be recalled. The claim is one conditional
-    // UPDATE, so exactly one caller wins.
-    const claimed = await claimBroadcastDelivery(supabase, accountId, id);
-    if (!claimed) {
+    const { data: source } = await ctx.supabase
+      .from('broadcasts')
+      .select('*')
+      .eq('id', id)
+      .eq('account_id', ctx.accountId)
+      .single();
+    if (!source)
       return NextResponse.json(
-        {
-          error:
-            t('broadcast.alreadyRunning'),
-        },
-        { status: 409 }
+        { error: 'Disparo não encontrado.' },
+        { status: 404 }
       );
-    }
-    claimedId = id;
-
-    const { plan, remaining, unsendable } = await planBroadcastResume(
-      supabase,
-      accountId,
-      id,
-      scope
-    );
-
-    await markBroadcastSending(supabase, id);
-    claimedId = null; // ownership passes to the after() block
-
-    // Service-role client for the fan-out: it outlives the request, and
-    // every id in the plan was already resolved through an
-    // account-scoped read above.
-    const admin = supabaseAdmin();
-    after(async () => {
-      try {
-        await deliverBroadcast(admin, plan);
-      } catch (err) {
-        console.error(
-          '[broadcast-resume] delivery threw:',
-          err instanceof Error ? err.message : err
+    if (body.scope === 'failed')
+      return control(
+        new Request(request.url, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'retry' }),
+        }),
+        context
+      );
+    const db = supabaseAdmin();
+    const { data: job } = await db
+      .from('broadcast_jobs')
+      .select('state')
+      .eq('broadcast_id', id)
+      .eq('account_id', ctx.accountId)
+      .maybeSingle();
+    if (!job) {
+      const { data: config } = await db
+        .from('whatsapp_config')
+        .select('phone_number_id,waba_id')
+        .eq('account_id', ctx.accountId)
+        .single();
+      if (!config)
+        return NextResponse.json(
+          { error: 'Configure o WhatsApp.' },
+          { status: 400 }
         );
-        // Don't leave it mid-flight — settle whatever did land.
-        await finalizeBroadcastStatus(admin, id).catch(() => {});
-      } finally {
-        await releaseBroadcastDelivery(admin, id);
-      }
-    });
-
+      const template = await resolveTemplateRow(
+        db,
+        ctx.accountId,
+        source.template_name,
+        source.template_language
+      );
+      const { error } = await db.rpc('adopt_broadcast_queue', {
+        p_id: id,
+        p_account: ctx.accountId,
+        p_template: template.row ?? {
+          name: source.template_name,
+          language: source.template_language,
+        },
+        p_phone: config.phone_number_id,
+        p_waba: config.waba_id,
+      });
+      if (error) throw error;
+    } else {
+      const { error } = await db.rpc('control_broadcast_job', {
+        p_id: id,
+        p_account: ctx.accountId,
+        p_action: 'resume',
+      });
+      if (error) throw error;
+    }
+    const { count } = await ctx.supabase
+      .from('broadcast_recipients')
+      .select('id', { count: 'exact', head: true })
+      .eq('broadcast_id', id)
+      .eq('status', 'pending');
     return NextResponse.json(
-      {
-        success: true,
-        broadcast_id: id,
-        scope,
-        resuming: plan.planned.length,
-        // > 0 when the backlog exceeded one pass's cap; the UI offers
-        // Resume again rather than silently dropping them.
-        remaining,
-        // Recipients stamped failed up front for want of a phone number.
-        unsendable,
-      },
+      { success: true, broadcast_id: id, resuming: count ?? 0, remaining: 0 },
       { status: 202 }
     );
   } catch (error) {
-    // Planning failed after the claim — release it, or the campaign is
-    // locked out of resuming until the staleness window expires.
-    if (claimedId) {
-      await releaseBroadcastDelivery(supabaseAdmin(), claimedId).catch(() => {});
-    }
-    if (error instanceof BroadcastError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status }
-      );
-    }
-    console.error('Error in broadcast resume POST:', error);
     return toErrorResponse(error);
   }
 }

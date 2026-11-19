@@ -24,6 +24,8 @@ export interface StatusDisplay {
 }
 
 export const broadcastStatusConfig: Record<BroadcastStatus, StatusDisplay> = {
+  completed: { label: 'completed', classes: 'bg-primary/10 text-primary border-primary/20' },
+  cancelled: { label: 'cancelled', classes: 'bg-slate-500/10 text-muted-foreground border-slate-500/20' },
   draft: {
     label: "draft",
     classes: "bg-slate-500/10 text-muted-foreground border-slate-500/20",

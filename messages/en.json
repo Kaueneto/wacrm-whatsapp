@@ -41,7 +41,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "campaigns": "Campaigns"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -58,7 +59,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "campaigns": "Campaigns"
   },
   "ModeToggle": {
     "switchMode": "Switch to {mode} mode"
@@ -909,7 +911,9 @@
       "delivered": "Delivered",
       "read": "Read",
       "replied": "Replied",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "completed": "Processed",
+      "cancelled": "Cancelled"
     },
     "detail": {
       "backToBroadcasts": "Back to Broadcasts",

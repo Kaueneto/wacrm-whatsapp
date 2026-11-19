@@ -41,7 +41,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
-    "menuSignOut": "Cerrar sesión"
+    "menuSignOut": "Cerrar sesión",
+    "campaigns": "Campañas"
   },
   "Header": {
     "dashboard": "Panel",
@@ -58,7 +59,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
-    "menuSignOut": "Cerrar sesión"
+    "menuSignOut": "Cerrar sesión",
+    "campaigns": "Campañas"
   },
   "ModeToggle": {
     "switchMode": "Cambiar al modo {mode}"
@@ -909,7 +911,9 @@
       "delivered": "Entregado",
       "read": "Leído",
       "replied": "Respondido",
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "completed": "Procesado",
+      "cancelled": "Cancelado"
     },
     "detail": {
       "backToBroadcasts": "Volver a difusiones",

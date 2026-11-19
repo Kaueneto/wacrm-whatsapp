@@ -43,6 +43,7 @@ import {
 } from '@/lib/broadcast-status';
 import { isBroadcastDeliveryInFlight } from '@/lib/whatsapp/broadcast-delivery-lease';
 import { useTranslations } from 'next-intl';
+import { BroadcastQueuePanel } from '@/components/broadcasts/queue-panel';
 
 interface StatCardProps {
   label: string;
@@ -164,6 +165,11 @@ export default function BroadcastDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deliveryInFlight, setDeliveryInFlight] = useState(false);
+  const [queueManaged, setQueueManaged] = useState(false);
+  const [recipientPage,setRecipientPage] = useState(0);
+  const [recipientTotal,setRecipientTotal] = useState(0);
+  const [pendingTotal,setPendingTotal] = useState(0);
+  const [failedTotal,setFailedTotal] = useState(0);
   const [resumingScope, setResumingScope] = useState<
     'pending' | 'failed' | null
   >(null);
@@ -180,24 +186,31 @@ export default function BroadcastDetailPage() {
 
       if (bcError) throw bcError;
       setBroadcast(bc);
+      const { data: queueJob } = await supabase.from('broadcast_jobs').select('state').eq('broadcast_id',broadcastId).maybeSingle();
+      setQueueManaged(Boolean(queueJob));
       setDeliveryInFlight(await isBroadcastDeliveryInFlight(supabase, broadcastId));
 
-      const recs = await fetchAllPages<BroadcastRecipient>((from, to) =>
-        supabase
+      let recipientQuery = supabase
           .from('broadcast_recipients')
-          .select('*, contact:contacts(*)')
+          .select('*, contact:contacts(*)', {count:'exact'})
           .eq('broadcast_id', broadcastId)
           .order('created_at', { ascending: false })
-          .order('id')
-          .range(from, to),
-      );
-      setRecipients(recs);
+          .order('id');
+      if(statusFilter!=='all')recipientQuery=recipientQuery.eq('status',statusFilter);
+      const {data:recs,error:recsError,count}=await recipientQuery.range(recipientPage*100,recipientPage*100+99);
+      if(recsError)throw recsError;
+      setRecipients(recs??[]);setRecipientTotal(count??0);
+      const [pending,failed]=await Promise.all([
+        supabase.from('broadcast_recipients').select('id',{count:'exact',head:true}).eq('broadcast_id',broadcastId).eq('status','pending'),
+        supabase.from('broadcast_recipients').select('id',{count:'exact',head:true}).eq('broadcast_id',broadcastId).eq('status','failed'),
+      ]);
+      setPendingTotal(pending.count??0);setFailedTotal(failed.count??0);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('notFound'));
     } finally {
       setLoading(false);
     }
-  }, [broadcastId, t]);
+  }, [broadcastId, t, recipientPage,statusFilter]);
 
   useEffect(() => {
     fetchData();
@@ -211,8 +224,14 @@ export default function BroadcastDetailPage() {
     [recipients, statusFilter],
   );
 
-  function handleExport() {
+  async function handleExport() {
     if (!broadcast) return;
+    let exportRecipients:BroadcastRecipient[];
+    try {
+      const supabase=createClient();
+      exportRecipients=await fetchAllPages<BroadcastRecipient>((from,to)=>supabase.from('broadcast_recipients')
+        .select('*, contact:contacts(*)').eq('broadcast_id',broadcastId).order('id').range(from,to));
+    }catch{toast.error('Não foi possível exportar os destinatários.');return;}
     const header = [
       t('table.contact'),
       t('table.phone'),
@@ -222,9 +241,9 @@ export default function BroadcastDetailPage() {
       t('table.read'),
       t('table.error'),
     ];
-    const rows = recipients.map((r) => [
-      r.contact?.name ?? '',
-      r.contact?.phone ?? '',
+    const rows = exportRecipients.map((r) => [
+      r.name_snapshot || r.contact?.name || '',
+      r.phone_snapshot || r.contact?.phone || '',
       r.status,
       r.sent_at ?? '',
       r.delivered_at ?? '',
@@ -326,8 +345,8 @@ export default function BroadcastDetailPage() {
 
   const status = getBroadcastStatus(broadcast.status);
 
-  const pendingCount = recipients.filter((r) => r.status === 'pending').length;
-  const retryableCount = recipients.filter((r) => r.status === 'failed').length;
+  const pendingCount = pendingTotal;
+  const retryableCount = failedTotal;
   // A campaign whose tab went away sits in 'sending' with recipients
   // still pending and nothing left to move them. Name that state rather
   // than leaving a permanently pulsing "sending" badge.
@@ -416,9 +435,13 @@ export default function BroadcastDetailPage() {
         )}
       </div>
 
+      <BroadcastQueuePanel id={broadcastId} campaignId={broadcast.campaign_id} onRefresh={fetchData} />
+      {broadcast.scheduled_at && <p className="text-sm text-muted-foreground">Programado para {new Date(broadcast.scheduled_at).toLocaleString()}
+        {Date.parse(broadcast.created_at)-Date.parse(broadcast.scheduled_at)>60000 ? ' · Execução iniciada com atraso; recorrências anteriores não foram acumuladas.' : ''}</p>}
+
       {/* Resume / retry (issue #472). Only rendered when there is
           actually something outstanding. */}
-      {!deliveryInFlight && (pendingCount > 0 || retryableCount > 0) && (
+      {!queueManaged && !deliveryInFlight && (pendingCount > 0 || retryableCount > 0) && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
           <div className="text-sm">
             <p className="font-medium text-foreground">
@@ -518,8 +541,8 @@ export default function BroadcastDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <h2 className="text-sm font-medium text-foreground">
             {statusFilter !== 'all'
-              ? t('recipientsHeader', { filtered: filteredRecipients.length, total: recipients.length })
-              : t('recipientsHeaderAll', { total: recipients.length })}
+              ? t('recipientsHeader', { filtered: recipientTotal, total: broadcast.total_recipients })
+              : t('recipientsHeaderAll', { total: broadcast.total_recipients })}
           </h2>
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -540,7 +563,7 @@ export default function BroadcastDetailPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="border-border bg-popover">
                 <DropdownMenuItem
-                  onClick={() => setStatusFilter('all')}
+                  onClick={() => {setRecipientPage(0);setStatusFilter('all');}}
                   className={
                     statusFilter === 'all' ? 'text-primary' : 'text-popover-foreground'
                   }
@@ -550,7 +573,7 @@ export default function BroadcastDetailPage() {
                 {RECIPIENT_STATUSES.map((s) => (
                   <DropdownMenuItem
                     key={s}
-                    onClick={() => setStatusFilter(s)}
+                    onClick={() => {setRecipientPage(0);setStatusFilter(s);}}
                     className={
                       statusFilter === s
                         ? 'text-primary'
@@ -604,16 +627,16 @@ export default function BroadcastDetailPage() {
                   return (
                     <TableRow key={recipient.id} className="border-border">
                       <TableCell className="font-medium text-foreground">
-                        {recipient.contact?.name ?? t('unknownContact')}
+                        {recipient.name_snapshot || recipient.contact?.name || t('unknownContact')}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {recipient.contact?.phone ?? '-'}
+                        {recipient.phone_snapshot || recipient.contact?.phone || '-'}
                       </TableCell>
                       <TableCell>
                         <span
                           className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${rStatus.classes}`}
                         >
-                          {tStatus(rStatus.label)}
+                          {recipient.dispatch_state === 'unknown' ? 'Resultado incerto' : recipient.dispatch_state === 'cancelled' ? 'Cancelado' : recipient.accepted_at && recipient.status === 'pending' ? 'Aceito pela Meta' : tStatus(rStatus.label)}
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -639,6 +662,11 @@ export default function BroadcastDetailPage() {
                 })}
               </TableBody>
             </Table>
+            <div className="flex items-center justify-between gap-3 border-t border-border p-4 text-sm">
+              <span>Página {recipientPage+1} de {Math.max(1,Math.ceil(recipientTotal/100))} · {recipientTotal.toLocaleString()} destinatários neste filtro</span>
+              <div className="flex gap-2"><Button variant="outline" disabled={recipientPage===0} onClick={()=>setRecipientPage(p=>p-1)}>Anterior</Button>
+                <Button variant="outline" disabled={(recipientPage+1)*100>=recipientTotal} onClick={()=>setRecipientPage(p=>p+1)}>Próxima</Button></div>
+            </div>
           </div>
         )}
       </div>

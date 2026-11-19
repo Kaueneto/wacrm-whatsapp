@@ -41,7 +41,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
-    "menuSignOut": "Sair"
+    "menuSignOut": "Sair",
+    "campaigns": "Campanhas"
   },
   "Header": {
     "dashboard": "Painel",
@@ -58,7 +59,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
-    "menuSignOut": "Sair"
+    "menuSignOut": "Sair",
+    "campaigns": "Campanhas"
   },
   "ModeToggle": {
     "switchMode": "Mudar para o modo {mode}"
@@ -909,7 +911,9 @@
       "delivered": "Entregue",
       "read": "Lida",
       "replied": "Respondida",
-      "unknown": "Desconhecido"
+      "unknown": "Desconhecido",
+      "completed": "Processado",
+      "cancelled": "Cancelado"
     },
     "detail": {
       "backToBroadcasts": "Voltar aos disparos",
