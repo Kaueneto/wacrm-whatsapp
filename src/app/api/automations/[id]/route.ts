@@ -25,7 +25,7 @@ const t = getT('Api')
 //
 // `user_id` is not an authorization fact: `remove_account_member`
 // (migration 018) moves a removed member into a fresh personal account
-// as its `owner`, which clears `requireRole('agent')` trivially while
+// as its `owner`, which clears `requireRole('admin')` trivially while
 // leaving `automations.user_id` pointing at them. Matching on it let an
 // ex-member keep full CRUD over automations they had authored inside
 // the account they were removed from.
@@ -73,7 +73,7 @@ export async function PATCH(
   // which bypasses RLS, so enforce the role here.
   let accountId: string
   try {
-    const ctx = await requireRole('agent')
+    const ctx = await requireRole('admin')
     accountId = ctx.accountId
   } catch (err) {
     return toErrorResponse(err)
@@ -161,7 +161,7 @@ export async function DELETE(
   // client below bypasses the agent-gated automations_delete RLS).
   let accountId: string
   try {
-    const ctx = await requireRole('agent')
+    const ctx = await requireRole('admin')
     accountId = ctx.accountId
   } catch (err) {
     return toErrorResponse(err)

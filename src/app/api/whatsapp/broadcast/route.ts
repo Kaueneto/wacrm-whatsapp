@@ -7,7 +7,7 @@ import { createBroadcast, BroadcastError } from '@/lib/whatsapp/broadcast-core';
 // inside an HTTP request. The dashboard uses /broadcast/enqueue directly.
 export async function POST(request: Request) {
   try {
-    const ctx = await requireRole('agent');
+    const ctx = await requireRole('admin');
     const body = await request.json();
     const db = supabaseAdmin();
     const recipients = Array.isArray(body.recipients)

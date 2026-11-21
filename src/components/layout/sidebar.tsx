@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLinkStatus } from 'next/link';
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -26,8 +27,10 @@ import {
   Workflow,
   X,
   Zap,
+  Loader2,
 } from "lucide-react";
 import type { AccountRole } from "@/lib/auth/roles";
+import { canAccessWorkspacePage } from "@/lib/auth/workspace-access";
 
 // Per-role chip metadata used in the sidebar's account strip + the
 // Members tab roster. Keeping this near both consumers in a single
@@ -50,6 +53,11 @@ const ROLE_CHIP: Record<
     // Primary-tinted: significant but not as scarce as owner.
     className:
       "border-primary/40 bg-primary/10 text-primary",
+  },
+  supervisor: {
+    icon: UserCog,
+    labelKey: "roleSupervisor",
+    className: "border-primary/30 bg-primary/10 text-primary",
   },
   agent: {
     icon: UserCog,
@@ -101,11 +109,17 @@ const navItems: NavItem[] = [
   { href: "/automations", labelKey: "automations", icon: Zap },
   { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
   { href: "/agents", labelKey: "aiAgents", icon: Bot },
+  { href: "/organization", labelKey: "organization", icon: UsersRound },
 ];
 
 const bottomNavItems = [
   { href: "/settings", labelKey: "settings", icon: Settings },
 ];
+
+function NavigationPending() {
+  const { pending } = useLinkStatus();
+  return <Loader2 aria-hidden="true" className={`size-3.5 shrink-0 ${pending ? 'opacity-100 motion-safe:animate-spin' : 'opacity-0'}`} />;
+}
 
 interface SidebarProps {
   /** Controlled on mobile by the Header's hamburger button. Ignored on lg+. */
@@ -210,7 +224,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {/* Main navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="flex flex-col gap-1">
-            {navItems.map((item) => {
+            {navItems.filter((item) => accountRole && canAccessWorkspacePage(accountRole, item.href)).map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -229,6 +243,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    prefetch={item.href === '/organization' ? true : undefined}
                     className={cn(
                       // Taller on mobile so fingers can hit the row reliably (≥44px).
                       "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
@@ -239,6 +254,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   >
                     <item.icon className="h-4 w-4" />
                     <span className="flex-1">{t(item.labelKey as string)}</span>
+                    <NavigationPending />
                     {item.beta && (
                       <span
                         aria-label={t("beta")}

@@ -8,7 +8,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireRole('agent');
+    const ctx = await requireRole('admin');
     const { id } = await params;
     const body = await request.json();
     if (typeof body.active !== 'boolean')

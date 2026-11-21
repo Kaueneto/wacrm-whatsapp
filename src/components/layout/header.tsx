@@ -28,6 +28,7 @@ const pageTitles: Record<string, string> = {
   "/campaigns": "campaigns",
   "/automations": "automations",
   "/settings": "settings",
+  "/organization": "organization",
 };
 
 function getPageTitleKey(pathname: string): string {

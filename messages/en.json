@@ -17,6 +17,7 @@
     "linkInvalid": "That link couldn’t be used to sign you in. If you were confirming your email, it may already be verified — just sign in below. For a password reset, request a new link and open it in the same browser you requested it from."
   },
   "Sidebar": {
+    "organization": "Users & teams",
     "title": "CRM Template for WhatsApp",
     "primaryNav": "Primary",
     "dashboard": "Dashboard",
@@ -34,6 +35,7 @@
     "unreadNotifications": "{count} unread {count, plural, =1 {notification} other {notifications}}",
     "roleOwner": "Owner",
     "roleAdmin": "Admin",
+    "roleSupervisor": "Supervisor",
     "roleAgent": "Agent",
     "roleViewer": "Viewer",
     "closeMenu": "Close menu",
@@ -45,6 +47,7 @@
     "campaigns": "Campaigns"
   },
   "Header": {
+    "organization": "Users & teams",
     "dashboard": "Dashboard",
     "inbox": "Inbox",
     "notifications": "Notifications",
@@ -1854,7 +1857,9 @@
     "roles": {
       "admin": "Admin",
       "adminHint": "Manage members + everything",
+      "supervisor": "Supervisor",
       "agent": "Agent",
+      "supervisorHint": "Supervises and assigns conversations within their teams, without company administration access.",
       "agentHint": "Use features; no settings",
       "viewer": "Viewer",
       "viewerHint": "Read-only across the app",
@@ -2601,6 +2606,7 @@
       "roleNames": {
         "owner": "owner",
         "admin": "admin",
+        "supervisor": "Supervisor",
         "agent": "agent",
         "viewer": "viewer"
       }

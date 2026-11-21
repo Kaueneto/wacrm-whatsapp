@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 import { useAuth } from '@/hooks/use-auth';
+import { canAccessSettingsSection } from '@/lib/auth/workspace-access';
 import { useTheme } from '@/hooks/use-theme';
 import { SettingsRail } from '@/components/settings/settings-rail';
 import { SettingsOverview } from '@/components/settings/settings-overview';
@@ -17,7 +18,7 @@ import { QuickRepliesManager } from '@/components/settings/quick-replies-manager
 import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel';
 import { DealsSettings } from '@/components/settings/deals-settings';
 import { InboxSettings } from '@/components/settings/inbox-settings';
-import { MembersTab } from '@/components/settings/members-tab';
+import Link from 'next/link';
 import { ApiKeysSettings } from '@/components/settings/api-keys-settings';
 import {
   resolveSection,
@@ -43,7 +44,7 @@ export default function SettingsPage() {
 function SettingsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { defaultCurrency } = useAuth();
+  const { defaultCurrency, accountRole } = useAuth();
   const { mode } = useTheme();
   const t = useTranslations('Settings');
 
@@ -51,7 +52,8 @@ function SettingsPageInner() {
   // section — deep-linkable, and it keeps the existing links in the
   // app sidebar/header working. Legacy tab values (tags, custom-fields)
   // resolve onto their new home; unknown/empty → the Overview landing.
-  const section = resolveSection(searchParams.get('tab'));
+  const requestedSection = resolveSection(searchParams.get('tab'));
+  const section = accountRole && canAccessSettingsSection(accountRole, requestedSection) ? requestedSection : 'profile';
 
   const go = (next: SettingsSection) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -81,7 +83,7 @@ function SettingsPageInner() {
     fields: <FieldsAndTagsPanel />,
     inbox: <InboxSettings />,
     deals: <DealsSettings />,
-    members: <MembersTab />,
+    members: <Link href="/organization?view=users" className="text-primary underline">Gerenciar usuários e equipes</Link>,
     api: <ApiKeysSettings />,
   };
 

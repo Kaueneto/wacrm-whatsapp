@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
   downloadContentType: 'image/jpeg',
   metaMimeType: 'image/jpeg',
   rateLimitOk: true,
+  visibleMessage: true,
 }))
 
 vi.mock('next/server', () => ({
@@ -27,8 +28,9 @@ vi.mock('@/lib/supabase/server', () => ({
       const chain = {
         select: () => chain,
         eq: () => chain,
+        limit: () => chain,
         maybeSingle: async () => ({
-          data: table === 'profiles' && h.accountId ? { account_id: h.accountId } : null,
+          data: table === 'profiles' && h.accountId ? { account_id: h.accountId } : table === 'messages' && h.visibleMessage ? { id: 'message-1' } : null,
         }),
         single: async () => ({
           data: table === 'whatsapp_config' ? { access_token: 'enc-token' } : null,
@@ -76,9 +78,14 @@ beforeEach(() => {
   h.downloadContentType = 'image/jpeg'
   h.metaMimeType = 'image/jpeg'
   h.rateLimitOk = true
+  h.visibleMessage = true
 })
 
 describe('GET /api/whatsapp/media/[mediaId]', () => {
+  it('does not fetch attachment bytes for a conversation the caller cannot read', async () => {
+    h.visibleMessage = false
+    expect((await call()).status).toBe(404)
+  })
   it('serves an image inline with the hardening headers', async () => {
     const res = await call()
     expect(res.status).toBe(200)

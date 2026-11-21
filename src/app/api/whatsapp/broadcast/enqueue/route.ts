@@ -15,7 +15,7 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const ctx = await requireRole('agent');
+    const ctx = await requireRole('admin');
     const limit = checkRateLimit(
       `broadcast-enqueue:${ctx.userId}`,
       RATE_LIMITS.broadcast

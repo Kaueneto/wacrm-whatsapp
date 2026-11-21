@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireRole('viewer');
+    const ctx = await requireRole('admin');
     const { id } = await params;
     const { data, error } = await supabaseAdmin().rpc(
       'broadcast_queue_progress',
@@ -26,7 +26,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireRole('agent');
+    const ctx = await requireRole('admin');
     const { id } = await params;
     const { action } = await request.json();
     const db = supabaseAdmin();

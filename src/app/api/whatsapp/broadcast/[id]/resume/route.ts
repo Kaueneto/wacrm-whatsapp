@@ -10,7 +10,7 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireRole('agent');
+    const ctx = await requireRole('admin');
     const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
     const { data: source } = await ctx.supabase

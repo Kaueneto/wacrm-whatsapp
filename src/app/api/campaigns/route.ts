@@ -11,7 +11,7 @@ import { nextOccurrence, validateSchedule } from '@/lib/campaigns/schedule';
 
 export async function GET() {
   try {
-    const ctx = await requireRole('viewer');
+    const ctx = await requireRole('admin');
     const { data, error } = await ctx.supabase
       .from('campaigns')
       .select('id,name,description,active,next_run_at,last_error,schedule')
@@ -29,7 +29,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    const ctx = await requireRole('agent');
+    const ctx = await requireRole('admin');
     const body = await request.json();
     if (typeof body.name !== 'string' || !body.name.trim())
       throw new Error('Informe o título da campanha.');

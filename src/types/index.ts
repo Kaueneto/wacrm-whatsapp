@@ -174,6 +174,7 @@ export interface Conversation {
   contact_id: string;
   status: ConversationStatus;
   assigned_agent_id?: string;
+  team_id?: string | null;
   last_message_text?: string;
   last_message_at?: string;
   unread_count: number;
@@ -582,8 +583,9 @@ export interface TagStepConfig {
 }
 
 export interface AssignConversationStepConfig {
-  mode: 'specific' | 'round_robin';
+  mode: 'specific' | 'round_robin' | 'queue';
   agent_id?: string;
+  team_id?: string;
 }
 
 export interface UpdateContactFieldStepConfig {

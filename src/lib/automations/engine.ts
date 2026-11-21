@@ -860,25 +860,15 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
     case 'assign_conversation': {
       const cfg = step.step_config as AssignConversationStepConfig
       if (!args.contactId) throw new Error(tErr('needsContact', { step: 'assign_conversation' }))
-      let agentId = cfg.agent_id
-      if (cfg.mode === 'round_robin') {
-        // Pick any member of the account. The existing implementation
-        // only ever returned the automation's author; preserving that
-        // shape until a real round-robin algorithm replaces it.
-        const { data: profiles } = await db
-          .from('profiles')
-          .select('user_id')
-          .eq('account_id', args.automation.account_id)
-          .limit(1)
-        agentId = profiles?.[0]?.user_id
-      }
-      if (!agentId) return 'no agent resolved'
-      await db
-        .from('conversations')
-        .update({ assigned_agent_id: agentId })
-        .eq('account_id', args.automation.account_id)
-        .eq('contact_id', args.contactId)
-      return `assigned to ${agentId}`
+      const { data: agentId, error } = await db.rpc('route_support_conversation', {
+        p_account_id: args.automation.account_id,
+        p_contact_id: args.contactId,
+        p_team_id: cfg.team_id || null,
+        p_agent_id: cfg.agent_id || null,
+        p_mode: cfg.mode,
+      })
+      if (error) throw new Error(error.message)
+      return agentId ? `assigned to ${agentId}` : 'waiting in team queue'
     }
 
     case 'update_contact_field': {
