@@ -421,9 +421,23 @@ function InboxPageInner() {
     setResyncToken((n) => n + 1);
   }, []);
 
+  // Reassignment can revoke SELECT access, so Realtime may omit the UPDATE
+  // for the previous attendant. Refresh periodically to evict revoked rows.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') setResyncToken(n => n + 1);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   const handleConversationsLoaded = useCallback(
     (loaded: Conversation[]) => {
       setConversations(loaded);
+      if (activeConversation && !loaded.some(conversation => conversation.id === activeConversation.id)) {
+        setActiveConversation(null);
+        setActiveContact(null);
+        setMessages([]);
+      }
       // Resolve a pending deep-link here rather than in an effect — this
       // is an event handler, so the setState calls below are allowed by
       // react-hooks/set-state-in-effect. Runs once per ?c=<id> URL value
@@ -464,7 +478,7 @@ function InboxPageInner() {
         }
       }
     },
-    [deepLinkConvId, activeConversation?.id]
+    [deepLinkConvId, activeConversation]
   );
 
   const handleSelectConversation = useCallback(

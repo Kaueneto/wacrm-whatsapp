@@ -1,0 +1,10 @@
+FROM node:24-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY tsconfig.json ./
+COPY scripts/campaign-worker.ts ./scripts/campaign-worker.ts
+COPY src ./src
+COPY messages ./messages
+USER node
+CMD ["npm", "run", "worker:campaigns"]

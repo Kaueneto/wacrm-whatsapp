@@ -11,6 +11,7 @@ import { NextRequest } from "next/server";
 //                      of the test is that these must survive onto whatever
 //                      response the middleware returns — including redirects.
 let mockUser: { id: string } | null = null;
+let mockRole = 'admin';
 let refreshedCookies: Array<{
   name: string;
   value: string;
@@ -25,6 +26,7 @@ vi.mock("@supabase/ssr", () => ({
       cookies: { setAll: (c: typeof refreshedCookies) => void };
     },
   ) => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { account_role: mockRole } }) }) }) }),
     auth: {
       // Mirrors real auth-js: an expired access token is transparently
       // refreshed inside getUser(), which rotates the refresh token and
@@ -38,12 +40,13 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 // Imported after the mock is registered.
-const { middleware } = await import("./middleware");
+const { proxy: middleware } = await import("./proxy");
 
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
   mockUser = null;
+  mockRole = 'admin';
   refreshedCookies = [];
 });
 
@@ -136,5 +139,41 @@ describe("middleware — every dashboard route requires a session", () => {
 
     expect(res.status).toBe(307);
     expect(new URL(res.headers.get("location")!).pathname).toBe("/login");
+  });
+});
+
+describe('support role redirects', () => {
+  it('moves legacy member links to the dedicated organization area', async () => {
+    mockUser = { id: 'admin' };
+    mockRole = 'admin';
+    const response = await middleware(new NextRequest('https://app.test/settings?tab=members'));
+    expect(response.headers.get('location')).toBe('https://app.test/organization?view=users');
+  });
+  it.each(['agent', 'supervisor'])('keeps %s out of organization administration', async role => {
+    mockUser = { id: role };
+    mockRole = role;
+    const response = await middleware(new NextRequest('https://app.test/organization'));
+    expect(response.headers.get('location')).toBe('https://app.test/inbox');
+  });
+  it('redirects attendants out of administration and preserves refreshed cookies', async () => {
+    mockUser = { id: 'attendant' };
+    mockRole = 'agent';
+    refreshedCookies = [ROTATED];
+    const response = await middleware(new NextRequest('https://app.test/campaigns'));
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get('location')!).pathname).toBe('/inbox');
+    expect(response.cookies.get(ROTATED.name)?.value).toBe(ROTATED.value);
+  });
+  it('blocks supervisor administration without blocking permitted routing', async () => {
+    mockUser = { id: 'supervisor' };
+    mockRole = 'supervisor';
+    expect((await middleware(new NextRequest('https://app.test/api/account/teams', { method: 'POST' }))).status).toBe(403);
+    expect((await middleware(new NextRequest('https://app.test/api/support/assignment', { method: 'POST' }))).status).toBe(200);
+  });
+  it('restricts account settings to the administrators', async () => {
+    mockUser = { id: 'supervisor' };
+    mockRole = 'supervisor';
+    const response = await middleware(new NextRequest('https://app.test/settings?tab=whatsapp'));
+    expect(response.headers.get('location')).toBe('https://app.test/settings?tab=profile');
   });
 });

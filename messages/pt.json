@@ -17,6 +17,7 @@
     "linkInvalid": "Não foi possível entrar com esse link. Se estava confirmando seu e-mail, ele já pode estar verificado — basta entrar abaixo. Para redefinir a senha, peça um novo link e abra-o no mesmo navegador em que o solicitou."
   },
   "Sidebar": {
+    "organization": "Usuários e equipes",
     "title": "Modelo de CRM para WhatsApp",
     "primaryNav": "Principal",
     "dashboard": "Painel",
@@ -34,16 +35,19 @@
     "unreadNotifications": "{count} {count, plural, =1 {notificação não lida} other {notificações não lidas}}",
     "roleOwner": "Proprietário",
     "roleAdmin": "Administrador",
-    "roleAgent": "Agente",
+    "roleSupervisor": "Supervisor",
+    "roleAgent": "Atendente",
     "roleViewer": "Visualizador",
     "closeMenu": "Fechar menu",
     "defaultUser": "Usuário",
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
-    "menuSignOut": "Sair"
+    "menuSignOut": "Sair",
+    "campaigns": "Campanhas"
   },
   "Header": {
+    "organization": "Usuários e equipes",
     "dashboard": "Painel",
     "inbox": "Caixa de entrada",
     "notifications": "Notificações",
@@ -58,7 +62,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
-    "menuSignOut": "Sair"
+    "menuSignOut": "Sair",
+    "campaigns": "Campanhas"
   },
   "ModeToggle": {
     "switchMode": "Mudar para o modo {mode}"
@@ -909,7 +914,9 @@
       "delivered": "Entregue",
       "read": "Lida",
       "replied": "Respondida",
-      "unknown": "Desconhecido"
+      "unknown": "Desconhecido",
+      "completed": "Processado",
+      "cancelled": "Cancelado"
     },
     "detail": {
       "backToBroadcasts": "Voltar aos disparos",
@@ -1628,9 +1635,9 @@
       "loading": "Carregando…"
     },
     "members": {
-      "title": "Membros da equipe",
+      "title": "Usuários",
       "description": "Pessoas com acesso a esta conta. As funções controlam o que cada colega pode fazer.",
-      "inviteMember": "Convidar membro",
+      "inviteMember": "Convidar usuário",
       "online": "online",
       "away": "ausente",
       "offline": "offline",
@@ -1850,8 +1857,10 @@
     "roles": {
       "admin": "Administrador",
       "adminHint": "Gerencia membros + tudo o mais",
-      "agent": "Agente",
-      "agentHint": "Usa os recursos; sem configurações",
+      "supervisor": "Supervisor",
+      "agent": "Atendente",
+      "supervisorHint": "Acompanha e distribui os atendimentos das suas equipes, sem acesso à administração da empresa.",
+      "agentHint": "Visualiza e responde somente aos atendimentos atribuídos a ele.",
       "viewer": "Visualizador",
       "viewerHint": "Somente leitura em todo o app",
       "owner": "Proprietário",
@@ -2597,7 +2606,8 @@
       "roleNames": {
         "owner": "Proprietário",
         "admin": "Administrador",
-        "agent": "Agente",
+        "supervisor": "Supervisor",
+        "agent": "Atendente",
         "viewer": "Visualizador"
       }
     },

@@ -56,6 +56,18 @@ export async function GET(
       )
     }
 
+    // Authorize the actual attachment through messages RLS before asking Meta
+    // for bytes. Knowing another conversation's media ID is not authorization.
+    const { data: visibleMessage, error: messageError } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('media_url', `/api/whatsapp/media/${mediaId}`)
+      .limit(1)
+      .maybeSingle()
+    if (messageError || !visibleMessage) {
+      return NextResponse.json({ error: t('common.conversationNotFound') }, { status: 404 })
+    }
+
     // Fetch and decrypt WhatsApp config
     const { data: config, error: configError } = await supabase
       .from('whatsapp_config')

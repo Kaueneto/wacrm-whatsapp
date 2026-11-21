@@ -3,6 +3,8 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { canSupervise } from "@/lib/auth/roles";
+import { TeamRoutingDialog } from './team-routing-dialog';
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceDot } from "@/components/presence/presence-dot";
 import { presenceLabel } from "@/lib/presence";
@@ -192,7 +194,7 @@ export function MessageThread({
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
-  const { user } = useAuth();
+  const { user, accountRole } = useAuth();
   const { getPresence, getRow, now } = usePresence();
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1126,8 +1128,18 @@ export function MessageThread({
           </DropdownMenu>
 
           {/* Assign dropdown */}
+          {accountRole && canSupervise(accountRole) && (
+            <TeamRoutingDialog
+              key={conversation.id}
+              conversationId={conversation.id}
+              currentTeamId={conversation.team_id}
+              currentAgentId={conversation.assigned_agent_id}
+              onChanged={(agentId) => { onAssignChange(conversation.id, agentId); onRefresh?.(); }}
+            />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger
+              disabled={!accountRole || !canSupervise(accountRole) || !!conversation.team_id}
               className={cn(
                 "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
                 assignedAgentId ? "text-primary" : "text-muted-foreground"

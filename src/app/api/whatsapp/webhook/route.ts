@@ -469,6 +469,15 @@ async function handleStatusUpdate(
   //    (added in migration 003). The aggregate trigger on
   //    broadcast_recipients re-derives the parent broadcast's
   //    sent/delivered/read/failed counts automatically.
+  if (['sent', 'delivered', 'read', 'failed'].includes(status.status)) {
+    const { error: eventError } = await supabaseAdmin().rpc('record_broadcast_status', {
+      p_message: status.id,
+      p_status: status.status,
+      p_at: new Date(parseInt(status.timestamp) * 1000).toISOString(),
+      p_error: failure ? `[${failure.code}] ${failure.title}: ${failure.details ?? ''}` : null,
+    })
+    if (eventError) console.error('Could not buffer broadcast status:', eventError.code)
+  }
   await applyBroadcastRecipientStatus(supabaseAdmin(), {
     whatsappMessageId: status.id,
     status: status.status,

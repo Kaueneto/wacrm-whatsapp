@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { RoutingTeamSelect } from './routing-team-select'
 import {
   ArrowLeft,
   ChevronDown,
@@ -1479,7 +1480,11 @@ function StepEditor({
             >
               <option value="round_robin">{t("config.modes.round_robin")}</option>
               <option value="specific">{t("config.modes.specific")}</option>
+              <option value="queue">Aguardar na fila da equipe</option>
             </select>
+          </FieldBlock>
+          <FieldBlock label="Equipe de destino">
+            <RoutingTeamSelect value={(cfg.team_id as string) ?? ''} onChange={(value) => set({ team_id: value, agent_id: '' })} />
           </FieldBlock>
           {cfg.mode === "specific" && (
             <FieldBlock label={t("config.agentLabel")}>

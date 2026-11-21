@@ -3,7 +3,8 @@
 //
 // Mirrors the `account_role_enum` Postgres type from migration
 // 017_account_sharing.sql. The hierarchy is intentionally a flat
-// ordinal (owner=4 … viewer=1) — it matches the same CASE
+// ordinal (owner=4, admin=3, supervisor=2.5, agent=2, viewer=1).
+// It matches the same CASE
 // expression the `is_account_member(account_id, min_role)` SQL
 // helper uses, so server-side TypeScript guards and database-side
 // RLS speak the same language.
@@ -15,12 +16,13 @@
 // changes a one-file diff.
 // ============================================================
 
-export type AccountRole = "owner" | "admin" | "agent" | "viewer";
+export type AccountRole = "owner" | "admin" | "supervisor" | "agent" | "viewer";
 
 /** Ordered list of every valid role, lowest privilege first. */
 export const ACCOUNT_ROLES: readonly AccountRole[] = [
   "viewer",
   "agent",
+  "supervisor",
   "admin",
   "owner",
 ] as const;
@@ -37,6 +39,8 @@ export function roleRank(role: AccountRole): number {
       return 3;
     case "agent":
       return 2;
+    case "supervisor":
+      return 2.5;
     case "viewer":
       return 1;
   }
@@ -81,12 +85,15 @@ export function canEditSettings(role: AccountRole): boolean {
 }
 
 /**
- * Owner / admin / agent: write operational data — send messages,
- * create contacts, move deals, run broadcasts, edit automations.
- * Viewers are read-only.
+ * Send messages within the caller's conversation scope. Account-wide
+ * operations (campaigns, automations, flows) require admin separately.
  */
 export function canSendMessages(role: AccountRole): boolean {
   return hasMinRole(role, "agent");
+}
+
+export function canSupervise(role: AccountRole): boolean {
+  return hasMinRole(role, "supervisor");
 }
 
 /**

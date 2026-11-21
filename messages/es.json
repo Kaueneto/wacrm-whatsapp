@@ -17,6 +17,7 @@
     "linkInvalid": "No se pudo iniciar sesión con ese enlace. Si estabas confirmando tu correo, es posible que ya esté verificado; inicia sesión abajo. Para restablecer la contraseña, pide un enlace nuevo y ábrelo en el mismo navegador desde el que lo solicitaste."
   },
   "Sidebar": {
+    "organization": "Usuarios y equipos",
     "title": "Plantilla de CRM para WhatsApp",
     "primaryNav": "Principal",
     "dashboard": "Panel",
@@ -34,6 +35,7 @@
     "unreadNotifications": "{count} {count, plural, =1 {notificación sin leer} other {notificaciones sin leer}}",
     "roleOwner": "Propietario",
     "roleAdmin": "Administrador",
+    "roleSupervisor": "Supervisor",
     "roleAgent": "Agente",
     "roleViewer": "Observador",
     "closeMenu": "Cerrar menú",
@@ -41,9 +43,11 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
-    "menuSignOut": "Cerrar sesión"
+    "menuSignOut": "Cerrar sesión",
+    "campaigns": "Campañas"
   },
   "Header": {
+    "organization": "Usuarios y equipos",
     "dashboard": "Panel",
     "inbox": "Bandeja de entrada",
     "notifications": "Notificaciones",
@@ -58,7 +62,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
-    "menuSignOut": "Cerrar sesión"
+    "menuSignOut": "Cerrar sesión",
+    "campaigns": "Campañas"
   },
   "ModeToggle": {
     "switchMode": "Cambiar al modo {mode}"
@@ -909,7 +914,9 @@
       "delivered": "Entregado",
       "read": "Leído",
       "replied": "Respondido",
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "completed": "Procesado",
+      "cancelled": "Cancelado"
     },
     "detail": {
       "backToBroadcasts": "Volver a difusiones",
@@ -1850,7 +1857,9 @@
     "roles": {
       "admin": "Administrador",
       "adminHint": "Administra miembros + todo lo demás",
+      "supervisor": "Supervisor",
       "agent": "Agente",
+      "supervisorHint": "Supervisa y distribuye conversaciones de sus equipos, sin administrar la empresa.",
       "agentHint": "Usa las funciones; sin configuración",
       "viewer": "Observador",
       "viewerHint": "Solo lectura en toda la app",
@@ -2597,6 +2606,7 @@
       "roleNames": {
         "owner": "Propietario",
         "admin": "Administrador",
+        "supervisor": "Supervisor",
         "agent": "Agente",
         "viewer": "Observador"
       }

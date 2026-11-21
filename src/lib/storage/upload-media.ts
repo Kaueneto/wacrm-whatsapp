@@ -120,7 +120,12 @@ export async function uploadAccountMedia(
     throw new Error(t("upload.accountUnresolved"));
   }
 
-  const path = buildMediaPath(profile.account_id as string, file.name);
+  const path = buildMediaPath(
+    profile.account_id as string,
+    file.name,
+    Date.now(),
+    bucket === 'chat-media' ? `users/${user.id}` : undefined,
+  );
   const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, {
     cacheControl: "3600",
     upsert: false,

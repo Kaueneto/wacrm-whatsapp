@@ -1,7 +1,7 @@
 export interface PeekOk {
   ok: true;
   account_name: string;
-  role: 'admin' | 'agent' | 'viewer';
+  role: 'admin' | 'supervisor' | 'agent' | 'viewer';
   expires_at: string;
 }
 

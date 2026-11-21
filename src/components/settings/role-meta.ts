@@ -34,6 +34,12 @@ export const ROLE_META: Record<
     variant: 'admin',
     className: 'border-primary/40 bg-primary/10 text-primary',
   },
+  supervisor: {
+    icon: UserCog,
+    label: 'supervisor',
+    variant: 'muted',
+    className: 'border-primary/30 bg-primary/10 text-primary',
+  },
   agent: {
     icon: UserCog,
     label: 'agent',
