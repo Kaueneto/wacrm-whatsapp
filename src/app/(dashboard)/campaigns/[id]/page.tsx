@@ -4,12 +4,19 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { PageNavigation } from '@/components/ui/page-navigation';
 import { toast } from 'sonner';
 import type {
   CampaignDefinition,
   CampaignSchedule,
 } from '@/lib/campaigns/definition';
-import type { Broadcast } from '@/types';
+import type { Broadcast, MessageTemplate } from '@/types';
+
+const templateCategoryLabels: Record<MessageTemplate['category'], string> = {
+  Marketing: 'Marketing',
+  Utility: 'Utilidade',
+  Authentication: 'Autenticação',
+};
 
 interface Campaign {
   id: string;
@@ -26,7 +33,10 @@ export default function CampaignDetailPage() {
   const router = useRouter();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [runs, setRuns] = useState<Broadcast[]>([]);
-  const [templateName, setTemplateName] = useState('');
+  const [template, setTemplate] = useState<Pick<
+    MessageTemplate,
+    'name' | 'category'
+  > | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const load = useCallback(async () => {
@@ -41,10 +51,10 @@ export default function CampaignDetailPage() {
       setCampaign(c);
       const { data: t } = await db
         .from('message_templates')
-        .select('name')
+        .select('name, category')
         .eq('id', c.definition.templateId)
         .maybeSingle();
-      setTemplateName(t?.name ?? 'Template removido');
+      setTemplate(t);
       const { data: b, error: be } = await db
         .from('broadcasts')
         .select('*')
@@ -86,13 +96,15 @@ export default function CampaignDetailPage() {
   const s = campaign.schedule;
   const unfinished = runs.some((r) => r.status === 'sending');
   return (
-    <div className="space-y-6">
-      <Link
-        href="/campaigns"
-        className="text-muted-foreground text-sm underline"
-      >
-        Voltar às campanhas
-      </Link>
+    <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-4 space-y-6 motion-safe:duration-300">
+      <PageNavigation
+        backHref="/campaigns"
+        backLabel="Voltar às campanhas"
+        items={[
+          { label: 'Campanhas', href: '/campaigns' },
+          { label: campaign.name },
+        ]}
+      />
       <div className="flex flex-wrap justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{campaign.name}</h1>
@@ -119,7 +131,15 @@ export default function CampaignDetailPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <section className="border-border bg-card rounded-xl border p-5">
           <h2 className="font-semibold">Template</h2>
-          <p className="mt-2 text-sm">{templateName}</p>
+          <p className="mt-2 text-sm">
+            {template?.name ?? 'Template removido'}
+          </p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Categoria:{' '}
+            {template?.category
+              ? (templateCategoryLabels[template.category] ?? template.category)
+              : 'Não disponível'}
+          </p>
           <p className="text-muted-foreground text-xs">
             Variáveis congeladas em cada disparo.
           </p>

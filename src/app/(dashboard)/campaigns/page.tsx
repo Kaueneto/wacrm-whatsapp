@@ -2,6 +2,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Plus, RefreshCw } from 'lucide-react';
 import type { CampaignSchedule } from '@/lib/campaigns/definition';
 
@@ -37,7 +45,7 @@ export default function CampaignsPage() {
     return () => clearInterval(timer);
   }, [load]);
   return (
-    <div className="space-y-6">
+    <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-4 space-y-6 motion-safe:duration-300">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Campanhas</h1>
@@ -73,41 +81,78 @@ export default function CampaignsPage() {
           disponíveis em Disparos.
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {rows.map((c) => (
-            <Link
-              key={c.id}
-              href={`/campaigns/${c.id}`}
-              className="border-border bg-card hover:border-primary space-y-3 rounded-xl border p-5"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="font-semibold">{c.name}</h2>
-                <span className="text-primary text-xs">
-                  {c.active ? 'Programação ativa' : 'Programação pausada'}
-                </span>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                {c.description || 'Sem descrição'}
-              </p>
-              <p className="text-sm">
-                {c.schedule.kind === 'once'
-                  ? 'Envio único'
-                  : c.schedule.kind === 'daily'
-                    ? 'Diariamente'
-                    : `A cada ${c.schedule.days} dias`}{' '}
-                · {c.schedule.time} · {c.schedule.timezone}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                Próxima:{' '}
-                {c.active && c.next_run_at
-                  ? new Date(c.next_run_at).toLocaleString()
-                  : 'Sem execução programada'}
-              </p>
-              {c.last_error && (
-                <p className="text-sm text-amber-400">{c.last_error}</p>
-              )}
-            </Link>
-          ))}
+        <div className="border-border bg-card overflow-hidden rounded-xl border">
+          <Table aria-label="Campanhas cadastradas">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="px-4">Campanha</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Programação</TableHead>
+                <TableHead>Próxima execução</TableHead>
+                <TableHead className="px-4 text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="max-w-96 min-w-56 px-4 py-4 whitespace-normal">
+                    <Link
+                      href={`/campaigns/${c.id}`}
+                      className="hover:text-primary font-semibold break-words hover:underline"
+                    >
+                      {c.name}
+                    </Link>
+                    <p className="text-muted-foreground mt-1 break-words">
+                      {c.description || 'Sem descrição'}
+                    </p>
+                    {c.last_error && (
+                      <p className="mt-1 break-words text-amber-400">
+                        {c.last_error}
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                        c.active
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {c.active ? 'Programação ativa' : 'Programação pausada'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <p>
+                      {c.schedule.kind === 'once'
+                        ? 'Envio único'
+                        : c.schedule.kind === 'daily'
+                          ? 'Diariamente'
+                          : `A cada ${c.schedule.days} dias`}
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {c.schedule.time} · {c.schedule.timezone}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {c.active && c.next_run_at
+                      ? new Date(c.next_run_at).toLocaleString()
+                      : 'Sem execução programada'}
+                  </TableCell>
+                  <TableCell className="px-4 text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={`Ver detalhes da campanha ${c.name}`}
+                      render={<Link href={`/campaigns/${c.id}`} />}
+                    >
+                      Ver detalhes
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

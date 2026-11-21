@@ -12,6 +12,7 @@ import { Step1ChooseTemplate } from '@/components/broadcasts/step1-choose-templa
 import { Step2SelectAudience } from '@/components/broadcasts/step2-select-audience';
 import { Step3Personalize } from '@/components/broadcasts/step3-personalize';
 import { Button } from '@/components/ui/button';
+import { PageNavigation } from '@/components/ui/page-navigation';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { validateDefinition } from '@/lib/campaigns/definition';
@@ -113,7 +114,16 @@ export default function NewCampaignPage() {
     }
   }
   return (
-    <div className="mx-auto w-full max-w-7xl min-w-0 space-y-6">
+    <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-4 mx-auto w-full max-w-7xl min-w-0 space-y-6 motion-safe:duration-300">
+      <PageNavigation
+        backHref="/campaigns"
+        backLabel="Voltar às campanhas"
+        backDisabled={busy}
+        items={[
+          { label: 'Campanhas', href: '/campaigns' },
+          { label: 'Nova campanha' },
+        ]}
+      />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Nova campanha</h1>
@@ -121,13 +131,6 @@ export default function NewCampaignPage() {
             Escolha o template e configure as abas na ordem que preferir.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => router.push('/campaigns')}
-          disabled={busy}
-        >
-          Voltar às campanhas
-        </Button>
       </div>
       <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <aside
