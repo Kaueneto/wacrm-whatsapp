@@ -185,4 +185,17 @@ describe('Portuguese messages in their UI context', () => {
     );
     expect(notification.body).toBe('Original English body');
   });
+
+  it('identifies the AI and contact from the notification itself', () => {
+    const copy = notificationText({
+      type: 'conversation_assigned',
+      title: 'Conversation transferred by AI',
+      assignment_origin: 'ai',
+      contact_name: 'Mariana',
+    }, {}, translator('Notifications'));
+    expect(copy).toEqual({
+      title: 'Conversa transferida pela IA',
+      body: 'A IA encaminhou a conversa com Mariana para você.',
+    });
+  });
 });

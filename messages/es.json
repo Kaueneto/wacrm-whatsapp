@@ -16,7 +16,26 @@
     "linkExpired": "Ese enlace expiró. Para restablecer la contraseña, usa “¿Olvidaste tu contraseña?” y pide uno nuevo; si estabas confirmando tu correo, regístrate de nuevo.",
     "linkInvalid": "No se pudo iniciar sesión con ese enlace. Si estabas confirmando tu correo, es posible que ya esté verificado; inicia sesión abajo. Para restablecer la contraseña, pide un enlace nuevo y ábrelo en el mismo navegador desde el que lo solicitaste."
   },
+  "TemplatePages": {
+    "emptyPreview": "Escribe el mensaje para ver la vista previa aquí.",
+    "buttonType": "Tipo de botón",
+    "removeButton": "Quitar botón",
+    "backToTemplates": "Volver a las plantillas",
+    "backToCampaigns": "Volver a las campañas",
+    "view": "Vista de plantillas",
+    "table": "Tabla",
+    "cards": "Tarjetas",
+    "status": "Estado",
+    "actions": "Acciones",
+    "preview": "Vista previa en WhatsApp",
+    "loading": "Cargando plantillas",
+    "notFound": "La plantilla no existe o no está disponible."
+  },
   "Sidebar": {
+    "tags": "Etiquetas",
+    "relationshipGroup": "Relaciones",
+    "automationGroup": "Automatización",
+    "templates": "Plantillas",
     "organization": "Usuarios y equipos",
     "title": "Plantilla de CRM para WhatsApp",
     "primaryNav": "Principal",
@@ -39,6 +58,8 @@
     "roleAgent": "Agente",
     "roleViewer": "Observador",
     "closeMenu": "Cerrar menú",
+    "collapseSidebar": "Contraer menú",
+    "expandSidebar": "Expandir menú",
     "defaultUser": "Usuario",
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
@@ -75,7 +96,114 @@
     "errorBody": "El rol de tu cuenta no se cargó, así que toda acción se trata como de solo lectura y los cambios no se guardarán. Revisa tu conexión e inténtalo de nuevo.",
     "retry": "Reintentar"
   },
+  "Tags": {
+    "title": "Etiquetas",
+    "description": "Gestiona los nombres y colores de las etiquetas de contactos y conversaciones.",
+    "manage": "Gestionar etiquetas",
+    "name": "Nombre",
+    "color": "Color",
+    "customColor": "Color personalizado",
+    "actions": "Acciones",
+    "new": "Nueva etiqueta",
+    "edit": "Editar etiqueta",
+    "editTag": "Editar etiqueta {name}",
+    "editorDescription": "Elige un nombre y un color.",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "created": "Etiqueta creada.",
+    "updated": "Etiqueta actualizada.",
+    "saveFailed": "No se pudo guardar la etiqueta.",
+    "loading": "Cargando etiquetas…",
+    "loadFailed": "No se pudieron cargar las etiquetas.",
+    "empty": "Aún no hay etiquetas.",
+    "retry": "Reintentar",
+    "assign": "Etiquetar",
+    "search": "Buscar etiquetas",
+    "noMatches": "Ninguna etiqueta coincide con la búsqueda.",
+    "createAndApply": "Crear y aplicar",
+    "assignmentFailed": "No se pudieron actualizar las etiquetas del contacto.",
+    "createdButNotApplied": "Se creó la etiqueta. Selecciónala en la lista para volver a aplicarla."
+  },
   "Dashboard": {
+    "cost": {
+      "byTemplate": "Estimación por plantilla",
+      "noTemplate": "Sin plantilla identificada",
+      "noTemplateDeliveries": "No se registraron entregas de plantillas en este período.",
+      "details": "Ver detalles",
+      "reportTitle": "Gastos y uso",
+      "backToDashboard": "Volver al panel",
+      "periodLabel": "Período de gastos",
+      "period": {
+        "0": "Este mes",
+        "1": "Mes anterior",
+        "2": "Hace dos meses"
+      },
+      "officialAmount": "Total informado por Meta",
+      "estimatedAmount": "Costo estimado",
+      "officialNote": "Incluye toda la cuenta de WhatsApp Business conectada.",
+      "noCampaignDeliveries": "No se registraron entregas de envíos en este período.",
+      "noChart": "Todavía no hay valores para el gráfico de este período.",
+      "byDepartment": "Estimación por departamento",
+      "byCampaign": "Estimación por campaña",
+      "noDepartment": "Sin departamento",
+      "noCampaign": "Sin campaña",
+      "name": "Nombre",
+      "deliveries": "Entregas estimadas / total",
+      "estimateNote": "Las estimaciones usan el costo medio de Meta por número y categoría. Las tablas muestran cuántas entregas tenían datos de costos compatibles.",
+      "retry": "Reintentar",
+      "accountTitle": "Gastos de WhatsApp",
+      "departmentTitle": "Costo estimado de los departamentos",
+      "month": "Este mes",
+      "accountNote": "Total de la cuenta de WhatsApp Business informado por Meta.",
+      "departmentNote": "Entregas de plantillas de tus departamentos × costo medio de Meta por número y categoría.",
+      "coverage": "{included, number} de {total, number} entregas incluidas en la estimación.",
+      "updated": "Consulta a las {time}.",
+      "dailyTrend": "Costos diarios informados",
+      "emptyAccount": "Meta aún no ha informado datos de costos de este mes.",
+      "emptyDepartment": "No hay entregas registradas de plantillas de tus departamentos este mes.",
+      "unavailable": "Los datos de costos no están disponibles temporalmente.",
+      "disconnected": "Conecta una cuenta de WhatsApp Business para ver los costos.",
+      "noRate": "Aún no hay datos de costos que coincidan con las entregas de tus departamentos."
+    },
+    "supervisor": {
+      "broadcasts": "Envíos de los departamentos",
+      "broadcast": "Envío",
+      "delivery": "Entrega",
+      "read": "Lectura",
+      "replied": "Respuestas",
+      "failed": "Fallos",
+      "action": "Acción",
+      "noBroadcasts": "No hay envíos de tus departamentos en este período.",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "broadcastActionFailed": "El envío cambió de estado o está fuera de tu supervisión.",
+      "broadcastPaused": "Envío pausado.",
+      "broadcastResumed": "Envío reanudado.",
+      "broadcastState": {
+        "queued": "En cola",
+        "running": "En curso",
+        "paused": "Pausado",
+        "completed": "Completado",
+        "cancelled": "Cancelado"
+      },
+      "title": "Panel de supervisión",
+      "open": "Abiertas",
+      "pending": "Pendientes",
+      "closed": "Cerradas",
+      "waiting": "En espera de respuesta",
+      "unassigned": "Sin responsable",
+      "queues": "Colas por departamento y equipo",
+      "noTeams": "No hay departamentos vinculados a tu perfil.",
+      "department": "Departamento",
+      "team": "Equipo",
+      "status": "Estado"
+    },
+    "support": {
+      "title": "Panel de atención",
+      "open": "Abiertas",
+      "pending": "Pendientes",
+      "closed": "Cerradas"
+    },
     "activityFeed": {
       "title": "Actividad reciente",
       "viewAll": "Ver todo →",
@@ -176,6 +304,8 @@
         "showingLatest": "Se muestran los {shown} más recientes de {total}."
       },
       "kpi": {
+        "averageReply": "Tiempo medio de primera respuesta",
+        "averageReplyInfo": "Promedio desde el primer mensaje de cada turno hasta la primera respuesta humana.",
         "newConversations": "Conversaciones nuevas",
         "newConversationsInfo": "Conversaciones iniciadas en este periodo.",
         "medianReply": "Mediana de primera respuesta",
@@ -252,6 +382,7 @@
         "emptyHint": "Crea negocios en Pipelines para verlos aquí."
       },
       "team": {
+        "resolved": "Cerradas",
         "title": "Equipo",
         "description": "Respuestas en este periodo",
         "link": "Miembros",
@@ -338,6 +469,13 @@
       "whatsappNotConnected": "WhatsApp® no está conectado. Ve a Configuración para conectar tu cuenta."
     },
     "conversationList": {
+      "manageTags": "Gestionar etiquetas",
+      "filters": "Filtros",
+      "filterStatus": "Estado",
+      "filterByTags": "Filtrar por etiquetas",
+      "loadingTags": "Cargando etiquetas…",
+      "loadTagsFailed": "No se pudieron cargar las etiquetas.",
+      "noTagsAvailable": "Aún no hay etiquetas.",
       "searchPlaceholder": "Buscar conversaciones...",
       "filterAll": "Todas",
       "filterUnread": "Sin leer",
@@ -357,10 +495,7 @@
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",
-      "hideContactPanel": "Ocultar panel del contacto",
-      "showContactPanel": "Mostrar panel del contacto",
-      "hideContact": "Ocultar contacto",
-      "showContact": "Mostrar contacto",
+      "contactDetails": "Información del contacto",
       "refresh": "Actualizar",
       "loadOlder": "Cargar mensajes anteriores",
       "loadingOlder": "Cargando…",
@@ -410,6 +545,8 @@
       "recording": "Grabando… {current} / {max}",
       "cancel": "Cancelar",
       "stopAndAttach": "Detener y adjuntar",
+      "pauseRecording": "Pausar grabación",
+      "resumeRecording": "Continuar grabación",
       "attachMedia": "Adjuntar archivo",
       "photo": "Foto",
       "video": "Video",
@@ -518,6 +655,7 @@
     },
     "sidebar": {
       "contactInfo": "Información del contacto",
+      "resizeContactPanel": "Cambiar el ancho del panel del contacto",
       "tags": "Etiquetas",
       "notes": "Notas",
       "deals": "Negocios",
@@ -528,7 +666,9 @@
       "removeTag": "Quitar {tag}",
       "tagUpdateFailed": "No se pudieron actualizar las etiquetas del contacto.",
       "noDeals": "Sin negocios",
-      "addNotePlaceholder": "Agregar una nota..."
+      "addNotePlaceholder": "Agregar una nota...",
+      "addNote": "Agregar nota",
+      "addNoteFailed": "No se pudo guardar la nota."
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está en pausa aquí",
@@ -543,6 +683,7 @@
   },
   "Contacts": {
     "page": {
+      "manageTags": "Gestionar etiquetas",
       "title": "Contactos",
       "subtitle": "Administra tu lista de contactos. {count} contactos en total.",
       "subtitleZero": "Administra tu lista de contactos.",
@@ -690,6 +831,9 @@
       "networkError": "error de red"
     },
     "importModal": {
+      "downloadTemplate": "Descargar plantilla CSV",
+      "templateHint": "Completa los datos en Excel y guarda como CSV UTF-8. Usa formato Texto en la columna phone e incluye el prefijo internacional, por ejemplo +34910000000.",
+      "templateFilename": "plantilla-contactos.csv",
       "title": "Importar contactos",
       "desc": "Sube un CSV con una columna <phoneCode>phone</phoneCode> obligatoria. Opcionales: <nameCode>name</nameCode>, <emailCode>email</emailCode>, <companyCode>company</companyCode>, <tagsCode>tags</tagsCode> (separadas por comas; pon entre comillas las celdas con varias etiquetas).",
       "uploadDropzone": "Haz clic para elegir un archivo CSV",
@@ -898,7 +1042,8 @@
         "delivery": "Entrega",
         "read": "Leídos",
         "status": "Estado",
-        "date": "Fecha"
+        "startedAt": "Inicio",
+        "finishedAt": "Fin"
       },
       "errorLoad": "Error al cargar las difusiones",
       "broadcastInProgress": "Difusión en curso",
@@ -930,7 +1075,7 @@
       "delete": "Eliminar",
       "cannotDeleteSending": "No se puede eliminar mientras una difusión se está enviando",
       "deleteHover": "Eliminar esta difusión",
-      "funnel": "Embudo",
+      "deliveryBreakdown": "Rendimiento del envío",
       "recipientsHeader": "Destinatarios ({filtered} de {total})",
       "recipientsHeaderAll": "Destinatarios ({total})",
       "allStatuses": "Todos los estados",
@@ -993,6 +1138,10 @@
       "chooseTemplate": {
         "title": "Elige una plantilla",
         "subtitle": "Selecciona una plantilla de mensaje aprobada para tu difusión.",
+        "connectedSubtitle": "Plantillas aprobadas disponibles para el canal de WhatsApp conectado.",
+        "savedUnavailable": "La plantilla guardada, {name}, no está disponible en este canal. Elige una plantilla de la lista para continuar.",
+        "noConnectedTemplates": "No hay plantillas aprobadas disponibles para este canal.",
+        "syncConnected": "Sincroniza las plantillas en Campañas → Plantillas.",
         "noTemplates": "No hay plantillas disponibles.",
         "createFirst": "Primero crea una plantilla en Configuración.",
         "errorLoad": "Error al cargar las plantillas"
@@ -1004,13 +1153,13 @@
           "all": "Todos los contactos",
           "tags": "Filtrar por etiquetas",
           "customField": "Campo personalizado",
-          "csv": "Subir CSV"
+          "csv": "Importar CSV o Excel"
         },
         "allDesc": "Enviar a los {count} contactos de tu base de datos.",
         "allDescLoading": "Enviar a todos los contactos de tu base de datos.",
         "tagDesc": "Enviar a contactos con etiquetas específicas.",
         "customFieldDesc": "Enviar a contactos que cumplan una regla de campo personalizado.",
-        "csvDesc": "Sube un CSV con números de teléfono (y nombres opcionales).",
+        "csvDesc": "Importa una lista con teléfonos y nombres opcionales.",
         "selectTags": "Seleccionar etiquetas",
         "searchTags": "Buscar etiquetas...",
         "noTagsFound": "No se encontraron etiquetas.",
@@ -1024,14 +1173,20 @@
         "operatorContains": "Contiene",
         "value": "Valor",
         "valuePlaceholder": "Valor a comparar",
-        "uploadCsv": "Subir archivo CSV",
-        "csvFormatDesc": "Debe contener una columna 'phone' (formato E.164). La columna 'name' es opcional.",
-        "csvContactsFound": "{count} contacto(s) válido(s) encontrado(s) en el CSV.",
-        "csvInvalidPhones": "{count} fila(s) omitida(s): los números de teléfono deben empezar con + y el código de país (p. ej. +5215512345678).",
+        "uploadCsv": "Seleccionar archivo CSV o XLSX",
+        "csvFormatDesc": "Reemplaza la fila de ejemplo y conserva el encabezado phone. Para números de Brasil, escribe 55 seguido del código de área y el número. Para otros países, incluye + y el código de país. La columna name es opcional. En Excel, usa la primera hoja.",
+        "csvContactsFound": "Se encontraron {count} contacto(s) válido(s) en el archivo.",
+        "csvInvalidPhones": "{count} fila(s) omitida(s). Comprueba el código de país y que los números estén completos.",
         "errorLoadTags": "Error al cargar las etiquetas",
         "errorLoadFields": "Error al cargar los campos personalizados",
-        "errorCsvParse": "No se pudo leer el archivo CSV.",
-        "errorCsvMissingPhone": "El CSV debe tener una columna 'phone'.",
+        "errorCsvParse": "No se pudo leer el archivo CSV o XLSX.",
+        "errorCsvMissingPhone": "La primera fila debe incluir una columna llamada phone.",
+        "downloadCsv": "Descargar plantilla CSV",
+        "downloadXlsx": "Descargar plantilla Excel",
+        "readingFile": "Leyendo archivo…",
+        "errorNoValidPhones": "No se encontraron teléfonos válidos. Comprueba el código de país y que los números estén completos.",
+        "removeFile": "Eliminar archivo",
+        "errorFileFormat": "Selecciona un archivo .csv o .xlsx.",
         "audienceSummary": "Resumen de la audiencia",
         "calculating": "Calculando…",
         "estimatedRecipients": "destinatarios estimados",
@@ -1084,7 +1239,7 @@
         "audienceAll": "Todos los contactos",
         "audienceTags": "Filtrada por etiquetas",
         "audienceField": "Filtrada por campo personalizado",
-        "audienceCsv": "Carga de CSV",
+        "audienceCsv": "Lista importada",
         "variables": "Variables:",
         "variablesMapped": "{count} asignadas",
         "saveDraft": "Guardar como borrador",
@@ -1454,6 +1609,19 @@
         "varKeyPlaceholder": "p. ej. name, email, company",
         "varKeyHelp": "Interpólala en preguntas posteriores y notas de transferencia con",
         "advanceAfterCapture": "Después de capturar, avanzar a",
+        "routingTeam": "Departamento / Equipo de destino",
+        "routingKeepTeam": "Mantener equipo actual",
+        "routingMode": "Forma de distribución",
+        "routingLegacy": "Mantener responsable actual (configuración anterior)",
+        "routingQueue": "Esperar en la cola",
+        "routingRoundRobin": "Turnos entre agentes en línea",
+        "routingSpecific": "Agente específico",
+        "routingAgent": "Agente responsable",
+        "routingChooseAgent": "Selecciona un agente",
+        "routingUnavailable": "Destino no disponible",
+        "routingLoadError": "No se pudieron cargar equipos y agentes.",
+        "routingRetry": "Reintentar",
+        "routingHelp": "Sin agentes en línea, la conversación queda en la cola para la supervisión. Conectarse después no la redistribuye automáticamente. La nota queda en el historial de ejecución del flujo.",
         "internalNote": "Nota interna (para el agente que la tome)",
         "endNodeHelp": "Nodo terminal. Cuando el ejecutor llega a este nodo, la ejecución se marca como completada. No requiere configuración.",
         "bodyText": "Texto del cuerpo",
@@ -1509,7 +1677,21 @@
         "uploadFailed": "Error al subir.",
         "fileTooLarge": "El archivo pesa {size} MB; el límite es 16 MB.",
         "defaultOptionTitle": "Opción",
-        "optionN": "Opción {n}"
+        "optionN": "Opción {n}",
+        "routingQueueHelp": "La conversación queda sin responsable y es visible para administradores y supervisores. Los agentes no ven la cola, aunque haya un solo integrante. Para asignarla automáticamente, elige reparto por turnos o un agente específico.",
+        "routingRoundRobinHelp": "Asigna automáticamente a un agente conectado del equipo. Si solo hay uno conectado, recibe la conversación. Sin agentes conectados, espera en la cola de supervisión; conectarse después no distribuye esa cola automáticamente.",
+        "aiNodeHelp": "Usa el asistente activo y la base de conocimiento de Agentes de IA. La respuesta automática general puede quedar desactivada. El flujo termina aquí y la IA atiende los siguientes mensajes de texto. Si no está disponible, deriva al equipo elegido.",
+        "aiFallbackTeam": "Equipo para atención humana",
+        "aiChooseTeam": "Selecciona un equipo",
+        "aiWelcome": "Mensaje inicial (hasta 1024 caracteres)",
+        "aiInstructions": "Instrucciones internas para esta sesión (opcional, hasta 4000 caracteres)",
+        "aiInstructionsHelp": "Complementan las instrucciones de la cuenta y no se envían como mensaje al cliente. Ej.: atender consultas financieras sin autorizar descuentos.",
+        "aiInternalNote": "Nota interna para la derivación humana (opcional, hasta 2000 caracteres)",
+        "aiHumanDistribution": "Cuando se necesite atención humana",
+        "aiHumanDistributionHelp": "El reparto asigna un agente conectado del equipo. Si no hay agentes conectados, espera en la cola. El modo cola siempre espera la distribución de supervisión.",
+        "aiFallbackMessage": "Mensaje al derivar a atención humana (hasta 1024 caracteres)",
+        "aiWelcomeDefault": "¡Hola! Soy el asistente virtual. ¿Cómo puedo ayudarte?",
+        "aiFallbackDefault": "Voy a derivar tu conversación a nuestro equipo para que una persona pueda ayudarte."
       },
       "categories": {
         "messaging": "Mensajería",
@@ -1556,6 +1738,10 @@
         "end": {
           "label": "Fin",
           "blurb": "Termina el flujo"
+        },
+        "ai_assistant": {
+          "label": "Transferir a IA",
+          "blurb": "La IA atiende y deriva al equipo elegido si es necesario."
         }
       }
     },
@@ -1610,7 +1796,18 @@
       "fixIssues": "Corrige los problemas de abajo antes de activar",
       "save": "Guardar",
       "descriptionPlaceholder": "Agrega una breve descripción (interna; los clientes no la ven)",
-      "descriptionLabel": "Descripción del flujo"
+      "descriptionLabel": "Descripción del flujo",
+      "lastEdited": "Última edición el",
+      "lastEditedUnknown": "Última edición aún no registrada",
+      "inlineSaveHint": "Pulsa Enter para guardar el título y la descripción. Usa Guardar para aplicar todos los cambios.",
+      "savedSections": "Último guardado: {sections}",
+      "pendingSections": "Pendientes: {sections}",
+      "savingChanges": "Guardando…",
+      "changes": {
+        "name": "Título",
+        "description": "Descripción",
+        "graph": "Estructura del flujo"
+      }
     }
   },
   "Settings": {
@@ -1763,13 +1960,18 @@
       "deleteLocallyTitle": "Eliminar localmente",
       "dialogEditTitle": "Editar plantilla de mensaje",
       "dialogNewTitle": "Nueva plantilla de mensaje",
-      "dialogEditDesc": "Guarda tus cambios para reenviarla a Meta. El estado volverá a PENDIENTE durante la revisión.",
+      "dialogEditDesc": "Los cambios en el mensaje vuelven a revisión en Meta. El título y la descripción se guardan en el CRM.",
       "dialogNewDesc": "Crea una plantilla y envíala a Meta para su aprobación. Una vez aprobada, podrás usarla en difusiones y en la bandeja de entrada.",
       "authWarning": "Las plantillas de AUTENTICACIÓN tienen un formato fijo de cuerpo + botón OTP que necesita otro constructor. Por ahora, créalas en el Administrador de WhatsApp de Meta y usa <bold>Sincronizar desde Meta</bold> para traerlas.",
       "templateName": "Nombre de la plantilla",
-      "namePlaceholder": "p. ej. order_confirmation",
-      "nameFixed": "El nombre es fijo una vez que la plantilla existe en Meta; crea una plantilla nueva para cambiarlo.",
-      "nameHint": "Solo letras minúsculas, dígitos y guiones bajos.",
+      "namePlaceholder": "p. ej. Confirmación de pedido",
+      "nameHint": "Escribe un título para identificar la plantilla en el CRM.",
+      "nameFixed": "El identificador de Meta permanece fijo.",
+      "localDescription": "Descripción interna",
+      "localDescriptionPlaceholder": "p. ej. Se envía al confirmar el pedido",
+      "localDescriptionHint": "Visible solo en el CRM.",
+      "toastSaveLocalDetails": "Título y descripción guardados.",
+      "titleNeedsLetters": "Escribe un título con letras latinas o números.",
       "category": "Categoría",
       "language": "Idioma",
       "langFixed": "El idioma es fijo una vez que la plantilla existe en Meta.",
@@ -1832,6 +2034,8 @@
       "toastSaveEditDry": "Plantilla actualizada (simulación, sin llamada a Meta)",
       "toastSaveNewDry": "Plantilla guardada (simulación, sin llamada a Meta)",
       "toastSyncCount": "{total} {total, plural, =1 {plantilla sincronizada} other {plantillas sincronizadas}} desde Meta",
+      "syncOutsideChannel": "{count, plural, one {Una plantilla está} other {# plantillas están}} fuera del catálogo de la cuenta de WhatsApp {waba}.",
+      "syncOutsideChannelDetail": "Esta plantilla está fuera del catálogo de la cuenta de WhatsApp {waba} y no se puede enviar desde el canal conectado.",
       "toastSyncDetails": " ({inserted} nuevas, {updated} actualizadas)",
       "toastSyncFailed": "Error al sincronizar: {preview}",
       "toastSyncTruncated": "Solo se sincronizaron las primeras 2000 plantillas; tu cuenta tiene más. Sincroniza de nuevo para continuar o contacta a soporte si esto persiste.",
@@ -1903,8 +2107,17 @@
       "pinPlaceholder": "PIN de 6 dígitos del Administrador de WhatsApp de Meta",
       "pinHint": "Solo se necesita para recibir mensajes entrantes en un número de producción. Configúralo en Meta Business Manager → Cuentas de WhatsApp → Números de teléfono → Verificación en dos pasos y pégalo aquí para que wacrm pueda suscribir el número; de lo contrario, Meta envía los eventos entrantes a la última app que reclamó el número (el síntoma que afecta a segundos números bajo una WABA compartida). Los números de prueba de Meta no tienen PIN y ya vienen registrados: déjalo en blanco para ellos. Dejarlo en blanco también mantiene intacto un registro existente.",
       "webhookTitle": "Configuración del webhook",
-      "webhookDesc": "Usa esta URL como callback del webhook en el panel de la app de Meta.",
+      "webhookDesc": "Pega la dirección HTTPS del túnel o la URL completa. Copia el callback en el panel de la aplicación de Meta.",
       "webhookUrl": "URL de callback del webhook",
+      "webhookCopyAction": "Copiar URL del callback",
+      "webhookCopyFailed": "No se pudo copiar la URL. Selecciona y copia la dirección del campo.",
+      "webhookInvalidPublicUrl": "Usa una dirección HTTPS pública, con o sin /api/whatsapp/webhook.",
+      "webhookPublish": "Aplicar webhook al número en Meta",
+      "webhookPublishing": "Aplicando webhook…",
+      "webhookPublished": "Meta confirmó el callback del número.",
+      "webhookPublishFailed": "Meta aún no ha confirmado el webhook.",
+      "webhookPublishScope": "Los mensajes y estados de entrega y lectura usan el callback del número. Las aprobaciones usan el callback principal de la app.",
+      "webhookBrowserHint": "La dirección se guarda en este navegador. Usa el botón de abajo para aplicarla al número.",
       "mediaTitle": "Almacenamiento de adjuntos",
       "mediaDesc": "Meta elimina los archivos recibidos unos 30 días después de su llegada. Los adjuntos pueden copiarse a tu propio almacenamiento para que sigan visibles.",
       "mirrorInbound": "Conservar adjuntos entrantes",
@@ -1972,6 +2185,7 @@
       "wabaNotSubscribed": "La cuenta de WhatsApp Business no está suscrita a esta app, así que Meta no entregará webhooks entrantes. Vuelve a ingresar el token de acceso y guarda de nuevo para suscribirla."
     },
     "sections": {
+      "integrations": "Integraciones",
       "overview": "Resumen",
       "profile": "Tu perfil",
       "security": "Acceso y seguridad",
@@ -2175,7 +2389,7 @@
     },
     "aiConfig": {
       "title": "Configuración del agente",
-      "description": "Usa tu propia clave de OpenAI, Anthropic o de una API compatible con OpenAI. wacrm llama al proveedor directamente con tu clave, sin cargos de IA por puesto, y tus datos siguen siendo tuyos. Esto impulsa las respuestas redactadas por IA, el bot de respuesta automática y el Playground.",
+      "description": "Usa tu propia clave de OpenAI, Anthropic, Gemini (Google) o una API compatible con OpenAI para sugerencias, respuestas automáticas y pruebas.",
       "adminOnlyConfig": "Solo los administradores y propietarios pueden cambiar la configuración de IA.",
       "loadFailed": "Error al cargar la configuración de IA",
       "providerAndKey": "Proveedor y clave",
@@ -2215,7 +2429,8 @@
       "providerOpenAiCompatible": "API compatible con OpenAI",
       "baseUrl": "URL base",
       "baseUrlHint": "URL base de la API compatible con OpenAI, por ejemplo https://api.groq.com/openai/v1. /chat/completions se añade automáticamente, salvo que incluyas esa ruta.",
-      "missingBaseUrl": "Introduce la URL base de la API compatible con OpenAI."
+      "missingBaseUrl": "Introduce la URL base de la API compatible con OpenAI.",
+      "geminiHint": "Usa una clave de API de Gemini de Google AI Studio. Guarda tu contexto y pruébalo en el Área de pruebas. La búsqueda semántica opcional sigue necesitando una clave OpenAI separada."
     },
     "aiKnowledge": {
       "loadFailed": "Error al cargar la base de conocimiento",
@@ -2361,6 +2576,8 @@
   "Notifications": {
     "assignedTitle": "Nueva conversación asignada",
     "assignedBody": "{actor} te asignó una conversación con {contact}",
+    "aiAssignedTitle": "Conversación transferida por la IA",
+    "aiAssignedBody": "La IA te transfirió la conversación con {contact}.",
     "unknownActor": "Alguien",
     "unknownContact": "un contacto",
     "title": "Notificaciones",
@@ -2488,6 +2705,19 @@
     "SGD": "Dólar de Singapur",
     "MXN": "Peso mexicano",
     "COP": "Peso colombiano"
+  },
+  "TemplateBodyEditor": {
+    "toolbar": "Herramientas de texto",
+    "variable": "Insertar variable",
+    "variableHint": "Inserta la siguiente variable disponible en el cursor",
+    "bold": "Negrita (Ctrl+B)",
+    "italic": "Cursiva (Ctrl+I)",
+    "strikethrough": "Tachado",
+    "monospace": "Monoespaciado",
+    "emojis": "Emojis",
+    "insertEmoji": "Insertar emoji",
+    "formatHint": "Selecciona un texto para darle formato.",
+    "limitReached": "No hay espacio para insertar este contenido."
   },
   "TemplateStatus": {
     "DRAFT": "Borrador",
@@ -2644,6 +2874,9 @@
   },
   "Validation": {
     "flows": {
+      "handoffInvalidMode": "Elige una forma de distribución válida.",
+      "handoffInvalidTeam": "Elige un equipo válido.",
+      "handoffInvalidAgent": "Elige un agente válido para la transferencia.",
       "nameRequired": "El nombre del flujo es obligatorio.",
       "entryRequired": "Elige un nodo de entrada antes de activar.",
       "needsNode": "Un flujo necesita al menos un nodo antes de activarse.",
@@ -2699,7 +2932,8 @@
       "setTagNeedsTag": "El nodo Etiquetar contacto necesita una etiqueta para aplicar.",
       "setTagNeedsNext": "El nodo Etiquetar contacto debe apuntar a un nodo siguiente.",
       "setTagMissingNext": "El nodo Etiquetar contacto apunta a un nodo inexistente: \"{key}\".",
-      "unknownNodeType": "Tipo de nodo desconocido: \"{type}\"."
+      "unknownNodeType": "Tipo de nodo desconocido: \"{type}\".",
+      "aiInvalidConfig": "Check the AI node field: {field}."
     },
     "automations": {
       "needsStep": "las automatizaciones activas necesitan al menos un paso",
@@ -2732,6 +2966,7 @@
     "templates": {
       "nameRequired": "El nombre de la plantilla es obligatorio.",
       "nameInvalid": "El nombre de la plantilla solo puede usar letras minúsculas, dígitos y guiones bajos (1-512 caracteres).",
+      "metadataInvalid": "Usa hasta {max} caracteres.",
       "bodyNotContiguous": "Las variables del cuerpo deben ser consecutivas a partir de {first}; se encontraron: {found}.",
       "bodyRequired": "El texto del cuerpo es obligatorio.",
       "bodyTooLong": "El texto del cuerpo supera los {max} caracteres (tiene {got}).",
@@ -2853,7 +3088,7 @@
       "pausedRequired": "paused (booleano) es obligatorio",
       "updateConversationFailed": "Error al actualizar la conversación",
       "loadConfigFailed": "Error al cargar la configuración de IA",
-      "providerInvalid": "El proveedor debe ser \"openai\", \"anthropic\" o \"openai_compatible\"",
+      "providerInvalid": "provider: openai, anthropic, gemini, openai_compatible",
       "baseUrlRequired": "base_url es obligatorio para openai_compatible",
       "baseUrlInvalid": "base_url debe ser una URL http(s) válida",
       "modelRequired": "El modelo es obligatorio",
@@ -2970,6 +3205,7 @@
     "templates": {
       "invalidId": "ID de plantilla no válido.",
       "invalidJsonBody": "Cuerpo JSON no válido.",
+      "titleNeedsLetters": "Escribe un título con letras latinas o números.",
       "notFound": "Plantilla no encontrada.",
       "neverSubmitted": "Esta plantilla nunca se envió a Meta: usa Nueva plantilla para enviarla.",
       "statusNotEditable": "Las plantillas con estado {status} no se pueden editar. Permitidos: APPROVED, REJECTED, PAUSED.",
@@ -2993,5 +3229,11 @@
       "metaApiStatus": "Error de la API de Meta: {status}",
       "syncFailed": "Error al sincronizar las plantillas"
     }
+  },
+  "FlowAi": {
+    "unavailable": "IA no disponible; derivado al equipo.",
+    "limit": "Límite de respuestas alcanzado; derivado al equipo.",
+    "provider_error": "Error de IA; derivado al equipo.",
+    "human_requested": "Se necesita atención humana; derivado al equipo."
   }
 }

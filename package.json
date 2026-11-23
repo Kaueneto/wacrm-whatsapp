@@ -39,7 +39,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "worker:campaigns": "tsx scripts/campaign-worker.ts",
-    "worker:check": "tsx scripts/campaign-worker.ts --check"
+    "worker:check": "tsx scripts/campaign-worker.ts --check",
+    "worker:webhooks": "tsx scripts/whatsapp-webhook-worker.ts",
+    "worker:webhooks:check": "tsx scripts/whatsapp-webhook-worker.ts --check"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -61,6 +63,7 @@
     "opus-recorder": "^8.0.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "read-excel-file": "^9.3.20",
     "recharts": "^3.10.1",
     "shadcn": "^4.21.4",
     "sonner": "^2.0.8",

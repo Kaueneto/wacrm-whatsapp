@@ -214,6 +214,9 @@ export interface Notification {
   contact_id?: string;
   /** Who triggered it. Null when an automation/system assigned it. */
   actor_user_id?: string;
+  assignment_origin?: 'ai' | 'manual' | null;
+  contact_name?: string | null;
+  actor_name?: string | null;
   title: string;
   body?: string;
   read_at?: string;
@@ -352,6 +355,8 @@ export interface MessageTemplate {
   id: string;
   user_id: string;
   name: string;
+  display_name?: string | null;
+  description?: string | null;
   category: 'Marketing' | 'Utility' | 'Authentication';
   language?: string;
   header_type?: 'text' | 'image' | 'video' | 'document';
@@ -418,6 +423,7 @@ export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'fail
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'replied' | 'failed';
 
 export interface Broadcast {
+  started_at?: string | null;
   processed_count?: number | null;
   campaign_id?: string | null;
   parent_broadcast_id?: string | null;

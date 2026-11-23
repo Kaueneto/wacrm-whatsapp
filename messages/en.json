@@ -16,7 +16,26 @@
     "linkExpired": "That link has expired. For a password reset, use “Forgot password?” to request a new one; if you were confirming your email, sign up again.",
     "linkInvalid": "That link couldn’t be used to sign you in. If you were confirming your email, it may already be verified — just sign in below. For a password reset, request a new link and open it in the same browser you requested it from."
   },
+  "TemplatePages": {
+    "emptyPreview": "Type your message to preview it here.",
+    "buttonType": "Button type",
+    "removeButton": "Remove button",
+    "backToTemplates": "Back to templates",
+    "backToCampaigns": "Back to campaigns",
+    "view": "Template view",
+    "table": "Table",
+    "cards": "Cards",
+    "status": "Status",
+    "actions": "Actions",
+    "preview": "WhatsApp preview",
+    "loading": "Loading templates",
+    "notFound": "Template not found or unavailable."
+  },
   "Sidebar": {
+    "tags": "Tags",
+    "relationshipGroup": "Relationships",
+    "automationGroup": "Automation",
+    "templates": "Templates",
     "organization": "Users & teams",
     "title": "CRM Template for WhatsApp",
     "primaryNav": "Primary",
@@ -39,6 +58,8 @@
     "roleAgent": "Agent",
     "roleViewer": "Viewer",
     "closeMenu": "Close menu",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
     "defaultUser": "User",
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
@@ -75,7 +96,114 @@
     "errorBody": "Your account role did not load, so every action is treated as read-only and changes will not save. Check your connection and try again.",
     "retry": "Retry"
   },
+  "Tags": {
+    "title": "Tags",
+    "description": "Manage tag names and colors for contacts and conversations.",
+    "manage": "Manage tags",
+    "name": "Name",
+    "color": "Color",
+    "customColor": "Custom color",
+    "actions": "Actions",
+    "new": "New tag",
+    "edit": "Edit tag",
+    "editTag": "Edit tag {name}",
+    "editorDescription": "Choose a name and color.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "created": "Tag created.",
+    "updated": "Tag updated.",
+    "saveFailed": "Could not save the tag.",
+    "loading": "Loading tags…",
+    "loadFailed": "Could not load tags.",
+    "empty": "No tags have been created.",
+    "retry": "Retry",
+    "assign": "Apply tags",
+    "search": "Search tags",
+    "noMatches": "No tags match your search.",
+    "createAndApply": "Create and apply",
+    "assignmentFailed": "Could not update the contact’s tags.",
+    "createdButNotApplied": "The tag was created. Select it from the list to try applying it again."
+  },
   "Dashboard": {
+    "cost": {
+      "byTemplate": "Estimate by template",
+      "noTemplate": "No identified template",
+      "noTemplateDeliveries": "No template deliveries were recorded in this period.",
+      "details": "View details",
+      "reportTitle": "Spend and usage",
+      "backToDashboard": "Back to dashboard",
+      "periodLabel": "Spend period",
+      "period": {
+        "0": "This month",
+        "1": "Last month",
+        "2": "Two months ago"
+      },
+      "officialAmount": "Total reported by Meta",
+      "estimatedAmount": "Estimated cost",
+      "officialNote": "Includes the entire connected WhatsApp Business account.",
+      "noCampaignDeliveries": "No broadcast deliveries were recorded in this period.",
+      "noChart": "No values are available to chart for this period yet.",
+      "byDepartment": "Estimate by department",
+      "byCampaign": "Estimate by campaign",
+      "noDepartment": "No department",
+      "noCampaign": "No campaign",
+      "name": "Name",
+      "deliveries": "Estimated deliveries / total",
+      "estimateNote": "Estimates use the average Meta cost by number and category. The tables show how many deliveries had matching cost data.",
+      "retry": "Retry",
+      "accountTitle": "WhatsApp spend",
+      "departmentTitle": "Estimated department spend",
+      "month": "This month",
+      "accountNote": "WhatsApp Business account total reported by Meta.",
+      "departmentNote": "Template deliveries in your departments × average Meta cost by number and category.",
+      "coverage": "{included, number} of {total, number} deliveries included in the estimate.",
+      "updated": "Checked at {time}.",
+      "dailyTrend": "Reported daily costs",
+      "emptyAccount": "Meta has yet to report any cost data this month.",
+      "emptyDepartment": "No recorded template deliveries for your departments this month.",
+      "unavailable": "Cost data is temporarily unavailable.",
+      "disconnected": "Connect a WhatsApp Business account to see costs.",
+      "noRate": "There is no matching cost data for your departments’ deliveries yet."
+    },
+    "supervisor": {
+      "broadcasts": "Department broadcasts",
+      "broadcast": "Broadcast",
+      "delivery": "Delivery",
+      "read": "Read",
+      "replied": "Replies",
+      "failed": "Failures",
+      "action": "Action",
+      "noBroadcasts": "No department broadcasts in this period.",
+      "pause": "Pause",
+      "resume": "Resume",
+      "broadcastActionFailed": "The broadcast state changed or is outside your scope.",
+      "broadcastPaused": "Broadcast paused.",
+      "broadcastResumed": "Broadcast resumed.",
+      "broadcastState": {
+        "queued": "Queued",
+        "running": "Running",
+        "paused": "Paused",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "title": "Supervisor overview",
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed",
+      "waiting": "Awaiting reply",
+      "unassigned": "Unassigned",
+      "queues": "Queues by department and team",
+      "noTeams": "No departments are linked to your profile.",
+      "department": "Department",
+      "team": "Team",
+      "status": "Status"
+    },
+    "support": {
+      "title": "Support overview",
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed"
+    },
     "activityFeed": {
       "title": "Recent Activity",
       "viewAll": "View all →",
@@ -176,6 +304,8 @@
         "showingLatest": "Showing the latest {shown} of {total}."
       },
       "kpi": {
+        "averageReply": "Average first response time",
+        "averageReplyInfo": "Average time from the first customer message in a turn to the first human reply.",
         "newConversations": "New conversations",
         "newConversationsInfo": "Conversations started in this period.",
         "medianReply": "Median first reply",
@@ -252,6 +382,7 @@
         "emptyHint": "Create deals in Pipelines to see them here."
       },
       "team": {
+        "resolved": "Closed",
         "title": "Team",
         "description": "Replies in this period",
         "link": "Members",
@@ -338,6 +469,13 @@
       "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account."
     },
     "conversationList": {
+      "manageTags": "Manage tags",
+      "filters": "Filters",
+      "filterStatus": "Status",
+      "filterByTags": "Filter by tags",
+      "loadingTags": "Loading tags…",
+      "loadTagsFailed": "Could not load tags.",
+      "noTagsAvailable": "No tags have been created.",
       "searchPlaceholder": "Search conversations...",
       "filterAll": "All",
       "filterUnread": "Unread",
@@ -357,10 +495,7 @@
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
-      "hideContactPanel": "Hide contact panel",
-      "showContactPanel": "Show contact panel",
-      "hideContact": "Hide contact",
-      "showContact": "Show contact",
+      "contactDetails": "Contact info",
       "refresh": "Refresh",
       "loadOlder": "Load older messages",
       "loadingOlder": "Loading…",
@@ -410,6 +545,8 @@
       "recording": "Recording… {current} / {max}",
       "cancel": "Cancel",
       "stopAndAttach": "Stop and attach",
+      "pauseRecording": "Pause recording",
+      "resumeRecording": "Resume recording",
       "attachMedia": "Attach media",
       "photo": "Photo",
       "video": "Video",
@@ -518,6 +655,7 @@
     },
     "sidebar": {
       "contactInfo": "Contact info",
+      "resizeContactPanel": "Resize contact panel",
       "tags": "Tags",
       "notes": "Notes",
       "deals": "Deals",
@@ -528,7 +666,9 @@
       "removeTag": "Remove {tag}",
       "tagUpdateFailed": "Could not update contact tags.",
       "noDeals": "No deals",
-      "addNotePlaceholder": "Add a note..."
+      "addNotePlaceholder": "Add a note...",
+      "addNote": "Add note",
+      "addNoteFailed": "Could not save the note."
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",
@@ -543,6 +683,7 @@
   },
   "Contacts": {
     "page": {
+      "manageTags": "Manage tags",
       "title": "Contacts",
       "subtitle": "Manage your contact list. {count} total contacts.",
       "subtitleZero": "Manage your contact list.",
@@ -690,6 +831,9 @@
       "networkError": "network error"
     },
     "importModal": {
+      "downloadTemplate": "Download CSV template",
+      "templateHint": "Fill it in with Excel and save as UTF-8 CSV. Set the phone column to Text and use international format, for example +15550100123.",
+      "templateFilename": "contacts-template.csv",
       "title": "Import Contacts",
       "desc": "Upload a CSV with a required <phoneCode>phone</phoneCode> column. Optional: <nameCode>name</nameCode>, <emailCode>email</emailCode>, <companyCode>company</companyCode>, <tagsCode>tags</tagsCode> (comma-separated; quote multi-tag cells).",
       "uploadDropzone": "Click to choose a CSV file",
@@ -898,7 +1042,8 @@
         "delivery": "Delivery",
         "read": "Read",
         "status": "Status",
-        "date": "Date"
+        "startedAt": "Start time",
+        "finishedAt": "Finish time"
       },
       "errorLoad": "Failed to load broadcasts",
       "broadcastInProgress": "Broadcast in progress",
@@ -930,7 +1075,7 @@
       "delete": "Delete",
       "cannotDeleteSending": "Cannot delete while a broadcast is actively sending",
       "deleteHover": "Delete this broadcast",
-      "funnel": "Funnel",
+      "deliveryBreakdown": "Broadcast performance",
       "recipientsHeader": "Recipients ({filtered} of {total})",
       "recipientsHeaderAll": "Recipients ({total})",
       "allStatuses": "All statuses",
@@ -993,6 +1138,10 @@
       "chooseTemplate": {
         "title": "Choose a Template",
         "subtitle": "Select an approved message template for your broadcast.",
+        "connectedSubtitle": "Approved templates available for the connected WhatsApp channel.",
+        "savedUnavailable": "The saved template, {name}, is unavailable on this channel. Choose a template below to continue.",
+        "noConnectedTemplates": "No approved templates are available for this channel.",
+        "syncConnected": "Sync templates in Campaigns → Templates.",
         "noTemplates": "No templates available.",
         "createFirst": "Create a template in Settings first.",
         "errorLoad": "Failed to load templates"
@@ -1004,13 +1153,13 @@
           "all": "All Contacts",
           "tags": "Filter by Tags",
           "customField": "Custom Field",
-          "csv": "Upload CSV"
+          "csv": "Import CSV or Excel"
         },
         "allDesc": "Send to all {count} contacts in your database.",
         "allDescLoading": "Send to all contacts in your database.",
         "tagDesc": "Send to contacts matching specific tags.",
         "customFieldDesc": "Send to contacts matching a custom field rule.",
-        "csvDesc": "Upload a CSV with phone numbers (and optional names).",
+        "csvDesc": "Import a list with phone numbers and optional names.",
         "selectTags": "Select Tags",
         "searchTags": "Search tags...",
         "noTagsFound": "No tags found.",
@@ -1024,14 +1173,20 @@
         "operatorContains": "Contains",
         "value": "Value",
         "valuePlaceholder": "Value to match",
-        "uploadCsv": "Upload CSV File",
-        "csvFormatDesc": "Must contain a 'phone' column (E.164 format). 'name' column is optional.",
-        "csvContactsFound": "{count} valid contact(s) found in CSV.",
-        "csvInvalidPhones": "{count} row(s) skipped: phone numbers must start with + and a country code (e.g. +14155550123).",
+        "uploadCsv": "Select CSV or XLSX file",
+        "csvFormatDesc": "Replace the example row and keep the phone header. For Brazilian numbers, enter 55 followed by the area code and number. For other countries, include + and the country code. The name column is optional. In Excel, use the first sheet.",
+        "csvContactsFound": "{count} valid contact(s) found in the file.",
+        "csvInvalidPhones": "{count} row(s) skipped. Check the country codes and make sure the numbers are complete.",
         "errorLoadTags": "Failed to load tags",
         "errorLoadFields": "Failed to load custom fields",
-        "errorCsvParse": "Could not parse CSV file.",
-        "errorCsvMissingPhone": "CSV must have a 'phone' column.",
+        "errorCsvParse": "Could not read the CSV or XLSX file.",
+        "errorCsvMissingPhone": "The first row must include a column named phone.",
+        "downloadCsv": "Download CSV template",
+        "downloadXlsx": "Download Excel template",
+        "readingFile": "Reading file…",
+        "errorNoValidPhones": "No valid phone numbers found. Check the country codes and make sure the numbers are complete.",
+        "removeFile": "Remove file",
+        "errorFileFormat": "Select a .csv or .xlsx file.",
         "audienceSummary": "Audience Summary",
         "calculating": "Calculating…",
         "estimatedRecipients": "estimated recipients",
@@ -1084,7 +1239,7 @@
         "audienceAll": "All contacts",
         "audienceTags": "Filtered by tags",
         "audienceField": "Filtered by custom field",
-        "audienceCsv": "CSV upload",
+        "audienceCsv": "Imported list",
         "variables": "Variables:",
         "variablesMapped": "{count} mapped",
         "saveDraft": "Save as Draft",
@@ -1454,6 +1609,19 @@
         "varKeyPlaceholder": "e.g. name, email, company",
         "varKeyHelp": "Interpolate in downstream prompts and handoff notes with",
         "advanceAfterCapture": "After capturing, advance to",
+        "routingTeam": "Destination department / team",
+        "routingKeepTeam": "Keep current team",
+        "routingMode": "Distribution method",
+        "routingLegacy": "Keep current assignee (previous setting)",
+        "routingQueue": "Wait in queue",
+        "routingRoundRobin": "Round robin among online agents",
+        "routingSpecific": "Specific agent",
+        "routingAgent": "Assigned agent",
+        "routingChooseAgent": "Select an agent",
+        "routingUnavailable": "Destination unavailable",
+        "routingLoadError": "Could not load teams and agents.",
+        "routingRetry": "Try again",
+        "routingHelp": "Without online agents, round robin leaves the conversation in the queue for supervisor assignment. Coming online does not redistribute the queue automatically. The note is saved in the flow execution history.",
         "internalNote": "Internal note (for the agent picking up)",
         "endNodeHelp": "Terminal node. When the runner reaches this node the run is marked complete. No config needed.",
         "bodyText": "Body text",
@@ -1509,7 +1677,21 @@
         "uploadFailed": "Upload failed.",
         "fileTooLarge": "File is {size} MB — limit is 16 MB.",
         "defaultOptionTitle": "Option",
-        "optionN": "Option {n}"
+        "optionN": "Option {n}",
+        "routingQueueHelp": "The conversation stays unassigned and is visible to administrators and supervisors. Agents cannot see the queue, even in a team with only one member. Choose round robin or a specific agent for automatic assignment.",
+        "routingRoundRobinHelp": "Automatically assigns an online agent from the selected team. If only one agent is online, they receive the conversation. With no agents online, it waits in the supervision queue; coming online later does not automatically distribute that queue.",
+        "aiNodeHelp": "Uses the active assistant and knowledge base configured in AI Agents. Global auto-reply can stay off. This ends the flow and the assistant handles the next text messages. If unavailable, it routes to the selected team.",
+        "aiFallbackTeam": "Team for human support",
+        "aiChooseTeam": "Select a team",
+        "aiWelcome": "Opening message (up to 1024 characters)",
+        "aiInstructions": "Internal instructions for this AI session (optional, up to 4000 characters)",
+        "aiInstructionsHelp": "Adds guidance to the account instructions. Not sent as a customer message. Example: handle Finance questions using company policies; never approve fee waivers.",
+        "aiInternalNote": "Internal note for the human handoff (optional, up to 2000 characters)",
+        "aiHumanDistribution": "When human support is needed",
+        "aiHumanDistributionHelp": "Round robin assigns an online agent in this team. With no agents online, the conversation waits in the team queue. Queue mode always waits for supervision.",
+        "aiFallbackMessage": "Message sent when routing to human support (up to 1024 characters)",
+        "aiWelcomeDefault": "Hello! I am the virtual assistant. How can I help you?",
+        "aiFallbackDefault": "I will forward your conversation to our team so a person can help you."
       },
       "categories": {
         "messaging": "Messaging",
@@ -1556,6 +1738,10 @@
         "end": {
           "label": "End",
           "blurb": "Ends the flow"
+        },
+        "ai_assistant": {
+          "label": "Transfer to AI",
+          "blurb": "Let the assistant help, then route to this team if needed."
         }
       }
     },
@@ -1610,7 +1796,18 @@
       "fixIssues": "Fix the issues below before activating",
       "save": "Save",
       "descriptionPlaceholder": "Add a short description (internal — customers don't see this)",
-      "descriptionLabel": "Flow description"
+      "descriptionLabel": "Flow description",
+      "lastEdited": "Last edited on",
+      "lastEditedUnknown": "Last edit not recorded yet",
+      "inlineSaveHint": "Press Enter to save the title and description. Use Save to apply all changes.",
+      "savedSections": "Last saved: {sections}",
+      "pendingSections": "Pending: {sections}",
+      "savingChanges": "Saving…",
+      "changes": {
+        "name": "Title",
+        "description": "Description",
+        "graph": "Flow structure"
+      }
     }
   },
   "Settings": {
@@ -1763,13 +1960,18 @@
       "deleteLocallyTitle": "Delete locally",
       "dialogEditTitle": "Edit Message Template",
       "dialogNewTitle": "New Message Template",
-      "dialogEditDesc": "Save your changes to re-submit to Meta. Status will flip back to PENDING during review.",
+      "dialogEditDesc": "Message edits return to Meta for review. The title and description are saved in the CRM.",
       "dialogNewDesc": "Build a template and submit it to Meta for approval. Once approved, you can use it in broadcasts and the inbox.",
       "authWarning": "AUTHENTICATION templates have a fixed body + OTP button shape that needs a different builder. Create them in Meta WhatsApp Manager for now and use <bold>Sync from Meta</bold> to bring them in.",
       "templateName": "Template Name",
-      "namePlaceholder": "e.g. order_confirmation",
-      "nameFixed": "Name is fixed once a template exists on Meta — create a new template to change it.",
-      "nameHint": "Lowercase letters, digits, and underscores only.",
+      "namePlaceholder": "e.g. Order confirmation",
+      "nameHint": "Enter a title to identify the template in the CRM.",
+      "nameFixed": "The Meta identifier stays fixed.",
+      "localDescription": "Internal description",
+      "localDescriptionPlaceholder": "e.g. Sent after order confirmation",
+      "localDescriptionHint": "Visible only in the CRM.",
+      "toastSaveLocalDetails": "Title and description saved.",
+      "titleNeedsLetters": "Enter a title with Latin letters or numbers.",
       "category": "Category",
       "language": "Language",
       "langFixed": "Language is fixed once a template exists on Meta.",
@@ -1832,6 +2034,8 @@
       "toastSaveEditDry": "Template updated (dry-run — no Meta call)",
       "toastSaveNewDry": "Template saved (dry-run — no Meta call)",
       "toastSyncCount": "Synced {total} {total, plural, =1 {template} other {templates}} from Meta",
+      "syncOutsideChannel": "{count, plural, one {One template is} other {# templates are}} outside the catalog for WhatsApp account {waba}.",
+      "syncOutsideChannelDetail": "This template is outside the catalog for WhatsApp account {waba} and cannot be sent from the connected channel.",
       "toastSyncDetails": " ({inserted} new, {updated} updated)",
       "toastSyncFailed": "Failed to sync: {preview}",
       "toastSyncTruncated": "Synced the first 2000 templates only — your account has more. Sync again to continue, or contact support if this persists.",
@@ -1903,8 +2107,17 @@
       "pinPlaceholder": "6-digit PIN from Meta WhatsApp Manager",
       "pinHint": "Needed only to wire inbound messages for a production number. Set it in Meta Business Manager → WhatsApp Accounts → Phone Numbers → Two-step verification, then paste it here so wacrm can subscribe the number — otherwise Meta routes inbound events to whichever app last claimed it (the symptom that hits second numbers under a shared WABA). Meta test numbers have no PIN and are pre-registered — leave this blank for them. Leaving it blank also keeps an existing registration untouched.",
       "webhookTitle": "Webhook Configuration",
-      "webhookDesc": "Use this URL as your webhook callback in the Meta App Dashboard.",
+      "webhookDesc": "Paste the HTTPS tunnel address or the full URL. Copy the callback to the Meta App Dashboard.",
       "webhookUrl": "Webhook Callback URL",
+      "webhookCopyAction": "Copy callback URL",
+      "webhookCopyFailed": "Could not copy the URL. Select and copy the address from the field.",
+      "webhookInvalidPublicUrl": "Use a public HTTPS address, with or without /api/whatsapp/webhook.",
+      "webhookPublish": "Apply webhook to the number in Meta",
+      "webhookPublishing": "Applying webhook…",
+      "webhookPublished": "Meta confirmed the callback for this number.",
+      "webhookPublishFailed": "Meta has not confirmed the webhook.",
+      "webhookPublishScope": "Messages and delivery and read receipts use the number callback. Template approval events use the app’s default callback.",
+      "webhookBrowserHint": "The address is saved in this browser. Use the button below to apply it to the number.",
       "mediaTitle": "Attachment Storage",
       "mediaDesc": "Meta deletes received media about 30 days after it arrives. Attachments can be copied to your own storage so they stay viewable.",
       "mirrorInbound": "Keep inbound attachments",
@@ -1972,6 +2185,7 @@
       "wabaNotSubscribed": "The WhatsApp Business Account is not subscribed to this app, so Meta will not deliver inbound webhooks. Re-enter the access token and save again to subscribe it."
     },
     "sections": {
+      "integrations": "Integrations",
       "overview": "Overview",
       "profile": "Your profile",
       "security": "Login & security",
@@ -2175,7 +2389,7 @@
     },
     "aiConfig": {
       "title": "Agent setup",
-      "description": "Bring your own OpenAI, Anthropic, or OpenAI-compatible API key. wacrm calls the provider directly with your key — no per-seat AI fees, and your data stays yours. This powers AI-drafted replies in the inbox, the auto-reply bot, and the Playground.",
+      "description": "Bring your own OpenAI, Anthropic, Gemini (Google), or OpenAI-compatible API key. This powers inbox reply suggestions, auto-replies, and the Playground.",
       "adminOnlyConfig": "Only admins and owners can change the AI configuration.",
       "loadFailed": "Failed to load AI configuration",
       "providerAndKey": "Provider & key",
@@ -2215,7 +2429,8 @@
       "providerOpenAiCompatible": "OpenAI-compatible API",
       "baseUrl": "Base URL",
       "baseUrlHint": "Base URL for the OpenAI-compatible API, for example https://api.groq.com/openai/v1. /chat/completions is added automatically unless you include that path yourself.",
-      "missingBaseUrl": "Enter the Base URL for the OpenAI-compatible API."
+      "missingBaseUrl": "Enter the Base URL for the OpenAI-compatible API.",
+      "geminiHint": "Use a Gemini API key from Google AI Studio. Save your business context and try it in the Playground. Optional semantic knowledge search still requires a separate OpenAI key."
     },
     "aiKnowledge": {
       "loadFailed": "Failed to load knowledge base",
@@ -2361,6 +2576,8 @@
   "Notifications": {
     "assignedTitle": "New conversation assigned",
     "assignedBody": "{actor} assigned you a conversation with {contact}",
+    "aiAssignedTitle": "Conversation transferred by AI",
+    "aiAssignedBody": "AI transferred the conversation with {contact} to you.",
     "unknownActor": "Someone",
     "unknownContact": "a contact",
     "title": "Notifications",
@@ -2488,6 +2705,19 @@
     "SGD": "Singapore Dollar",
     "MXN": "Mexican Peso",
     "COP": "Colombian Peso"
+  },
+  "TemplateBodyEditor": {
+    "toolbar": "Text tools",
+    "variable": "Insert variable",
+    "variableHint": "Insert the next available variable at the cursor",
+    "bold": "Bold (Ctrl+B)",
+    "italic": "Italic (Ctrl+I)",
+    "strikethrough": "Strikethrough",
+    "monospace": "Monospace",
+    "emojis": "Emojis",
+    "insertEmoji": "Insert emoji",
+    "formatHint": "Select text to format it.",
+    "limitReached": "There is not enough space to insert this content."
   },
   "TemplateStatus": {
     "DRAFT": "Draft",
@@ -2644,6 +2874,9 @@
   },
   "Validation": {
     "flows": {
+      "handoffInvalidMode": "Choose a valid distribution method.",
+      "handoffInvalidTeam": "Choose a valid team.",
+      "handoffInvalidAgent": "Choose a valid agent for the handoff.",
       "nameRequired": "Flow name is required.",
       "entryRequired": "Pick an entry node before activating.",
       "needsNode": "A flow needs at least one node before activation.",
@@ -2699,7 +2932,8 @@
       "setTagNeedsTag": "Set-tag needs a tag to apply.",
       "setTagNeedsNext": "Set-tag must point to a next node.",
       "setTagMissingNext": "Set-tag points to non-existent node \"{key}\".",
-      "unknownNodeType": "Unknown node type \"{type}\"."
+      "unknownNodeType": "Unknown node type \"{type}\".",
+      "aiInvalidConfig": "Check the AI node field: {field}."
     },
     "automations": {
       "needsStep": "active automations need at least one step",
@@ -2732,6 +2966,7 @@
     "templates": {
       "nameRequired": "Template name is required.",
       "nameInvalid": "Template name must use only lowercase letters, digits, and underscores (1-512 chars).",
+      "metadataInvalid": "Use up to {max} characters.",
       "bodyNotContiguous": "Body variables must be contiguous starting at {first} — found {found}.",
       "bodyRequired": "Body text is required.",
       "bodyTooLong": "Body text exceeds {max} chars (got {got}).",
@@ -2853,7 +3088,7 @@
       "pausedRequired": "paused (boolean) is required",
       "updateConversationFailed": "Failed to update conversation",
       "loadConfigFailed": "Failed to load AI configuration",
-      "providerInvalid": "provider must be \"openai\", \"anthropic\", or \"openai_compatible\"",
+      "providerInvalid": "provider: openai, anthropic, gemini, openai_compatible",
       "baseUrlRequired": "base_url is required for openai_compatible",
       "baseUrlInvalid": "base_url must be a valid http(s) URL",
       "modelRequired": "model is required",
@@ -2970,6 +3205,7 @@
     "templates": {
       "invalidId": "Invalid template id.",
       "invalidJsonBody": "Invalid JSON body.",
+      "titleNeedsLetters": "Enter a title with Latin letters or numbers.",
       "notFound": "Template not found.",
       "neverSubmitted": "This template was never submitted to Meta — use New Template to submit it instead.",
       "statusNotEditable": "Templates in status {status} cannot be edited. Allowed: APPROVED, REJECTED, PAUSED.",
@@ -2993,5 +3229,11 @@
       "metaApiStatus": "Meta API error: {status}",
       "syncFailed": "Failed to sync templates"
     }
+  },
+  "FlowAi": {
+    "unavailable": "AI unavailable; routed to the team.",
+    "limit": "AI reply limit reached; routed to the team.",
+    "provider_error": "AI error; routed to the team.",
+    "human_requested": "Human support needed; routed to the team."
   }
 }

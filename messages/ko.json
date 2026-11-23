@@ -16,7 +16,26 @@
     "linkExpired": "링크가 만료되었습니다. 비밀번호를 재설정하려면 “비밀번호를 잊으셨나요?”에서 새 링크를 요청하세요. 이메일 인증 중이었다면 다시 가입해 주세요.",
     "linkInvalid": "이 링크로는 로그인할 수 없습니다. 이메일 인증 중이었다면 이미 인증이 완료되었을 수 있으니 아래에서 로그인하세요. 비밀번호 재설정은 새 링크를 요청한 뒤 요청한 브라우저에서 열어 주세요."
   },
+  "TemplatePages": {
+    "emptyPreview": "메시지를 입력하면 여기에 미리보기가 표시됩니다.",
+    "buttonType": "버튼 유형",
+    "removeButton": "버튼 제거",
+    "backToTemplates": "템플릿으로 돌아가기",
+    "backToCampaigns": "캠페인으로 돌아가기",
+    "view": "템플릿 보기 방식",
+    "table": "표",
+    "cards": "카드",
+    "status": "상태",
+    "actions": "작업",
+    "preview": "WhatsApp 미리보기",
+    "loading": "템플릿 불러오는 중",
+    "notFound": "템플릿을 찾을 수 없거나 사용할 수 없습니다."
+  },
   "Sidebar": {
+    "tags": "태그",
+    "relationshipGroup": "고객 관리",
+    "automationGroup": "자동화",
+    "templates": "템플릿",
     "organization": "사용자 및 팀",
     "title": "WhatsApp용 CRM 템플릿",
     "primaryNav": "기본 메뉴",
@@ -39,6 +58,8 @@
     "roleAgent": "상담원",
     "roleViewer": "뷰어",
     "closeMenu": "메뉴 닫기",
+    "collapseSidebar": "사이드바 접기",
+    "expandSidebar": "사이드바 펼치기",
     "defaultUser": "사용자",
     "defaultAvatar": "아바타",
     "menuProfile": "프로필",
@@ -75,7 +96,114 @@
     "errorBody": "계정 역할을 불러오지 못해 모든 작업이 읽기 전용으로 처리되며 변경 사항은 저장되지 않습니다. 연결을 확인한 후 다시 시도하세요.",
     "retry": "다시 시도"
   },
+  "Tags": {
+    "title": "태그",
+    "description": "연락처와 대화에 사용하는 태그 이름과 색상을 관리합니다.",
+    "manage": "태그 관리",
+    "name": "이름",
+    "color": "색상",
+    "customColor": "사용자 지정 색상",
+    "actions": "작업",
+    "new": "새 태그",
+    "edit": "태그 편집",
+    "editTag": "{name} 태그 편집",
+    "editorDescription": "이름과 색상을 선택하세요.",
+    "save": "저장",
+    "cancel": "취소",
+    "created": "태그를 만들었습니다.",
+    "updated": "태그를 수정했습니다.",
+    "saveFailed": "태그를 저장할 수 없습니다.",
+    "loading": "태그를 불러오는 중…",
+    "loadFailed": "태그를 불러올 수 없습니다.",
+    "empty": "등록된 태그가 없습니다.",
+    "retry": "다시 시도",
+    "assign": "태그 지정",
+    "search": "태그 검색",
+    "noMatches": "검색과 일치하는 태그가 없습니다.",
+    "createAndApply": "만들고 적용",
+    "assignmentFailed": "연락처 태그를 수정할 수 없습니다.",
+    "createdButNotApplied": "태그를 만들었습니다. 목록에서 태그를 선택해 다시 적용하세요."
+  },
   "Dashboard": {
+    "cost": {
+      "byTemplate": "템플릿별 예상 비용",
+      "noTemplate": "식별된 템플릿 없음",
+      "noTemplateDeliveries": "이 기간에 전달된 템플릿이 없습니다.",
+      "details": "자세히 보기",
+      "reportTitle": "지출 및 사용량",
+      "backToDashboard": "대시보드로 돌아가기",
+      "periodLabel": "지출 기간",
+      "period": {
+        "0": "이번 달",
+        "1": "지난달",
+        "2": "두 달 전"
+      },
+      "officialAmount": "Meta 보고 총액",
+      "estimatedAmount": "예상 비용",
+      "officialNote": "연결된 WhatsApp Business 계정 전체를 포함합니다.",
+      "noCampaignDeliveries": "이 기간에 전달된 일괄 발송이 없습니다.",
+      "noChart": "이 기간에 표시할 비용 데이터가 아직 없습니다.",
+      "byDepartment": "부서별 예상 비용",
+      "byCampaign": "캠페인별 예상 비용",
+      "noDepartment": "부서 없음",
+      "noCampaign": "캠페인 없음",
+      "name": "이름",
+      "deliveries": "추정 포함 전달 / 전체",
+      "estimateNote": "번호와 카테고리별 Meta 평균 비용으로 계산합니다. 표에 비용 데이터와 일치하는 전달 건수가 표시됩니다.",
+      "retry": "다시 시도",
+      "accountTitle": "WhatsApp 지출",
+      "departmentTitle": "부서 예상 비용",
+      "month": "이번 달",
+      "accountNote": "Meta에서 보고한 WhatsApp Business 계정 전체 비용입니다.",
+      "departmentNote": "담당 부서의 템플릿 전달 건수 × 번호와 카테고리별 Meta 평균 비용입니다.",
+      "coverage": "전달 {total, number}건 중 {included, number}건을 추정에 포함했습니다.",
+      "updated": "{time}에 조회했습니다.",
+      "dailyTrend": "보고된 일별 비용",
+      "emptyAccount": "이번 달 비용 데이터가 아직 없습니다.",
+      "emptyDepartment": "이번 달 담당 부서에서 전달된 템플릿 메시지가 없습니다.",
+      "unavailable": "비용 데이터를 일시적으로 사용할 수 없습니다.",
+      "disconnected": "WhatsApp Business 계정을 연결하면 비용을 확인할 수 있습니다.",
+      "noRate": "담당 부서의 전달 내역과 일치하는 비용 데이터가 아직 없습니다."
+    },
+    "supervisor": {
+      "broadcasts": "부서 일괄 발송",
+      "broadcast": "발송",
+      "delivery": "전달",
+      "read": "읽음",
+      "replied": "답장",
+      "failed": "실패",
+      "action": "작업",
+      "noBroadcasts": "이 기간에 부서 발송이 없습니다.",
+      "pause": "일시 중지",
+      "resume": "재개",
+      "broadcastActionFailed": "발송 상태가 변경되었거나 관리 범위 밖입니다.",
+      "broadcastPaused": "발송을 일시 중지했습니다.",
+      "broadcastResumed": "발송을 재개했습니다.",
+      "broadcastState": {
+        "queued": "대기 중",
+        "running": "진행 중",
+        "paused": "일시 중지",
+        "completed": "완료",
+        "cancelled": "취소됨"
+      },
+      "title": "상담 관리 현황",
+      "open": "진행 중",
+      "pending": "대기 중",
+      "closed": "종료",
+      "waiting": "답변 대기",
+      "unassigned": "담당자 없음",
+      "queues": "부서 및 팀별 대기열",
+      "noTeams": "프로필에 연결된 부서가 없습니다.",
+      "department": "부서",
+      "team": "팀",
+      "status": "상태"
+    },
+    "support": {
+      "title": "상담 현황",
+      "open": "진행 중",
+      "pending": "대기 중",
+      "closed": "종료"
+    },
     "activityFeed": {
       "title": "최근 활동",
       "viewAll": "전체 보기 →",
@@ -176,6 +304,8 @@
         "showingLatest": "{total}건 중 최근 {shown}건을 표시합니다."
       },
       "kpi": {
+        "averageReply": "평균 첫 응답 시간",
+        "averageReplyInfo": "고객이 처음 메시지를 보낸 시점부터 상담원이 응답하기까지 걸린 평균 시간입니다.",
         "newConversations": "새 대화",
         "newConversationsInfo": "이 기간에 시작된 대화입니다.",
         "medianReply": "첫 답장 중앙값",
@@ -252,6 +382,7 @@
         "emptyHint": "파이프라인에서 딜을 만들면 여기에 표시됩니다."
       },
       "team": {
+        "resolved": "종료",
         "title": "팀",
         "description": "이 기간의 답장",
         "link": "팀원",
@@ -338,6 +469,13 @@
       "whatsappNotConnected": "WhatsApp®이 연결되어 있지 않습니다. 설정으로 이동해 계정을 연결하세요."
     },
     "conversationList": {
+      "manageTags": "태그 관리",
+      "filters": "필터",
+      "filterStatus": "상태",
+      "filterByTags": "태그로 필터링",
+      "loadingTags": "태그를 불러오는 중…",
+      "loadTagsFailed": "태그를 불러올 수 없습니다.",
+      "noTagsAvailable": "등록된 태그가 없습니다.",
       "searchPlaceholder": "대화 검색...",
       "filterAll": "전체",
       "filterUnread": "읽지 않음",
@@ -357,10 +495,7 @@
     },
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
-      "hideContactPanel": "연락처 패널 숨기기",
-      "showContactPanel": "연락처 패널 표시",
-      "hideContact": "연락처 숨기기",
-      "showContact": "연락처 표시",
+      "contactDetails": "연락처 정보",
       "refresh": "새로고침",
       "loadOlder": "이전 메시지 불러오기",
       "loadingOlder": "불러오는 중…",
@@ -410,6 +545,8 @@
       "recording": "녹음 중… {current} / {max}",
       "cancel": "취소",
       "stopAndAttach": "중지하고 첨부",
+      "pauseRecording": "녹음 일시 중지",
+      "resumeRecording": "녹음 재개",
       "attachMedia": "미디어 첨부",
       "photo": "사진",
       "video": "동영상",
@@ -518,6 +655,7 @@
     },
     "sidebar": {
       "contactInfo": "연락처 정보",
+      "resizeContactPanel": "연락처 패널 너비 조절",
       "tags": "태그",
       "notes": "메모",
       "deals": "딜",
@@ -528,7 +666,9 @@
       "removeTag": "{tag} 태그 제거",
       "tagUpdateFailed": "연락처 태그를 업데이트하지 못했습니다.",
       "noDeals": "딜 없음",
-      "addNotePlaceholder": "메모 추가..."
+      "addNotePlaceholder": "메모 추가...",
+      "addNote": "메모 추가",
+      "addNoteFailed": "메모를 저장하지 못했습니다."
     },
     "aiBanner": {
       "pausedTitle": "이 대화에서 AI 어시스턴트가 일시 중지됨",
@@ -543,6 +683,7 @@
   },
   "Contacts": {
     "page": {
+      "manageTags": "태그 관리",
       "title": "연락처",
       "subtitle": "연락처 목록을 관리하세요. 전체 연락처 {count}개.",
       "subtitleZero": "연락처 목록을 관리하세요.",
@@ -690,6 +831,9 @@
       "networkError": "네트워크 오류"
     },
     "importModal": {
+      "downloadTemplate": "CSV 양식 다운로드",
+      "templateHint": "Excel에서 내용을 입력한 후 UTF-8 CSV로 저장하세요. phone 열은 텍스트 형식으로 지정하고 +821012345678처럼 국제 전화번호를 입력하세요.",
+      "templateFilename": "contacts-template.csv",
       "title": "연락처 가져오기",
       "desc": "필수 <phoneCode>phone</phoneCode> 열이 포함된 CSV를 업로드하세요. 선택 항목: <nameCode>name</nameCode>, <emailCode>email</emailCode>, <companyCode>company</companyCode>, <tagsCode>tags</tagsCode> (쉼표로 구분; 여러 태그가 있는 셀은 따옴표로 묶으세요).",
       "uploadDropzone": "클릭하여 CSV 파일 선택",
@@ -898,7 +1042,8 @@
         "delivery": "전달",
         "read": "읽음",
         "status": "상태",
-        "date": "날짜"
+        "startedAt": "시작 시간",
+        "finishedAt": "종료 시간"
       },
       "errorLoad": "브로드캐스트를 불러오지 못했습니다",
       "broadcastInProgress": "브로드캐스트 진행 중",
@@ -930,7 +1075,7 @@
       "delete": "삭제",
       "cannotDeleteSending": "브로드캐스트가 전송 중일 때는 삭제할 수 없습니다",
       "deleteHover": "이 브로드캐스트 삭제",
-      "funnel": "퍼널",
+      "deliveryBreakdown": "발송 성과",
       "recipientsHeader": "수신자 (전체 {total}명 중 {filtered}명)",
       "recipientsHeaderAll": "수신자 ({total}명)",
       "allStatuses": "모든 상태",
@@ -993,6 +1138,10 @@
       "chooseTemplate": {
         "title": "템플릿 선택",
         "subtitle": "브로드캐스트에 사용할 승인된 메시지 템플릿을 선택하세요.",
+        "connectedSubtitle": "연결된 WhatsApp 채널에서 사용할 수 있는 승인된 템플릿입니다.",
+        "savedUnavailable": "저장된 템플릿 {name}을(를) 이 채널에서 사용할 수 없습니다. 계속하려면 아래에서 템플릿을 선택하세요.",
+        "noConnectedTemplates": "이 채널에서 사용할 수 있는 승인된 템플릿이 없습니다.",
+        "syncConnected": "캠페인 → 템플릿에서 템플릿을 동기화하세요.",
         "noTemplates": "사용 가능한 템플릿이 없습니다.",
         "createFirst": "먼저 설정에서 템플릿을 만드세요.",
         "errorLoad": "템플릿을 불러오지 못했습니다"
@@ -1004,13 +1153,13 @@
           "all": "전체 연락처",
           "tags": "태그로 필터링",
           "customField": "커스텀 필드",
-          "csv": "CSV 업로드"
+          "csv": "CSV 또는 Excel 가져오기"
         },
         "allDesc": "데이터베이스의 전체 연락처 {count}명에게 보냅니다.",
         "allDescLoading": "데이터베이스의 전체 연락처에게 보냅니다.",
         "tagDesc": "특정 태그와 일치하는 연락처에 보냅니다.",
         "customFieldDesc": "커스텀 필드 규칙과 일치하는 연락처에 보냅니다.",
-        "csvDesc": "전화번호(선택적으로 이름 포함)가 담긴 CSV를 업로드하세요.",
+        "csvDesc": "전화번호와 선택 사항인 이름을 포함한 목록을 가져오세요.",
         "selectTags": "태그 선택",
         "searchTags": "태그 검색...",
         "noTagsFound": "태그를 찾을 수 없습니다.",
@@ -1024,14 +1173,20 @@
         "operatorContains": "포함",
         "value": "값",
         "valuePlaceholder": "일치시킬 값",
-        "uploadCsv": "CSV 파일 업로드",
-        "csvFormatDesc": "'phone' 열(E.164 형식)이 필요합니다. 'name' 열은 선택 사항입니다.",
-        "csvContactsFound": "CSV에서 유효한 연락처 {count}개를 찾았습니다.",
-        "csvInvalidPhones": "{count}개 행을 건너뛰었습니다. 전화번호는 +와 국가 코드로 시작해야 합니다 (예: +14155550123).",
+        "uploadCsv": "CSV 또는 XLSX 파일 선택",
+        "csvFormatDesc": "예시 행을 교체하고 phone 제목을 유지하세요. 브라질 번호는 55 뒤에 지역 코드와 전화번호를 입력하세요. 다른 국가 번호에는 +와 국가 코드를 포함하세요. name 열은 선택 사항입니다. Excel에서는 첫 번째 시트를 사용하세요.",
+        "csvContactsFound": "파일에서 유효한 연락처 {count}개를 찾았습니다.",
+        "csvInvalidPhones": "{count}개 행을 건너뛰었습니다. 국가 코드와 전체 전화번호를 확인하세요.",
         "errorLoadTags": "태그를 불러오지 못했습니다",
         "errorLoadFields": "커스텀 필드를 불러오지 못했습니다",
-        "errorCsvParse": "CSV 파일을 파싱할 수 없습니다.",
-        "errorCsvMissingPhone": "CSV에 'phone' 열이 있어야 합니다.",
+        "errorCsvParse": "CSV 또는 XLSX 파일을 읽을 수 없습니다.",
+        "errorCsvMissingPhone": "첫 번째 행에 phone 열이 있어야 합니다.",
+        "downloadCsv": "CSV 서식 다운로드",
+        "downloadXlsx": "Excel 서식 다운로드",
+        "readingFile": "파일 읽는 중…",
+        "errorNoValidPhones": "유효한 전화번호가 없습니다. 국가 코드와 전체 전화번호를 확인하세요.",
+        "removeFile": "파일 제거",
+        "errorFileFormat": ".csv 또는 .xlsx 파일을 선택하세요.",
         "audienceSummary": "대상 요약",
         "calculating": "계산 중…",
         "estimatedRecipients": "예상 수신자",
@@ -1084,7 +1239,7 @@
         "audienceAll": "전체 연락처",
         "audienceTags": "태그로 필터링됨",
         "audienceField": "커스텀 필드로 필터링됨",
-        "audienceCsv": "CSV 업로드",
+        "audienceCsv": "가져온 목록",
         "variables": "변수:",
         "variablesMapped": "{count}개 매핑됨",
         "saveDraft": "초안으로 저장",
@@ -1454,6 +1609,19 @@
         "varKeyPlaceholder": "예: name, email, company",
         "varKeyHelp": "다음과 같이 이후 프롬프트와 인계 메모에서 참조할 수 있습니다",
         "advanceAfterCapture": "수집 후 다음 진행",
+        "routingTeam": "대상 부서 / 팀",
+        "routingKeepTeam": "현재 팀 유지",
+        "routingMode": "배정 방식",
+        "routingLegacy": "현재 담당자 유지 (이전 설정)",
+        "routingQueue": "대기열에서 대기",
+        "routingRoundRobin": "온라인 상담원 순환 배정",
+        "routingSpecific": "특정 상담원",
+        "routingAgent": "담당 상담원",
+        "routingChooseAgent": "상담원 선택",
+        "routingUnavailable": "사용할 수 없는 대상",
+        "routingLoadError": "팀과 상담원을 불러올 수 없습니다.",
+        "routingRetry": "다시 시도",
+        "routingHelp": "온라인 상담원이 없으면 대화가 대기열에 남습니다. 관리자가 배정하며 상담원이 접속해도 자동으로 재배정되지 않습니다. 메모는 흐름 실행 기록에 저장됩니다.",
         "internalNote": "내부 메모 (인계받는 상담원용)",
         "endNodeHelp": "종료 노드입니다. 러너가 이 노드에 도달하면 실행이 완료로 표시됩니다. 추가 설정이 필요 없습니다.",
         "bodyText": "본문 텍스트",
@@ -1509,7 +1677,21 @@
         "uploadFailed": "업로드에 실패했습니다.",
         "fileTooLarge": "파일이 {size}MB입니다 — 제한은 16MB입니다.",
         "defaultOptionTitle": "옵션",
-        "optionN": "옵션 {n}"
+        "optionN": "옵션 {n}",
+        "routingQueueHelp": "대화는 담당자 없이 관리자와 감독자의 대기열에 남습니다. 팀원이 한 명이어도 상담원은 대기열을 볼 수 없습니다. 자동 배정하려면 순환 배정 또는 특정 상담원을 선택하세요.",
+        "routingRoundRobinHelp": "선택한 팀의 온라인 상담원에게 자동 배정합니다. 온라인 상담원이 한 명이면 해당 상담원에게 배정됩니다. 온라인 상담원이 없으면 감독자 대기열에서 기다리며, 나중에 접속해도 자동 배정되지 않습니다.",
+        "aiNodeHelp": "AI 에이전트에 설정된 활성 도우미와 지식 기반을 사용합니다. 전체 자동 응답은 꺼둘 수 있습니다. 흐름은 여기서 끝나고 AI가 다음 텍스트 메시지를 처리합니다. 사용할 수 없으면 선택한 팀으로 전달합니다.",
+        "aiFallbackTeam": "사람 상담 지원팀",
+        "aiChooseTeam": "팀 선택",
+        "aiWelcome": "시작 메시지 (최대 1024자)",
+        "aiInstructions": "이 AI 세션의 내부 지침 (선택, 최대 4000자)",
+        "aiInstructionsHelp": "계정 지침을 보완하며 고객에게 메시지로 보내지 않습니다. 예: 회사 정책에 따라 재무 질문에 답변하고 수수료 면제를 승인하지 않습니다.",
+        "aiInternalNote": "상담원 전달용 내부 메모 (선택, 최대 2000자)",
+        "aiHumanDistribution": "사람의 도움이 필요할 때",
+        "aiHumanDistributionHelp": "순환 배정은 팀의 온라인 상담원에게 배정합니다. 온라인 상담원이 없으면 팀 대기열에서 기다립니다. 대기열 모드는 항상 감독자의 배정을 기다립니다.",
+        "aiFallbackMessage": "사람 상담으로 전달할 때의 메시지 (최대 1024자)",
+        "aiWelcomeDefault": "안녕하세요! 가상 도우미입니다. 무엇을 도와드릴까요?",
+        "aiFallbackDefault": "상담원이 도와드릴 수 있도록 지원팀에 연결하겠습니다."
       },
       "categories": {
         "messaging": "메시징",
@@ -1556,6 +1738,10 @@
         "end": {
           "label": "종료",
           "blurb": "플로우를 종료합니다"
+        },
+        "ai_assistant": {
+          "label": "AI로 전달",
+          "blurb": "AI가 지원하고 필요한 경우 선택한 팀으로 연결합니다."
         }
       }
     },
@@ -1610,7 +1796,18 @@
       "fixIssues": "활성화하기 전에 아래 문제를 해결하세요",
       "save": "저장",
       "descriptionPlaceholder": "짧은 설명을 추가하세요 (내부용 — 고객에게는 보이지 않습니다)",
-      "descriptionLabel": "플로우 설명"
+      "descriptionLabel": "플로우 설명",
+      "lastEdited": "마지막 수정:",
+      "lastEditedUnknown": "마지막 수정 기록 없음",
+      "inlineSaveHint": "Enter 키를 눌러 제목과 설명을 저장하세요. 모든 변경 사항을 적용하려면 저장을 누르세요.",
+      "savedSections": "마지막으로 저장한 항목: {sections}",
+      "pendingSections": "저장 대기 중: {sections}",
+      "savingChanges": "저장 중…",
+      "changes": {
+        "name": "제목",
+        "description": "설명",
+        "graph": "플로 구조"
+      }
     }
   },
   "Settings": {
@@ -1763,13 +1960,18 @@
       "deleteLocallyTitle": "로컬에서 삭제",
       "dialogEditTitle": "메시지 템플릿 수정",
       "dialogNewTitle": "새 메시지 템플릿",
-      "dialogEditDesc": "변경 사항을 저장해 Meta에 재제출하세요. 검토 중에는 상태가 다시 대기 중으로 바뀝니다.",
+      "dialogEditDesc": "메시지 내용을 바꾸면 Meta 검토에 다시 제출됩니다. 제목과 설명은 CRM에 저장됩니다.",
       "dialogNewDesc": "템플릿을 만들어 Meta 승인을 요청하세요. 승인되면 브로드캐스트와 인박스에서 사용할 수 있습니다.",
       "authWarning": "AUTHENTICATION 템플릿은 본문과 OTP 버튼 형식이 고정되어 있어 별도의 빌더가 필요합니다. 지금은 Meta WhatsApp 관리자에서 만든 뒤 <bold>Meta에서 동기화</bold>로 가져오세요.",
       "templateName": "템플릿 이름",
-      "namePlaceholder": "예: order_confirmation",
-      "nameFixed": "템플릿이 Meta에 존재하면 이름이 고정됩니다 — 변경하려면 새 템플릿을 만드세요.",
-      "nameHint": "소문자, 숫자, 밑줄만 사용할 수 있습니다.",
+      "namePlaceholder": "예: 주문 확인",
+      "nameHint": "CRM에서 템플릿을 식별할 제목을 입력하세요.",
+      "nameFixed": "Meta 식별자는 유지됩니다.",
+      "localDescription": "내부 설명",
+      "localDescriptionPlaceholder": "예: 주문 확인 후 발송",
+      "localDescriptionHint": "CRM에서만 볼 수 있습니다.",
+      "toastSaveLocalDetails": "제목과 설명을 저장했습니다.",
+      "titleNeedsLetters": "라틴 문자나 숫자가 포함된 제목을 입력하세요.",
       "category": "카테고리",
       "language": "언어",
       "langFixed": "템플릿이 Meta에 존재하면 언어가 고정됩니다.",
@@ -1832,6 +2034,8 @@
       "toastSaveEditDry": "템플릿이 업데이트되었습니다 (드라이런 — Meta 호출 없음)",
       "toastSaveNewDry": "템플릿이 저장되었습니다 (드라이런 — Meta 호출 없음)",
       "toastSyncCount": "Meta에서 템플릿 {total}개를 동기화했습니다",
+      "syncOutsideChannel": "템플릿 {count}개가 WhatsApp 계정 {waba}의 카탈로그에 없습니다.",
+      "syncOutsideChannelDetail": "이 템플릿은 WhatsApp 계정 {waba}의 카탈로그에 없으므로 연결된 채널에서 보낼 수 없습니다.",
       "toastSyncDetails": " (신규 {inserted}개, 업데이트 {updated}개)",
       "toastSyncFailed": "동기화 실패: {preview}",
       "toastSyncTruncated": "처음 2000개 템플릿만 동기화했습니다 — 계정에 더 많은 템플릿이 있습니다. 계속하려면 다시 동기화하거나, 문제가 지속되면 지원팀에 문의하세요.",
@@ -1903,8 +2107,17 @@
       "pinPlaceholder": "Meta WhatsApp 관리자에서 발급받은 6자리 PIN",
       "pinHint": "프로덕션 번호의 수신 메시지를 연결하려면 필요합니다. Meta 비즈니스 관리자 → WhatsApp 계정 → 전화번호 → 2단계 인증에서 설정한 뒤 여기에 붙여넣으면 wacrm이 해당 번호를 구독할 수 있습니다 — 그렇지 않으면 Meta는 마지막으로 이 번호를 등록한 앱으로 수신 이벤트를 보냅니다(공유 WABA 하의 두 번째 번호에서 흔히 발생하는 증상입니다). Meta 테스트 번호는 PIN이 없고 이미 등록되어 있으므로 이 필드를 비워두세요. 비워두면 기존 등록도 그대로 유지됩니다.",
       "webhookTitle": "웹훅 설정",
-      "webhookDesc": "Meta 앱 대시보드의 웹훅 콜백으로 이 URL을 사용하세요.",
+      "webhookDesc": "HTTPS 터널 주소 또는 전체 URL을 붙여넣으세요. 콜백 URL을 복사해 Meta 앱 대시보드에 입력하세요.",
       "webhookUrl": "웹훅 콜백 URL",
+      "webhookCopyAction": "콜백 URL 복사",
+      "webhookCopyFailed": "URL을 복사할 수 없습니다. 입력란에서 주소를 선택해 복사하세요.",
+      "webhookInvalidPublicUrl": "/api/whatsapp/webhook 경로가 포함되었는지와 관계없이 공개 HTTPS 주소를 사용하세요.",
+      "webhookPublish": "Meta에서 번호에 웹훅 적용",
+      "webhookPublishing": "웹훅 적용 중…",
+      "webhookPublished": "Meta에서 번호의 콜백 URL을 확인했습니다.",
+      "webhookPublishFailed": "Meta에서 웹훅을 아직 확인하지 못했습니다.",
+      "webhookPublishScope": "메시지 및 전송·읽음 상태는 번호의 콜백으로 수신됩니다. 템플릿 승인 이벤트는 앱의 기본 콜백으로 수신됩니다.",
+      "webhookBrowserHint": "주소는 이 브라우저에 저장됩니다. 아래 버튼을 사용해 번호에 적용하세요.",
       "mediaTitle": "첨부파일 저장",
       "mediaDesc": "Meta는 수신된 미디어를 도착 후 약 30일이 지나면 삭제합니다. 첨부파일을 자체 스토리지에 복사해 두면 계속 볼 수 있습니다.",
       "mirrorInbound": "수신 첨부파일 보관",
@@ -1972,6 +2185,7 @@
       "wabaNotSubscribed": "WhatsApp 비즈니스 계정이 이 앱에 구독되어 있지 않아 Meta가 수신 웹훅을 전달하지 않습니다. 액세스 토큰을 다시 입력하고 저장해 구독하세요."
     },
     "sections": {
+      "integrations": "연동",
       "overview": "개요",
       "profile": "내 프로필",
       "security": "로그인 & 보안",
@@ -2175,7 +2389,7 @@
     },
     "aiConfig": {
       "title": "에이전트 설정",
-      "description": "OpenAI, Anthropic 또는 OpenAI 호환 API 키를 직접 사용하세요. wacrm은 입력한 키로 제공업체를 직접 호출하므로 좌석당 AI 요금이 없으며 데이터는 그대로 유지됩니다. 받은 키는 받은편지함 AI 초안, 자동 응답 봇, Playground에 사용됩니다.",
+      "description": "OpenAI, Anthropic, Gemini (Google) 또는 OpenAI 호환 API 키를 사용하여 답변 제안, 자동 응답 및 테스트를 구성하세요.",
       "adminOnlyConfig": "관리자와 소유자만 AI 설정을 변경할 수 있습니다.",
       "loadFailed": "AI 설정을 불러오지 못했습니다",
       "providerAndKey": "공급자 & 키",
@@ -2215,7 +2429,8 @@
       "providerOpenAiCompatible": "OpenAI 호환 API",
       "baseUrl": "기본 URL",
       "baseUrlHint": "OpenAI 호환 API의 기본 URL입니다. 예: https://api.groq.com/openai/v1. /chat/completions 경로는 직접 입력하지 않는 경우 자동으로 추가됩니다.",
-      "missingBaseUrl": "OpenAI 호환 API의 기본 URL을 입력하세요."
+      "missingBaseUrl": "OpenAI 호환 API의 기본 URL을 입력하세요.",
+      "geminiHint": "Google AI Studio에서 만든 Gemini API 키를 사용하세요. 비즈니스 설명을 저장하고 테스트 영역에서 사용해 보세요. 선택적 지식 검색에는 별도의 OpenAI 키가 필요합니다."
     },
     "aiKnowledge": {
       "loadFailed": "지식베이스를 불러오지 못했습니다",
@@ -2361,6 +2576,8 @@
   "Notifications": {
     "assignedTitle": "새 대화가 배정되었습니다",
     "assignedBody": "{actor}님이 {contact}님과의 대화를 배정했습니다",
+    "aiAssignedTitle": "AI가 대화를 전달했습니다",
+    "aiAssignedBody": "AI가 {contact}님과의 대화를 회원님에게 전달했습니다.",
     "unknownActor": "누군가",
     "unknownContact": "고객",
     "title": "알림",
@@ -2488,6 +2705,19 @@
     "SGD": "싱가포르 달러",
     "MXN": "멕시코 페소",
     "COP": "콜롬비아 페소"
+  },
+  "TemplateBodyEditor": {
+    "toolbar": "텍스트 도구",
+    "variable": "변수 삽입",
+    "variableHint": "커서 위치에 다음 사용 가능한 변수를 삽입합니다",
+    "bold": "굵게 (Ctrl+B)",
+    "italic": "기울임꼴 (Ctrl+I)",
+    "strikethrough": "취소선",
+    "monospace": "고정 폭",
+    "emojis": "이모지",
+    "insertEmoji": "이모지 삽입",
+    "formatHint": "서식을 지정할 텍스트를 선택하세요.",
+    "limitReached": "이 내용을 삽입할 공간이 부족합니다."
   },
   "TemplateStatus": {
     "DRAFT": "초안",
@@ -2644,6 +2874,9 @@
   },
   "Validation": {
     "flows": {
+      "handoffInvalidMode": "올바른 배정 방식을 선택하세요.",
+      "handoffInvalidTeam": "올바른 팀을 선택하세요.",
+      "handoffInvalidAgent": "인계할 올바른 상담원을 선택하세요.",
       "nameRequired": "플로우 이름은 필수입니다.",
       "entryRequired": "활성화하기 전에 시작 노드를 선택하세요.",
       "needsNode": "활성화하려면 플로우에 노드가 하나 이상 있어야 합니다.",
@@ -2699,7 +2932,8 @@
       "setTagNeedsTag": "연락처 태그 지정에는 적용할 태그가 필요합니다.",
       "setTagNeedsNext": "연락처 태그 지정 노드는 다음 노드를 가리켜야 합니다.",
       "setTagMissingNext": "연락처 태그 지정 노드가 존재하지 않는 노드 \"{key}\"을(를) 가리킵니다.",
-      "unknownNodeType": "알 수 없는 노드 유형 \"{type}\"."
+      "unknownNodeType": "알 수 없는 노드 유형 \"{type}\".",
+      "aiInvalidConfig": "Check the AI node field: {field}."
     },
     "automations": {
       "needsStep": "활성 자동화에는 단계가 하나 이상 필요합니다",
@@ -2732,6 +2966,7 @@
     "templates": {
       "nameRequired": "템플릿 이름은 필수입니다.",
       "nameInvalid": "템플릿 이름에는 영문 소문자, 숫자, 밑줄만 사용할 수 있습니다(1-512자).",
+      "metadataInvalid": "최대 {max}자까지 입력하세요.",
       "bodyNotContiguous": "본문 변수는 {first}부터 연속되어야 합니다 — 발견된 변수: {found}.",
       "bodyRequired": "본문 텍스트는 필수입니다.",
       "bodyTooLong": "본문 텍스트가 {max}자를 초과합니다(현재 {got}자).",
@@ -2853,7 +3088,7 @@
       "pausedRequired": "paused(불리언)는 필수입니다",
       "updateConversationFailed": "대화를 업데이트하지 못했습니다",
       "loadConfigFailed": "AI 설정을 불러오지 못했습니다",
-      "providerInvalid": "제공자는 \"openai\", \"anthropic\" 또는 \"openai_compatible\"이어야 합니다",
+      "providerInvalid": "provider: openai, anthropic, gemini, openai_compatible",
       "baseUrlRequired": "openai_compatible에는 base_url이 필수입니다",
       "baseUrlInvalid": "base_url은 올바른 http(s) URL이어야 합니다",
       "modelRequired": "모델은 필수입니다",
@@ -2970,6 +3205,7 @@
     "templates": {
       "invalidId": "잘못된 템플릿 ID입니다.",
       "invalidJsonBody": "잘못된 JSON 본문입니다.",
+      "titleNeedsLetters": "라틴 문자나 숫자가 포함된 제목을 입력하세요.",
       "notFound": "템플릿을 찾을 수 없습니다.",
       "neverSubmitted": "이 템플릿은 Meta에 제출된 적이 없습니다 — 새 템플릿을 사용해 제출하세요.",
       "statusNotEditable": "{status} 상태의 템플릿은 수정할 수 없습니다. 허용: APPROVED, REJECTED, PAUSED.",
@@ -2993,5 +3229,11 @@
       "metaApiStatus": "Meta API 오류: {status}",
       "syncFailed": "템플릿을 동기화하지 못했습니다"
     }
+  },
+  "FlowAi": {
+    "unavailable": "AI를 사용할 수 없어 팀에 전달했습니다.",
+    "limit": "AI 응답 한도에 도달하여 팀에 전달했습니다.",
+    "provider_error": "AI 오류로 팀에 전달했습니다.",
+    "human_requested": "사람의 도움이 필요하여 팀에 전달했습니다."
   }
 }
