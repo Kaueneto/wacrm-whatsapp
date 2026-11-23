@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import type {
   Message,
   MessageReaction,
-  MessageTemplate,
   TemplateButton,
 } from "@/types";
 import {
@@ -26,6 +25,7 @@ import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
 import { MessageReactions } from "./message-reactions";
 import { LinkifyText } from "@/lib/inbox/linkify-text";
+import { WhatsAppFormattedText } from "@/lib/whatsapp/formatted-text";
 import {
   MediaAudioBubble,
   MediaDocumentBubble,
@@ -36,13 +36,15 @@ import {
 import { InteractivePreview } from "@/components/interactive/interactive-preview";
 import {
   templateMessageView,
+  type TemplateMessageContent,
   type TemplateMessageHeader,
 } from "@/lib/whatsapp/template-message-view";
 import { useTranslations } from "next-intl";
 
 interface MessageBubbleProps {
   message: Message;
-  template?: MessageTemplate | null;
+  template?: TemplateMessageContent | null;
+  templatePreview?: boolean;
   /** Pre-computed quote info for messages that reply to another. */
   reply?: { authorLabel: string; preview: string } | null;
   reactions?: MessageReaction[];
@@ -144,17 +146,17 @@ function StatusIcon({
 }) {
   switch (status) {
     case "sending":
-      return <Clock className="h-3 w-3 text-muted-foreground" />;
+      return <Clock className="h-3.5 w-3.5 text-[var(--chat-outgoing-meta)]" />;
     case "sent":
-      return <Check className="h-3 w-3 text-muted-foreground" />;
+      return <Check className="h-3.5 w-3.5 text-[var(--chat-outgoing-meta)]" />;
     case "delivered":
-      return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
+      return <CheckCheck className="h-3.5 w-3.5 text-[var(--chat-outgoing-meta)]" />;
     case "read":
-      return <CheckCheck className="h-3 w-3 text-blue-400" />;
+      return <CheckCheck strokeWidth={2.5} className="h-3.5 w-3.5 text-[var(--chat-outgoing-read)]" />;
     case "failed":
       return (
         <span className="inline-flex" title={title ?? undefined}>
-          <XCircle className="h-3 w-3 text-red-400" />
+          <XCircle className="h-3.5 w-3.5 text-[var(--chat-outgoing-failed)]" />
         </span>
       );
     default:
@@ -165,12 +167,14 @@ function StatusIcon({
 function MessageContent({
   message,
   template,
+  templatePreview,
   t,
   isAgent,
   onOpenMedia,
 }: {
   message: Message;
-  template: MessageTemplate | null;
+  template: TemplateMessageContent | null;
+  templatePreview: boolean;
   t: ReturnType<typeof useTranslations>;
   /** Outbound bubbles sit on the primary fill — badges must invert. */
   isAgent: boolean;
@@ -248,7 +252,7 @@ function MessageContent({
       const view = templateMessageView(message, template);
       return (
         <div>
-          <span
+          {!templatePreview && <span
             className={cn(
               "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
               isAgent
@@ -258,13 +262,13 @@ function MessageContent({
           >
             <LayoutTemplate className="h-3 w-3" />
             {t("template")}
-          </span>
+          </span>}
           {view.header && (
             <TemplateHeader header={view.header} message={message} t={t} />
           )}
           {message.content_text ? (
             <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              <LinkifyText text={message.content_text} isAgent={isAgent} />
+              {templatePreview ? <WhatsAppFormattedText text={message.content_text} /> : <LinkifyText text={message.content_text} isAgent={isAgent} />}
             </p>
           ) : (
             message.template_name && (
@@ -375,6 +379,7 @@ function MessageContent({
 export function MessageBubble({
   message,
   template = null,
+  templatePreview = false,
   reply,
   reactions,
   onToggleReaction,
@@ -397,10 +402,12 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative rounded-2xl px-3 py-2",
-          isAgent
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
+          "relative px-3 py-2",
+          templatePreview
+            ? "w-fit max-w-[min(100%,18rem)] rounded-xl rounded-bl-sm bg-white text-[#17212a] shadow-[0_1px_2px_#12213026] before:pointer-events-none before:absolute before:-left-2 before:bottom-0 before:size-3 before:bg-white before:[clip-path:polygon(100%_0,100%_100%,0_100%)] [--primary-foreground:#17212a] [--chat-outgoing-meta:#475569] [--chat-outgoing-read:#0369a1] [--chat-outgoing-failed:#b91c1c]"
+            : cn("rounded-2xl", isAgent
+                ? "rounded-br-md bg-[var(--chat-outgoing)] text-[var(--chat-outgoing-foreground)] [--primary-foreground:var(--chat-outgoing-foreground)]"
+                : "rounded-bl-md bg-muted text-foreground"),
         )}
       >
         {reply && (
@@ -413,6 +420,7 @@ export function MessageBubble({
         <MessageContent
           message={message}
           template={template}
+          templatePreview={templatePreview}
           t={t}
           isAgent={isAgent}
           onOpenMedia={onOpenMedia}
@@ -420,7 +428,7 @@ export function MessageBubble({
         <div
           className={cn(
             "mt-1 flex items-center gap-1",
-            isAgent ? "justify-end" : "justify-start",
+            isAgent || templatePreview ? "justify-end" : "justify-start",
           )}
         >
           {/* AI badge — only on replies the auto-reply bot generated
@@ -438,12 +446,10 @@ export function MessageBubble({
           )}
           <span
             className={cn(
-              "text-[10px]",
-              // Outbound bubbles sit on the primary fill, so the
-              // timestamp must read against that (not the neutral
-              // foreground) — otherwise it goes low-contrast in light
-              // mode. Inbound bubbles use the muted surface.
-              isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
+              "text-[11px]",
+              // Chat metadata has its own opaque color for each mode;
+              // do not dilute small timestamps with text opacity.
+              isAgent && !templatePreview ? "text-[var(--chat-outgoing-meta)]" : "text-muted-foreground",
             )}
           >
             {time}

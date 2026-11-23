@@ -25,6 +25,9 @@ declare module "opus-recorder" {
     ondataavailable: ((data: Uint8Array) => void) | null;
     start(): Promise<void>;
     stop(): Promise<void>;
+    pause(): Promise<void> | undefined;
+    resume(): void;
+    sourceNode?: MediaStreamAudioSourceNode;
     /** Browser support probe exposed as a static on the class. */
     static isRecordingSupported(): boolean;
   }

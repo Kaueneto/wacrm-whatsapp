@@ -15,7 +15,9 @@ import {
   Video,
   FileText,
   Mic,
-  Square,
+  Pause,
+  Play,
+  Trash2,
   X,
   Loader2,
   Sparkles,
@@ -24,13 +26,8 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MorphMenu } from "@/components/ui/morph-menu";
 import { GatedButton } from "@/components/ui/gated-button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +44,7 @@ import {
   MEDIA_MAX_BYTES_BY_KIND,
 } from "@/lib/storage/upload-media";
 import { ReplyQuote } from "./reply-quote";
+import { VoiceWaveform } from "./voice-waveform";
 import { useTranslations } from "next-intl";
 import {
   InteractiveBuilder,
@@ -194,9 +192,12 @@ export function MessageComposer({
   // Voice recording state. The recorder encodes Ogg/Opus in-browser
   // (opus-recorder) so there's no server-side transcode.
   const [recording, setRecording] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
+  const [recordingSource, setRecordingSource] = useState<MediaStreamAudioSourceNode>();
   const [recordSeconds, setRecordSeconds] = useState(0);
   const recorderRef = useRef<import("opus-recorder").default | null>(null);
   const cancelledRef = useRef(false);
+  const sendRecordingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Viewers (read-only role) can browse the inbox but never send.
@@ -441,28 +442,46 @@ export function MessageComposer({
   // draft. WhatsApp renders Ogg/Opus as a playable voice note.
   const finalizeRecording = useCallback(
     async (bytes: Uint8Array) => {
+      const sendImmediately = sendRecordingRef.current;
+      sendRecordingRef.current = false;
       // Uint8Array is a valid BlobPart at runtime; the cast sidesteps the
       // lib.dom ArrayBufferLike-vs-ArrayBuffer generic mismatch.
       const file = new File([bytes as unknown as BlobPart], `voice-${Date.now()}.ogg`, {
         type: "audio/ogg",
       });
-      if (file.size === 0) return; // cancelled / empty take
+      if (file.size === 0) {
+        setRecording(false);
+        setBusy(false);
+        return;
+      }
       if (file.size > MEDIA_MAX_BYTES_BY_KIND.audio) {
         toast.error(t("recordingTooLong"));
+        setRecording(false);
+        setBusy(false);
         return;
       }
       setBusy(true);
       try {
         const { publicUrl, path } = await uploadAccountMedia(CHAT_MEDIA_BUCKET, file);
+        if (cancelledRef.current) {
+          removeStaged(path);
+          return;
+        }
         removeStaged(draftRef.current?.path);
-        setDraft({ kind: "audio", mediaUrl: publicUrl, path, filename: file.name, caption: "" });
+        if (sendImmediately) {
+          onSendMedia({ kind: "audio", mediaUrl: publicUrl, path, replyToId: replyTo?.id });
+          onClearReply?.();
+        } else {
+          setDraft({ kind: "audio", mediaUrl: publicUrl, path, filename: file.name, caption: "" });
+        }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("uploadFailed"));
       } finally {
+        setRecording(false);
         setBusy(false);
       }
     },
-    [removeStaged, t],
+    [removeStaged, t, onSendMedia, replyTo?.id, onClearReply],
   );
 
   const startRecording = useCallback(async () => {
@@ -483,6 +502,7 @@ export function MessageComposer({
         streamPages: false, // one callback with the complete file on stop
       });
       cancelledRef.current = false;
+      sendRecordingRef.current = false;
       recorder.ondataavailable = (bytes) => {
         if (cancelledRef.current) return;
         void finalizeRecording(bytes);
@@ -490,6 +510,8 @@ export function MessageComposer({
       recorderRef.current = recorder;
       await recorder.start();
       setRecording(true);
+      setRecordingSource(recorder.sourceNode);
+      setRecordingPaused(false);
       setRecordSeconds(0);
       timerRef.current = setInterval(() => setRecordSeconds((s) => s + 1), 1000);
     } catch {
@@ -499,11 +521,32 @@ export function MessageComposer({
     }
   }, [inputsDisabled, busy, recording, finalizeRecording, t]);
 
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback((sendImmediately = false) => {
+    if (sendImmediately && (inputsDisabled || busy)) return;
+    sendRecordingRef.current = sendImmediately;
     clearTimer();
-    setRecording(false);
-    void recorderRef.current?.stop().catch(() => {});
-  }, [clearTimer]);
+    if (sendImmediately) setBusy(true);
+    else setRecording(false);
+    void recorderRef.current?.stop().catch(() => {
+      setRecording(false);
+      setBusy(false);
+      toast.error(t("uploadFailed"));
+    });
+  }, [clearTimer, inputsDisabled, busy, t]);
+
+  const toggleRecordingPause = useCallback(async () => {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+    if (recordingPaused) {
+      recorder.resume();
+      setRecordingPaused(false);
+      timerRef.current = setInterval(() => setRecordSeconds((s) => s + 1), 1000);
+    } else {
+      await recorder.pause();
+      clearTimer();
+      setRecordingPaused(true);
+    }
+  }, [recordingPaused, clearTimer]);
 
   const cancelRecording = useCallback(() => {
     cancelledRef.current = true;
@@ -515,10 +558,10 @@ export function MessageComposer({
   // Auto-stop at the cap so a forgotten recording can't blow the
   // upload size limit.
   useEffect(() => {
-    if (recording && recordSeconds >= MAX_RECORDING_SECONDS) {
+    if (recording && !busy && recordSeconds >= MAX_RECORDING_SECONDS) {
       stopRecording();
     }
-  }, [recording, recordSeconds, stopRecording]);
+  }, [recording, busy, recordSeconds, stopRecording]);
 
   // ---- Draft send / discard -----------------------------------------
 
@@ -624,26 +667,40 @@ export function MessageComposer({
         />
       ) : recording ? (
         // Recording bar — replaces the composer while the mic is live.
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted px-4 py-2.5">
-          <span className="flex h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" />
-          <span className="flex-1 text-sm text-foreground">
-            {t("recording", { current: formatDuration(recordSeconds), max: formatDuration(MAX_RECORDING_SECONDS) })}
-          </span>
-          <button
-            type="button"
+        <div className="rounded-2xl bg-muted/60 px-3 py-2">
+        <div className="mx-auto flex w-full max-w-xl items-center gap-3 sm:gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={cancelRecording}
-            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-card hover:text-foreground"
+            disabled={busy}
+            title={t("cancel")}
+            aria-label={t("cancel")}
+            className="h-10 w-10 shrink-0 rounded-full text-muted-foreground hover:text-destructive"
           >
-            {t("cancel")}
-          </button>
+            <Trash2 className="size-5" aria-hidden="true" />
+          </Button>
+          <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500", !recordingPaused && "animate-pulse motion-reduce:animate-none")} />
+          <span className="shrink-0 text-base font-medium tabular-nums text-foreground" title={t("recording", { current: formatDuration(recordSeconds), max: formatDuration(MAX_RECORDING_SECONDS) })}>
+            {formatDuration(recordSeconds)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <VoiceWaveform source={recordingSource} paused={recordingPaused} />
+          </div>
+          <Button variant="secondary" size="icon" disabled={busy} onClick={() => void toggleRecordingPause()} title={t(recordingPaused ? "resumeRecording" : "pauseRecording")} aria-label={t(recordingPaused ? "resumeRecording" : "pauseRecording")} aria-pressed={recordingPaused} className="h-10 w-10 rounded-full text-foreground">
+            {recordingPaused ? <Play className="size-5" aria-hidden="true" /> : <Pause className="size-5" aria-hidden="true" />}
+          </Button>
           <Button
             size="sm"
-            onClick={stopRecording}
-            className="h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90"
-            title={t("stopAndAttach")}
+            onClick={() => stopRecording(true)}
+            disabled={busy || inputsDisabled}
+            className="h-11 w-11 shrink-0 rounded-full bg-primary p-0 text-primary-foreground shadow-sm hover:bg-primary/90"
+            title={t("send")}
+            aria-label={t("send")}
           >
-            <Square className="h-4 w-4" />
+            {busy ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
           </Button>
+        </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-end gap-2">
@@ -651,72 +708,57 @@ export function MessageComposer({
               below the textarea (basis-full + order-2) so the input gets
               the full width; on sm+ it sits inline before the textarea. */}
           <div className="order-2 flex basis-full items-end gap-2 sm:order-1 sm:basis-auto">
-          {/* Attach menu — photo / video / document / voice. */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              disabled={inputsDisabled || busy}
-              title={
-                readOnly
-                  ? t("readOnlyTitle")
-                  : inputsDisabled
-                    ? undefined
-                    : t("attachMedia")
-              }
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {busy ? (
+          {/* Attach menu — photo / video / document. Voice has a direct action. */}
+          <MorphMenu
+            key={`attachments-${conversationId}`}
+            label={t("attachMedia")}
+            title={readOnly ? t("readOnlyTitle") : t("attachMedia")}
+            disabled={inputsDisabled || busy}
+            size={36}
+            side="top"
+            align="start"
+            triggerIcon={
+              busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Paperclip className="h-4 w-4" />
-              )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="border-border bg-popover">
-              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                {t("photo")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
-                <Video className="mr-2 h-4 w-4" />
-                {t("video")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
-                <FileText className="mr-2 h-4 w-4" />
-                {t("document")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void startRecording()}>
-                <Mic className="mr-2 h-4 w-4" />
-                {t("voiceNote")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              )
+            }
+            items={[
+              { id: "photo", label: t("photo"), icon: ImageIcon, onClick: () => imageInputRef.current?.click() },
+              { id: "video", label: t("video"), icon: Video, onClick: () => videoInputRef.current?.click() },
+              { id: "document", label: t("document"), icon: FileText, onClick: () => documentInputRef.current?.click() },
+            ]}
+          />
 
-          {/* + menu — interactive messages + quick replies. Gated on the
+          {/* More actions — interactive messages + quick replies. Gated on the
               24h window like free-form text (interactive requires it). */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              disabled={inputsDisabled}
-              title={
-                readOnly
-                  ? t("readOnlyTitle")
-                  : inputsDisabled
-                    ? undefined
-                    : t("moreActions")
-              }
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md p-0 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="border-border bg-popover">
-              <DropdownMenuItem onClick={() => openInteractiveBuilder()}>
-                <MessageSquareDashed className="mr-2 h-4 w-4" />
-                {t("interactiveMessage")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickReplyOpen(true)}>
-                <Zap className="mr-2 h-4 w-4" />
-                {t("quickReplies")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <MorphMenu
+            key={conversationId}
+            label={t("moreActions")}
+            triggerIcon={<Plus className="h-4 w-4" aria-hidden="true" />}
+            title={readOnly ? t("readOnlyTitle") : t("moreActions")}
+            disabled={inputsDisabled}
+            size={36}
+            side="top"
+            align="start"
+            items={[
+              {
+                id: "interactive-message",
+                label: t("interactiveMessage"),
+                icon: MessageSquareDashed,
+                onClick: () => openInteractiveBuilder(),
+                restoreFocus: false,
+              },
+              {
+                id: "quick-replies",
+                label: t("quickReplies"),
+                icon: Zap,
+                onClick: () => setQuickReplyOpen(true),
+                restoreFocus: false,
+              },
+            ]}
+          />
 
           <GatedButton
             variant="ghost"
@@ -772,16 +814,34 @@ export function MessageComposer({
             )}
           />
 
-          <GatedButton
-            size="sm"
-            canAct={!readOnly}
-            gateReason={tGate("reasons.sendMessages")}
-            disabled={!text.trim() || sessionExpired || sending}
-            onClick={handleSend}
-            className="order-1 h-9 w-9 shrink-0 bg-primary p-0 hover:bg-primary/90 disabled:opacity-40 sm:order-3"
-          >
-            <Send className="h-4 w-4" />
-          </GatedButton>
+          {/* Order the group itself: GatedButton renders a wrapper span. */}
+          <div className="order-1 flex shrink-0 items-end gap-1 sm:order-3">
+            <GatedButton
+              variant="ghost"
+              size="sm"
+              canAct={!readOnly}
+              gateReason={tGate("reasons.sendMessages")}
+              disabled={inputsDisabled || busy}
+              title={t("voiceNote")}
+              aria-label={t("voiceNote")}
+              onClick={() => void startRecording()}
+              className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+            >
+              <Mic className="h-4 w-4" aria-hidden="true" />
+            </GatedButton>
+            <GatedButton
+              size="sm"
+              canAct={!readOnly}
+              gateReason={tGate("reasons.sendMessages")}
+              disabled={!text.trim() || sessionExpired || sending}
+              title={t("send")}
+              aria-label={t("send")}
+              onClick={handleSend}
+              className="h-11 w-11 rounded-full bg-primary p-0 text-primary-foreground shadow-sm ring-1 ring-primary/20 hover:bg-primary/90 disabled:opacity-60"
+            >
+              <Send className="size-5" aria-hidden="true" />
+            </GatedButton>
+          </div>
         </div>
       )}
 
