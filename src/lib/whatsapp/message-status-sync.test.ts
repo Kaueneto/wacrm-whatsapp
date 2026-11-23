@@ -6,6 +6,14 @@ import {
   type IncomingMessageStatus,
 } from './message-status-sync'
 
+it('surfaces status storage failures to durable receipt processors', async () => {
+  const builder = { select: () => builder, eq: () => builder,
+    then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: null, error: { message: 'database unavailable' } }).then(resolve),
+  };
+  const db = { from: () => builder } as unknown as SupabaseClient;
+  await expect(applyMessageStatus(db,'acc-1',{ wamid:'wamid.1',status:'delivered',failure:null,statusAt:null },true)).rejects.toThrow('load messages');
+});
+
 type Row = Record<string, unknown>
 
 function fakeDb(tables: Record<string, Row[]>) {

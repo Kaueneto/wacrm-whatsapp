@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { allowedPredecessors, isRecipientStatus } from '@/lib/broadcast-status';
 
-export const BROADCAST_REPLY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+import { normalizePhone } from '@/lib/whatsapp/phone-utils';
 
 export interface RecipientStatusFailure {
   code: number;
@@ -54,55 +54,38 @@ export async function applyBroadcastRecipientStatus(
   return data && data.length > 0 ? 'updated' : 'skipped';
 }
 
-interface LatestBroadcastRecipient {
-  id: string;
-  status: string;
-  sent_at: string | null;
-}
-
-export function isReplyAttributable(
-  recipient: LatestBroadcastRecipient,
-  now: Date
-): boolean {
-  if (!isRecipientStatus(recipient.status)) return false;
-  if (!allowedPredecessors('replied').includes(recipient.status)) return false;
-  if (!recipient.sent_at) return false;
-  const sentAt = Date.parse(recipient.sent_at);
-  if (Number.isNaN(sentAt)) return false;
-  return now.getTime() - sentAt <= BROADCAST_REPLY_WINDOW_MS;
+export function broadcastReplyPhoneVariants(phone: string): string[] {
+  const digits = normalizePhone(phone);
+  if (!digits) return [];
+  const brazilianMobile = /^(55[1-9]\d)(9?)([6-9]\d{7})$/.exec(digits);
+  if (!brazilianMobile) return [digits];
+  const [, prefix, ninthDigit, subscriber] = brazilianMobile;
+  return [digits, `${prefix}${ninthDigit ? '' : '9'}${subscriber}`];
 }
 
 export async function flagBroadcastReply(
   db: SupabaseClient,
-  accountId: string,
-  contactId: string,
-  now: Date = new Date()
+  event: {
+    accountId: string;
+    contactId: string;
+    occurredAt: string;
+    phone: string;
+    phoneNumberId: string;
+    replyTo?: string;
+  }
 ): Promise<RecipientStatusOutcome> {
-  const { data: rows, error } = await db
-    .from('broadcast_recipients')
-    .select('id, status, sent_at, broadcasts!inner(account_id)')
-    .eq('contact_id', contactId)
-    .eq('broadcasts.account_id', accountId)
-    .order('created_at', { ascending: false })
-    .limit(1);
+  const { data, error } = await db.rpc('record_broadcast_reply', {
+    p_account: event.accountId,
+    p_contact: event.contactId,
+    p_at: event.occurredAt,
+    p_phone_variants: broadcastReplyPhoneVariants(event.phone),
+    p_sender: event.phoneNumberId,
+    p_reply_to: event.replyTo ?? null,
+  });
 
   if (error) {
-    console.error('Error fetching latest broadcast recipient:', error);
+    console.error('Error attributing broadcast reply:', error.code);
     return 'error';
   }
-  const latest = (rows?.[0] ?? null) as LatestBroadcastRecipient | null;
-  if (!latest || !isReplyAttributable(latest, now)) return 'skipped';
-
-  const { data: updated, error: updateError } = await db
-    .from('broadcast_recipients')
-    .update({ status: 'replied', replied_at: now.toISOString() })
-    .eq('id', latest.id)
-    .in('status', allowedPredecessors('replied'))
-    .select('id');
-
-  if (updateError) {
-    console.error('Error marking broadcast recipient replied:', updateError);
-    return 'error';
-  }
-  return updated && updated.length > 0 ? 'updated' : 'skipped';
+  return data ? 'updated' : 'skipped';
 }

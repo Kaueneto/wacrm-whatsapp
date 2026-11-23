@@ -1,10 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  BROADCAST_REPLY_WINDOW_MS,
   applyBroadcastRecipientStatus,
+  broadcastReplyPhoneVariants,
   flagBroadcastReply,
-  isReplyAttributable,
 } from './broadcast-recipient-webhook';
 
 interface FakeRow {
@@ -16,27 +15,10 @@ interface FakeRow {
 
 function makeDb(rows: FakeRow[], options: { failUpdate?: boolean } = {}) {
   const updates: { filters: Record<string, unknown>; allowed: string[]; patch: Record<string, unknown> }[] = [];
-  const latestQuery: Record<string, unknown> = {};
   const db = {
     from(table: string) {
       expect(table).toBe('broadcast_recipients');
       return {
-        select: (columns: string) => {
-          latestQuery.columns = columns;
-          const chain = {
-            eq: (column: string, value: unknown) => {
-              latestQuery[column] = value;
-              return chain;
-            },
-            order: (column: string, opts: { ascending: boolean }) => {
-              latestQuery.order = [column, opts.ascending];
-              return chain;
-            },
-            limit: (n: number) =>
-              Promise.resolve({ data: rows.slice(0, n), error: null }),
-          };
-          return chain;
-        },
         update: (patch: Record<string, unknown>) => ({
           eq: (column: string, value: unknown) => ({
             in: (_status: string, allowed: string[]) => ({
@@ -62,11 +44,8 @@ function makeDb(rows: FakeRow[], options: { failUpdate?: boolean } = {}) {
       };
     },
   } as unknown as SupabaseClient;
-  return { db, updates, latestQuery };
+  return { db, updates };
 }
-
-const NOW = new Date('2026-10-16T12:00:00.000Z');
-const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3600_000).toISOString();
 
 describe('applyBroadcastRecipientStatus', () => {
   const event = (status: string) => ({
@@ -122,59 +101,22 @@ describe('applyBroadcastRecipientStatus', () => {
   });
 });
 
-describe('isReplyAttributable', () => {
-  it('accepts a sent, delivered or read row inside the reply window', () => {
-    for (const status of ['sent', 'delivered', 'read']) {
-      expect(isReplyAttributable({ id: 'r', status, sent_at: hoursAgo(2) }, NOW)).toBe(true);
-    }
+describe('broadcast reply attribution', () => {
+  it('pairs the two Brazilian mobile formats without changing landlines or foreign numbers', () => {
+    expect(broadcastReplyPhoneVariants('+55 (62) 9876-1234')).toEqual(['556298761234', '5562998761234']);
+    expect(broadcastReplyPhoneVariants('5562998761234')).toEqual(['5562998761234', '556298761234']);
+    expect(broadcastReplyPhoneVariants('+55 (62) 3333-1234')).toEqual(['556233331234']);
+    expect(broadcastReplyPhoneVariants('+14155551212')).toEqual(['14155551212']);
   });
 
-  it('rejects a row already replied, failed, or never sent', () => {
-    expect(isReplyAttributable({ id: 'r', status: 'replied', sent_at: hoursAgo(2) }, NOW)).toBe(false);
-    expect(isReplyAttributable({ id: 'r', status: 'failed', sent_at: hoursAgo(2) }, NOW)).toBe(false);
-    expect(isReplyAttributable({ id: 'r', status: 'pending', sent_at: null }, NOW)).toBe(false);
-  });
-
-  it('rejects a row sent before the reply window', () => {
-    const justOutside = new Date(NOW.getTime() - BROADCAST_REPLY_WINDOW_MS - 1).toISOString();
-    expect(isReplyAttributable({ id: 'r', status: 'read', sent_at: justOutside }, NOW)).toBe(false);
-  });
-});
-
-describe('flagBroadcastReply', () => {
-  it('looks up only the most recent recipient row for the contact in the account', async () => {
-    const { db, latestQuery } = makeDb([{ id: 'r1', status: 'read', sent_at: hoursAgo(1) }]);
-    await expect(flagBroadcastReply(db, 'acc-1', 'contact-1', NOW)).resolves.toBe('updated');
-    expect(latestQuery).toMatchObject({
-      contact_id: 'contact-1',
-      'broadcasts.account_id': 'acc-1',
-      order: ['created_at', false],
+  it('forwards the original event time and quoted Meta ID for scoped attribution', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: 'recipient-id', error: null });
+    const occurredAt = '2026-10-16T12:00:00.000Z';
+    await expect(flagBroadcastReply({ rpc } as unknown as SupabaseClient, {
+      accountId: 'account', contactId: 'contact', occurredAt, phone: '556298761234', phoneNumberId: 'sender', replyTo: 'wamid.1',
+    })).resolves.toBe('updated');
+    expect(rpc).toHaveBeenCalledWith('record_broadcast_reply', {
+      p_account: 'account', p_contact: 'contact', p_at: occurredAt, p_phone_variants: ['556298761234', '5562998761234'], p_sender: 'sender', p_reply_to: 'wamid.1',
     });
-  });
-
-  it('does not walk back to an older broadcast on a second inbound message', async () => {
-    const rows = [
-      { id: 'newest', status: 'read', sent_at: hoursAgo(1) },
-      { id: 'older', status: 'read', sent_at: hoursAgo(30) },
-    ];
-    const { db } = makeDb(rows);
-    await flagBroadcastReply(db, 'acc-1', 'contact-1', NOW);
-    await expect(flagBroadcastReply(db, 'acc-1', 'contact-1', NOW)).resolves.toBe('skipped');
-    expect(rows.map((r) => r.status)).toEqual(['replied', 'read']);
-  });
-
-  it('ignores a reply to a broadcast sent outside the window', async () => {
-    const rows = [{ id: 'r1', status: 'delivered', sent_at: hoursAgo(24 * 8) }];
-    const { db, updates } = makeDb(rows);
-    await expect(flagBroadcastReply(db, 'acc-1', 'contact-1', NOW)).resolves.toBe('skipped');
-    expect(updates).toHaveLength(0);
-  });
-
-  it('guards the update so a concurrent reply cannot flag it twice', async () => {
-    const { db, updates } = makeDb([{ id: 'r1', status: 'sent', sent_at: hoursAgo(1) }]);
-    await flagBroadcastReply(db, 'acc-1', 'contact-1', NOW);
-    expect(updates[0].filters).toEqual({ id: 'r1' });
-    expect(updates[0].allowed).not.toContain('replied');
-    expect(updates[0].patch).toEqual({ status: 'replied', replied_at: NOW.toISOString() });
   });
 });

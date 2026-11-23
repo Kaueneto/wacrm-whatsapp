@@ -240,6 +240,13 @@ async function sendViaMeta(input: SendInput): Promise<{ whatsapp_message_id: str
     content_text,
     media_url: templateHeaderMediaUrl(templateRow),
     template_name,
+    ...(input.kind === 'template' && {
+      template_cost_context: {
+        phone_number_id: config.phone_number_id,
+        category: templateRow?.category ?? null,
+        language: input.language ?? 'en_US',
+      },
+    }),
     message_id: waMessageId,
     status: 'sent',
   })

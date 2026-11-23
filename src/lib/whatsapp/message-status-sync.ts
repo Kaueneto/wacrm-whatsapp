@@ -41,6 +41,7 @@ async function findAccountMessages(
   db: SupabaseClient,
   accountId: string,
   wamid: string,
+  strict = false,
 ): Promise<AccountMessage[] | null> {
   const { data, error } = await db
     .from('messages')
@@ -49,6 +50,7 @@ async function findAccountMessages(
     .eq('conversations.account_id', accountId)
 
   if (error) {
+    if (strict) throw new Error('Could not load messages for status update');
     console.error('[message-status] message lookup failed:', error.message)
     return null
   }
@@ -60,6 +62,7 @@ async function advanceMessages(
   rows: AccountMessage[],
   status: string,
   failure: MessageStatusFailure | null,
+  strict = false,
 ): Promise<AdvancedMessage[]> {
   const ids = rows
     .filter((row) => canAdvanceMessageStatus(row.status, status))
@@ -81,6 +84,7 @@ async function advanceMessages(
     .select('id, conversation_id')
 
   if (error) {
+    if (strict) throw new Error('Could not persist message status');
     console.error('[message-status] status update failed:', error.message)
     return []
   }
@@ -91,6 +95,7 @@ async function storePendingStatus(
   db: SupabaseClient,
   accountId: string,
   incoming: IncomingMessageStatus,
+  strict = false,
 ): Promise<void> {
   const { error } = await db.from('pending_message_statuses').upsert(
     {
@@ -105,6 +110,7 @@ async function storePendingStatus(
     { onConflict: 'account_id,wamid,status', ignoreDuplicates: true },
   )
   if (error) {
+    if (strict) throw new Error('Could not store early message status');
     console.error('[message-status] parking early status failed:', error.message)
     return
   }
@@ -122,6 +128,7 @@ export async function applyPendingMessageStatuses(
   db: SupabaseClient,
   accountId: string,
   wamid: string,
+  strict = false,
 ): Promise<AdvancedMessage[]> {
   if (!wamid) return []
 
@@ -132,13 +139,14 @@ export async function applyPendingMessageStatuses(
     .eq('wamid', wamid)
 
   if (error) {
+    if (strict) throw new Error('Could not load pending message statuses');
     console.error('[message-status] early status lookup failed:', error.message)
     return []
   }
   const parked = (pending ?? []) as PendingStatusRow[]
   if (parked.length === 0) return []
 
-  const rows = await findAccountMessages(db, accountId, wamid)
+  const rows = await findAccountMessages(db, accountId, wamid, strict)
   if (!rows || rows.length === 0) return []
 
   const advanced: AdvancedMessage[] = []
@@ -157,7 +165,7 @@ export async function applyPendingMessageStatuses(
             details: failed.error_details,
           }
         : null
-    advanced.push(...(await advanceMessages(db, [row], target, failure)))
+    advanced.push(...(await advanceMessages(db, [row], target, failure, strict)))
   }
 
   const { error: clearError } = await db
@@ -166,6 +174,7 @@ export async function applyPendingMessageStatuses(
     .eq('account_id', accountId)
     .eq('wamid', wamid)
   if (clearError) {
+    if (strict) throw new Error('Could not clear applied message statuses');
     console.error('[message-status] clearing applied early statuses failed:', clearError.message)
   }
 
@@ -176,14 +185,15 @@ export async function applyMessageStatus(
   db: SupabaseClient,
   accountId: string,
   incoming: IncomingMessageStatus,
+  strict = false,
 ): Promise<AdvancedMessage[]> {
   if (!isMessageStatus(incoming.status)) return []
-  const rows = await findAccountMessages(db, accountId, incoming.wamid)
+  const rows = await findAccountMessages(db, accountId, incoming.wamid, strict)
   if (!rows) return []
   if (rows.length > 0) {
-    return advanceMessages(db, rows, incoming.status, incoming.failure)
+    return advanceMessages(db, rows, incoming.status, incoming.failure, strict)
   }
 
-  await storePendingStatus(db, accountId, incoming)
-  return applyPendingMessageStatuses(db, accountId, incoming.wamid)
+  await storePendingStatus(db, accountId, incoming, strict)
+  return applyPendingMessageStatuses(db, accountId, incoming.wamid, strict)
 }

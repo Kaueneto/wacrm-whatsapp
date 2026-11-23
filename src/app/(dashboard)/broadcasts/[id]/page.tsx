@@ -42,7 +42,7 @@ import {
   getRecipientStatus,
 } from '@/lib/broadcast-status';
 import { isBroadcastDeliveryInFlight } from '@/lib/whatsapp/broadcast-delivery-lease';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { BroadcastQueuePanel } from '@/components/broadcasts/queue-panel';
 
 interface StatCardProps {
@@ -54,14 +54,15 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, total, icon, color }: StatCardProps) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  const format = useFormatter();
+  const percentage = format.number(total > 0 ? value / total : 0, { style: 'percent', maximumFractionDigits: 1 });
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${color}`}>
           {icon}
         </div>
-        <span className="text-xs text-muted-foreground">{pct}%</span>
+        <span className="text-xs text-muted-foreground">{percentage}</span>
       </div>
       <p className="mt-3 text-2xl font-bold text-foreground">{value.toLocaleString()}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -69,47 +70,39 @@ function StatCard({ label, value, total, icon, color }: StatCardProps) {
   );
 }
 
-interface FunnelStep {
+interface DeliveryStep {
   label: string;
   value: number;
   color: string;
 }
 
-/**
- * Pure-CSS funnel chart: decreasing-width rounded bars.
- * Width is relative to the largest step (typically Sent) so we
- * always render a full bar at the top and proportional tails.
- */
-function FunnelChart({ steps }: { steps: FunnelStep[] }) {
+function DeliveryBreakdown({
+  steps,
+  total,
+}: {
+  steps: DeliveryStep[];
+  total: number;
+}) {
   const t = useTranslations('Broadcasts.detail');
-  const max = Math.max(...steps.map((s) => s.value), 1);
+  const format = useFormatter();
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="mb-4 text-sm font-medium text-foreground">{t('funnel')}</h3>
-      <div className="space-y-2">
+      <h3 className="mb-3 text-sm font-medium text-foreground">{t('deliveryBreakdown')}</h3>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 text-xs">
         {steps.map((step) => {
-          const pctOfMax = Math.max(5, Math.round((step.value / max) * 100));
-          const pctOfSent =
-            steps[0].value > 0
-              ? Math.round((step.value / steps[0].value) * 100)
-              : 0;
+          const ratio = total > 0 ? (step.value / total) * 100 : 0;
           return (
-            <div key={step.label} className="flex items-center gap-3">
-              <span className="w-20 shrink-0 text-xs text-muted-foreground">
-                {step.label}
-              </span>
-              <div className="relative h-7 flex-1 rounded-full bg-muted">
+            <div key={step.label} className="contents">
+              <span className="text-muted-foreground">{step.label}</span>
+              <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
-                  className={`h-7 rounded-full ${step.color} transition-[width] duration-500`}
-                  style={{ width: `${pctOfMax}%` }}
+                  className={`h-full rounded-full ${step.color} motion-safe:transition-[width]`}
+                  style={{ width: `${ratio}%` }}
                 />
-                <span className="absolute inset-0 flex items-center px-3 text-xs font-medium text-foreground">
-                  {step.value.toLocaleString()}
-                  <span className="ml-2 text-muted-foreground/80">
-                    ({pctOfSent}%)
-                  </span>
-                </span>
               </div>
+              <span className="min-w-20 text-right font-medium whitespace-nowrap tabular-nums">
+                {step.value.toLocaleString()} <span className="ml-1 text-muted-foreground">{format.number(ratio / 100, { style: 'percent', maximumFractionDigits: 1 })}</span>
+              </span>
             </div>
           );
         })}
@@ -352,7 +345,7 @@ export default function BroadcastDetailPage() {
   // than leaving a permanently pulsing "sending" badge.
   const isStalled = broadcast.status === 'sending' && pendingCount > 0;
 
-  const funnelSteps: FunnelStep[] = [
+  const deliverySteps: DeliveryStep[] = [
     { label: t('stats.sent'), value: broadcast.sent_count, color: 'bg-primary' },
     { label: t('stats.delivered'), value: broadcast.delivered_count, color: 'bg-teal-500' },
     { label: t('stats.read'), value: broadcast.read_count, color: 'bg-blue-500' },
@@ -435,7 +428,12 @@ export default function BroadcastDetailPage() {
         )}
       </div>
 
-      <BroadcastQueuePanel id={broadcastId} campaignId={broadcast.campaign_id} onRefresh={fetchData} />
+      <BroadcastQueuePanel
+        id={broadcastId}
+        campaignId={broadcast.campaign_id}
+        startedAt={broadcast.started_at}
+        onRefresh={fetchData}
+      />
       {broadcast.scheduled_at && <p className="text-sm text-muted-foreground">Programado para {new Date(broadcast.scheduled_at).toLocaleString()}
         {Date.parse(broadcast.created_at)-Date.parse(broadcast.scheduled_at)>60000 ? ' · Execução iniciada com atraso; recorrências anteriores não foram acumuladas.' : ''}</p>}
 
@@ -534,7 +532,7 @@ export default function BroadcastDetailPage() {
         />
       </div>
 
-      <FunnelChart steps={funnelSteps} />
+      <DeliveryBreakdown steps={deliverySteps} total={broadcast.total_recipients} />
 
       {/* Recipients Table */}
       <div className="rounded-xl border border-border bg-card">

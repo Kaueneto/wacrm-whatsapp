@@ -277,6 +277,32 @@ export async function subscribeWabaToApp(
   }
 }
 
+export async function updatePhoneWebhookCallback({ phoneNumberId, accessToken, callbackUrl, verifyToken }: {
+  phoneNumberId: string
+  accessToken: string
+  callbackUrl: string
+  verifyToken: string
+}): Promise<void> {
+  const url = `https://graph.facebook.com/v27.0/${phoneNumberId}`
+  const headers = { Authorization: `Bearer ${accessToken}` }
+  const signal = AbortSignal.timeout(20000)
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ webhook_configuration: { override_callback_uri: callbackUrl, verify_token: verifyToken } }),
+    signal,
+  })
+  if (!response.ok) await throwMetaError(response, `Meta API error: ${response.status}`)
+  const result = await response.json()
+  if (result.success !== true) throw new Error('A Meta não confirmou a alteração do webhook.')
+
+  const verification = await fetch(`${url}?fields=webhook_configuration`, { headers, cache: 'no-store', signal })
+  if (!verification.ok) throw new Error('Não foi possível confirmar o endereço no número pela API da Meta.')
+  const confirmed = await verification.json()
+  if (confirmed.webhook_configuration?.phone_number !== callbackUrl)
+    throw new Error('A Meta ainda não retornou a nova URL como callback do número.')
+}
+
 export interface ListWabaPhoneNumbersArgs {
   wabaId: string
   accessToken: string

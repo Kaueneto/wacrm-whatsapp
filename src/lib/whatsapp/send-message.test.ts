@@ -182,10 +182,10 @@ vi.mock('@/lib/whatsapp/encryption', () => ({
   isLegacyFormat: () => false,
 }));
 
+const adminTemplateFrom = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/flows/admin-client', () => ({
-  // Only used for the best-effort "pause active flow run" write.
   supabaseAdmin: () => ({
-    from: () => ({
+    from: (table: string) => table === 'messages' ? adminTemplateFrom(table) : ({
       update: () => ({
         eq: () => ({ eq: () => ({ eq: async () => ({ error: null }) }) }),
       }),
@@ -224,7 +224,7 @@ function sendPathDb(
     access_token: 'token',
   };
 
-  return {
+  const client = {
     from(table: string) {
       const builder: Record<string, unknown> = {
         select: () => builder,
@@ -257,7 +257,9 @@ function sendPathDb(
       };
       return builder;
     },
-  } as unknown as SupabaseClient;
+  };
+  adminTemplateFrom.mockImplementation(table => client.from(table));
+  return client as unknown as SupabaseClient;
 }
 
 const TEMPLATE_ROW = {
@@ -290,6 +292,11 @@ describe('sendMessageToConversation — template persistence (#483)', () => {
       'Your order A123 ships on Friday'
     );
     expect(captured.message?.template_name).toBe('order_update');
+    expect(captured.message?.template_cost_context).toEqual({
+      phone_number_id: 'pn-1',
+      category: 'Utility',
+      language: 'en',
+    });
     // …and the conversation-list preview reads the body, not '[template]'.
     expect(captured.conversation?.last_message_text).toBe(
       'Your order A123 ships on Friday'

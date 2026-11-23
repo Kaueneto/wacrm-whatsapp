@@ -3,6 +3,7 @@ import {
   INTERACTIVE_LIMITS,
   sendInteractiveButtons,
   sendInteractiveList,
+  updatePhoneWebhookCallback,
 } from "./meta-api";
 
 // All assertions in this file run BEFORE the network call. We stub fetch
@@ -20,6 +21,30 @@ const BASE_ARGS = {
   to: "1234567890",
   bodyText: "Body text",
 } as const;
+
+describe('updatePhoneWebhookCallback', () => {
+  const callbackUrl = 'https://dev.example.com/api/whatsapp/webhook';
+  const args = { phoneNumberId: '123', accessToken: 'test', verifyToken: 'verify', callbackUrl };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('publishes for the phone number and reads the confirmed URL back', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(Response.json({ success: true }))
+      .mockResolvedValueOnce(Response.json({ webhook_configuration: { phone_number: callbackUrl } }));
+    vi.stubGlobal('fetch', fetcher);
+    await updatePhoneWebhookCallback(args);
+    expect(fetcher.mock.calls[0][0]).toBe('https://graph.facebook.com/v27.0/123');
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ webhook_configuration: { override_callback_uri: callbackUrl, verify_token: 'verify' } });
+    expect(fetcher.mock.calls[1][0]).toContain('?fields=webhook_configuration');
+  });
+
+  it('treats a different callback in the readback as unconfirmed', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(Response.json({ success: true }))
+      .mockResolvedValueOnce(Response.json({ webhook_configuration: { application: callbackUrl } })));
+    await expect(updatePhoneWebhookCallback(args)).rejects.toThrow(/nova URL/);
+  });
+});
 
 describe("sendInteractiveButtons — validation", () => {
   beforeEach(() => {

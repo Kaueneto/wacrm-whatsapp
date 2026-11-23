@@ -477,7 +477,10 @@ export async function sendMessageToConversation(
           )
         : (contentText ?? null);
 
-  const { data: messageRecord, error: msgError } = await db
+  // The supplied client checked access to the conversation before contacting
+  // Meta. Persist template billing metadata through the server-only client.
+  const messageWriter = messageType === 'template' ? supabaseAdmin() : db;
+  const { data: messageRecord, error: msgError } = await messageWriter
     .from('messages')
     .insert({
       conversation_id: conversationId,
@@ -490,6 +493,13 @@ export async function sendMessageToConversation(
           ? templateHeaderMediaUrl(templateRow, templateMessageParams)
           : mediaUrl || null,
       template_name: templateName || null,
+      ...(messageType === 'template' && {
+        template_cost_context: {
+          phone_number_id: config.phone_number_id,
+          category: templateRow?.category ?? null,
+          language: sendLanguage,
+        },
+      }),
       interactive_payload:
         messageType === 'interactive' ? interactivePayload : null,
       message_id: waMessageId,

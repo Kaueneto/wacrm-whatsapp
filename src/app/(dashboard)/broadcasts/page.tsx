@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Broadcast } from '@/types';
@@ -17,7 +17,7 @@ import { Radio, Plus, Loader2 } from 'lucide-react';
 import { useCan } from '@/hooks/use-can';
 import { GatedButton } from '@/components/ui/gated-button';
 import { getBroadcastStatus } from '@/lib/broadcast-status';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 /**
  * Poll cadence while any broadcast is sending. Kept modest so we don't
@@ -25,6 +25,21 @@ import { useTranslations } from 'next-intl';
  * counts consistent; we just need to surface the freshest snapshot.
  */
 const POLL_INTERVAL_MS = 5_000;
+
+type BroadcastWithExecution = Broadcast & {
+  broadcast_jobs: { finished_at: string | null } | null;
+};
+
+function ExecutionTime({ value, formatter }: {
+  value?: string | null;
+  formatter: Intl.DateTimeFormat;
+}) {
+  return (
+    <TableCell className="text-muted-foreground whitespace-nowrap tabular-nums">
+      {value ? <time dateTime={value}>{formatter.format(new Date(value))}</time> : '—'}
+    </TableCell>
+  );
+}
 
 function percent(numerator: number, denominator: number): number {
   if (!denominator) return 0;
@@ -62,20 +77,25 @@ export default function BroadcastsPage() {
   const t = useTranslations('Broadcasts.page');
   const tStatus = useTranslations('Broadcasts.status');
   const tGate = useTranslations('GatedButton');
+  const locale = useLocale();
+  const executionFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+  }), [locale]);
   const canCreate = useCan('send-messages');
-  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [broadcasts, setBroadcasts] = useState<BroadcastWithExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Used to kick off polling only while something is actively sending.
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  async function fetchBroadcasts() {
+  const fetchBroadcasts = useCallback(async () => {
     try {
       const supabase = createClient();
       const { data, error: fetchError } = await supabase
         .from('broadcasts')
-        .select('*')
+        .select('*, broadcast_jobs(finished_at)')
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -85,11 +105,11 @@ export default function BroadcastsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
 
   useEffect(() => {
     fetchBroadcasts();
-  }, []);
+  }, [fetchBroadcasts]);
 
   const anySending = useMemo(
     () => broadcasts.some((b) => b.status === 'sending'),
@@ -130,7 +150,7 @@ export default function BroadcastsPage() {
       stopPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [anySending]);
+  }, [anySending, fetchBroadcasts]);
 
   if (loading) {
     return (
@@ -230,7 +250,8 @@ export default function BroadcastsPage() {
                 <TableHead className="hidden text-muted-foreground lg:table-cell">{t('table.read')}</TableHead>
                 <TableHead className="text-muted-foreground">Processamento</TableHead>
                 <TableHead className="text-muted-foreground">{t('table.status')}</TableHead>
-                <TableHead className="hidden text-muted-foreground sm:table-cell">{t('table.date')}</TableHead>
+                <TableHead className="text-muted-foreground">{t('table.startedAt')}</TableHead>
+                <TableHead className="text-muted-foreground">{t('table.finishedAt')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -279,9 +300,8 @@ export default function BroadcastsPage() {
                         {tStatus(status.label)}
                       </span>
                     </TableCell>
-                    <TableCell className="hidden text-muted-foreground sm:table-cell">
-                      {new Date(broadcast.created_at).toLocaleDateString()}
-                    </TableCell>
+                    <ExecutionTime value={broadcast.started_at} formatter={executionFormatter} />
+                    <ExecutionTime value={broadcast.broadcast_jobs?.finished_at} formatter={executionFormatter} />
                   </TableRow>
                 );
               })}

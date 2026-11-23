@@ -145,7 +145,8 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/flows/admin-client', () => ({
   supabaseAdmin: () => ({
-    from: () => {
+    from: (table: string) => {
+      if (table === 'messages') return supabaseMock.from(table)
       const b: Record<string, unknown> = {}
       const chain = () => b
       for (const m of ['update', 'eq', 'select']) b[m] = vi.fn(chain)
