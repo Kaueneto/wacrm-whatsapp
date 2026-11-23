@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { buildSendComponents } from '@/lib/whatsapp/template-send-builder';
 import type { MessageTemplate } from '@/types';
-import { enqueueDefinition } from './prepare';
+import { EmptyUauAudienceError, enqueueDefinition } from './prepare';
 import { nextOccurrence } from './schedule';
 
 export interface QueueItem {
@@ -185,7 +185,9 @@ export async function processScheduleTick(
   const { data: c, error } = await db.rpc('claim_due_campaign');
   if (error) throw new Error(`Schedule claim: ${error.message}`);
   if (!c) return false;
+  let nextRun: string | null = null;
   try {
+    nextRun = nextOccurrence(c.schedule, new Date());
     await enqueueDefinition(
       db,
       c.account_id,
@@ -195,18 +197,29 @@ export async function processScheduleTick(
       c.id,
       {
         lease: c.scheduler_lease,
-        nextRun: nextOccurrence(c.schedule, new Date()),
+        nextRun,
       }
     );
   } catch (error) {
     // A bad source/template is visible to the operator, retried after five
     // minutes, rather than spinning or marking a campaign as successfully sent.
+    const scheduleUpdate =
+      error instanceof EmptyUauAudienceError
+        ? {
+            next_run_at: nextRun,
+            active: nextRun !== null,
+            scheduler_lease: null,
+            scheduler_lease_until: null,
+          }
+        : {
+            scheduler_lease_until: new Date(Date.now() + 300000).toISOString(),
+          };
     const { error: saveError } = await db
       .from('campaigns')
       .update({
         last_error:
           error instanceof Error ? error.message : 'Falha ao preparar execução',
-        scheduler_lease_until: new Date(Date.now() + 300000).toISOString(),
+        ...scheduleUpdate,
       })
       .eq('id', c.id)
       .eq('scheduler_lease', c.scheduler_lease);

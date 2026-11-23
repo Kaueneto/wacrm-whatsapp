@@ -33,6 +33,26 @@ describe('Campaign calendar scheduling', () => {
       )
     ).toBeNull();
   });
+  it('uses the selected weekdays and honors the last eligible day', () => {
+    const weekly: CampaignSchedule = {
+      ...base,
+      kind: 'weekly',
+      weekdays: [1, 5],
+      endDate: '2026-11-20',
+    };
+    expect(nextOccurrence(weekly, new Date('2026-11-18T12:00:00Z'))).toBe(
+      '2026-11-20T12:00:00.000Z'
+    );
+    expect(nextOccurrence(weekly, new Date('2026-11-20T12:00:00Z'))).toBeNull();
+  });
+  it('skips months without the selected day', () => {
+    expect(
+      nextOccurrence(
+        { ...base, kind: 'monthly', monthDay: 31 },
+        new Date('2026-11-18T12:00:00Z')
+      )
+    ).toBe('2026-12-31T12:00:00.000Z');
+  });
   it('preserves local wall time across daylight saving changes', () => {
     expect(
       nextOccurrence(

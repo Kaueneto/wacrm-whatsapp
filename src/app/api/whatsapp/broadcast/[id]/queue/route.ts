@@ -130,6 +130,11 @@ export async function POST(
       p_audience: source.audience_filter ?? {},
       p_variables: source.template_variables ?? {},
     });
+    if (error?.code === '23514' && error.message === 'Recipient outside campaign department')
+      return NextResponse.json(
+        { error: 'Há destinatários que já não têm atendimento no departamento do disparo original.' },
+        { status: 409 }
+      );
     if (error)
       return NextResponse.json(
         {

@@ -1,4 +1,17 @@
 import type { CampaignSchedule } from './definition';
+import { getUauSchedule, isUauCampaignDefinition } from '@/lib/uau/campaign-draft';
+
+export function getCampaignSchedule(definition: unknown, schedule: CampaignSchedule | null): CampaignSchedule | null {
+  return isUauCampaignDefinition(definition) ? getUauSchedule(schedule) : schedule?.kind ? schedule : null;
+}
+
+export function campaignScheduleCanActivate(schedule: CampaignSchedule, now = new Date()): boolean {
+  try {
+    return nextOccurrence(schedule, now) !== null;
+  } catch {
+    return false;
+  }
+}
 
 function localParts(date: Date, timezone: string) {
   return Object.fromEntries(
@@ -20,11 +33,13 @@ function localParts(date: Date, timezone: string) {
 export function validateSchedule(s: CampaignSchedule) {
   if (
     !s ||
-    !['once', 'daily', 'interval'].includes(s.kind) ||
+    !['once', 'daily', 'interval', 'weekly', 'monthly'].includes(s.kind) ||
     !Number.isInteger(s.days) ||
     s.days < 1 ||
     s.days > 365 ||
     !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.time) ||
+    typeof s.timezone !== 'string' ||
+    !s.timezone ||
     !/^\d{4}-\d{2}-\d{2}$/.test(s.startDate)
   ) {
     throw new Error(
@@ -38,6 +53,47 @@ export function validateSchedule(s: CampaignSchedule) {
     check.toISOString().slice(0, 10) !== s.startDate
   )
     throw new Error('Data inválida.');
+  if (s.endDate) {
+    const end = new Date(s.endDate + 'T00:00:00Z');
+    if (
+      !Number.isFinite(end.getTime()) ||
+      end.toISOString().slice(0, 10) !== s.endDate ||
+      s.endDate < s.startDate
+    )
+      throw new Error(
+        'A data de término deve ser igual ou posterior à data inicial.'
+      );
+  }
+  if (
+    s.kind === 'weekly' &&
+    (!Array.isArray(s.weekdays) ||
+      !s.weekdays.length ||
+      s.weekdays.some((day) => !Number.isInteger(day) || day < 0 || day > 6))
+  )
+    throw new Error('Selecione os dias da semana.');
+  if (
+    s.kind === 'monthly' &&
+    (!s.monthDay ||
+      !Number.isInteger(s.monthDay) ||
+      s.monthDay < 1 ||
+      s.monthDay > 31)
+  )
+    throw new Error('Selecione um dia do mês entre 1 e 31.');
+}
+
+export function describeSchedule(schedule: CampaignSchedule) {
+  switch (schedule.kind) {
+    case 'once':
+      return 'Envio único';
+    case 'daily':
+      return 'Diariamente';
+    case 'interval':
+      return `A cada ${schedule.days} dias`;
+    case 'weekly':
+      return 'Semanalmente';
+    case 'monthly':
+      return `Todo dia ${schedule.monthDay} do mês`;
+  }
 }
 
 // Calendar recurrence in the chosen zone, not 24h arithmetic. Missed occurrences
@@ -48,6 +104,7 @@ export function nextOccurrence(
 ): string | null {
   validateSchedule(s);
   const anchor = Date.parse(s.startDate + 'T00:00:00Z');
+  const end = s.endDate ? Date.parse(s.endDate + 'T00:00:00Z') : Infinity;
   const [hour, minute] = s.time.split(':').map(Number);
   const step = s.kind === 'interval' ? s.days : 1;
   const local = localParts(after, s.timezone);
@@ -57,6 +114,11 @@ export function nextOccurrence(
   for (let attempts = 0; attempts < 370; attempts++, index++) {
     if (s.kind === 'once' && index > 0) return null;
     const day = anchor + index * step * 86400000;
+    if (day > end) return null;
+    if (s.kind === 'weekly' && !s.weekdays?.includes(new Date(day).getUTCDay()))
+      continue;
+    if (s.kind === 'monthly' && new Date(day).getUTCDate() !== s.monthDay)
+      continue;
     const target = day + hour * 3600000 + minute * 60000;
     let candidate = target;
     for (let i = 0; i < 4; i++) {

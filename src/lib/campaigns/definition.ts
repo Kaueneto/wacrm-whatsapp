@@ -1,5 +1,5 @@
 import type { AudienceConfig } from '@/lib/broadcast-audience';
-import type { Contact } from '@/types';
+import type { Contact, MessageTemplate } from '@/types';
 
 export type VariableMapping = {
   type: 'static' | 'field' | 'custom_field';
@@ -12,11 +12,27 @@ export interface CampaignDefinition {
   headerMediaUrl?: string;
 }
 export interface CampaignSchedule {
-  kind: 'once' | 'daily' | 'interval';
+  kind: 'once' | 'daily' | 'interval' | 'weekly' | 'monthly';
   days: number;
   time: string;
   timezone: string;
   startDate: string;
+  endDate?: string;
+  weekdays?: number[];
+  monthDay?: number;
+  configured?: boolean;
+}
+
+export interface CrmCampaignDraft {
+  source: 'crm';
+  id: string;
+  name: string;
+  description: string;
+  definition: CampaignDefinition;
+  template: MessageTemplate | null;
+  schedule: CampaignSchedule | null;
+  active: boolean;
+  departmentId: string | null;
 }
 
 export function resolveVariables(
@@ -60,7 +76,7 @@ export function validateDefinition(
   if (d.audience.type === 'custom_field' && !d.audience.customField?.fieldId)
     throw new Error('Escolha um campo para filtrar.');
   if (d.audience.type === 'csv' && !d.audience.csvContacts?.length)
-    throw new Error('Importe os contatos do CSV.');
+    throw new Error('Importe os contatos de um arquivo CSV ou XLSX.');
   for (const mapping of Object.values(d.variables)) {
     if (
       !mapping ||

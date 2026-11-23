@@ -48,7 +48,8 @@ describe('Postgres campaign queue', () => {
   beforeAll(async () => {
     await db.exec(`create role anon; create role authenticated; create role service_role;
       create schema auth; create table auth.users(id uuid primary key);
-      create table accounts(id uuid primary key);create table contacts(id uuid primary key,account_id uuid,phone text,name text);
+      create table accounts(id uuid primary key);create table contacts(id uuid primary key,account_id uuid,phone text,name text,
+        phone_normalized text generated always as (regexp_replace(phone, '[^0-9]', '', 'g')) stored);
       create function public.is_account_member(uuid) returns boolean language sql as 'select false';
       create function auth.role() returns text language sql as $$ select current_setting('request.jwt.claim.role',true) $$;
       create table broadcasts(id uuid primary key default gen_random_uuid(),account_id uuid,user_id uuid,name text,template_name text,
@@ -56,7 +57,7 @@ describe('Postgres campaign queue', () => {
        total_recipients integer,sent_count integer default 0,failed_count integer default 0,audience_filter jsonb,template_variables jsonb,
        created_at timestamptz default now(),updated_at timestamptz default now(),scheduled_at timestamptz);
       create table broadcast_recipients(id uuid primary key default gen_random_uuid(),broadcast_id uuid references broadcasts(id) on delete cascade,
-       contact_id uuid,status text,template_params jsonb,whatsapp_message_id text,error_message text,sent_at timestamptz,delivered_at timestamptz,read_at timestamptz);
+       contact_id uuid,status text,template_params jsonb,whatsapp_message_id text,error_message text,sent_at timestamptz,delivered_at timestamptz,read_at timestamptz,replied_at timestamptz,created_at timestamptz default now());
       insert into accounts values ('${account}');insert into auth.users values ('${user}');insert into contacts values ('${contact}','${account}','+5562111111111','Test');`);
     await db.exec(
       readFileSync('supabase/migrations/061_campaign_queue.sql', 'utf8')
@@ -65,6 +66,7 @@ describe('Postgres campaign queue', () => {
       readFileSync('supabase/migrations/063_campaign_progress.sql', 'utf8')
     );
     await db.exec(readFileSync('supabase/migrations/064_campaign_schedule_audit.sql','utf8'));
+    await db.exec(readFileSync('supabase/migrations/084_broadcast_execution_and_replies.sql','utf8'));
   }, 30000);
   beforeEach(async () => {
     await db.exec(
@@ -76,12 +78,27 @@ describe('Postgres campaign queue', () => {
   });
   it('is independent of any HTTP callback and prevents duplicate claims on one sender', async () => {
     const id = await enqueue();
+    expect(await scalar('select started_at as value from broadcasts where id=$1', [id])).toBeNull();
     const first = await claim();
     expect(first?.job.broadcast_id).toBe(id);
+    expect(await scalar('select started_at is not null as value from broadcasts where id=$1', [id])).toBe(true);
     expect(await claim()).toBeNull();
     expect(
       await scalar('select dispatch_state as value from broadcast_recipients')
     ).toBe('sending');
+  });
+  it('attributes a customer reply across phone formats only on the sender and after an accepted send', async () => {
+    const id = await enqueue();
+    const first = (await claim())!;
+    await db.query("select finish_broadcast_recipient($1,$2,'accepted','reply-test')", [first.recipient.id, first.lease]);
+    await enqueue('Queued after send');
+    const recordedAt = 'select record_broadcast_reply($1,$2,now(),$3,$4,$5) as value';
+    const args = [account, user, ['5562111111111']];
+    expect(await scalar(recordedAt, [...args, 'another-sender', null])).toBeNull();
+    expect(await scalar(recordedAt, [...args, 'phone', 'another-message'])).toBeNull();
+    expect(await scalar(recordedAt, [...args, 'phone', null])).toBe(first.recipient.id);
+    expect(await scalar(recordedAt, [...args, 'phone', null])).toBeNull();
+    expect(await scalar('select status as value from broadcast_recipients where broadcast_id=$1', [id])).toBe('replied');
   });
   it('deduplicates repeated queue requests', async () => {
     const key = '00000000-0000-0000-0000-000000000005';

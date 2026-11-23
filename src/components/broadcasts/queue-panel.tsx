@@ -1,4 +1,4 @@
-'use client';
+  'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -14,7 +14,6 @@ interface Progress {
   cancelled: number;
   failed: number;
   worker_online: boolean;
-  created_at: string;
 }
 const labels: Record<string, string> = {
   queued: 'Na fila',
@@ -26,10 +25,12 @@ const labels: Record<string, string> = {
 export function BroadcastQueuePanel({
   id,
   campaignId,
+  startedAt,
   onRefresh,
 }: {
   id: string;
   campaignId?: string | null;
+  startedAt?: string | null;
   onRefresh: () => void;
 }) {
   const [data, setData] = useState<Progress | null>(null);
@@ -84,12 +85,9 @@ export function BroadcastQueuePanel({
     ) : null;
   const pct = data.total ? Math.round((data.processed / data.total) * 100) : 0;
   const active = ['queued', 'running', 'paused'].includes(data.state);
-  const elapsed = Math.max(
-    1,
-    (Date.now() - Date.parse(data.created_at)) / 1000
-  );
+  const elapsed = startedAt ? Math.max(1, (Date.now() - Date.parse(startedAt)) / 1000) : null;
   const remainingSeconds =
-    data.processed >= 5 && data.state === 'running'
+    elapsed !== null && data.processed >= 5 && data.state === 'running'
       ? (data.total - data.processed) / (data.processed / elapsed)
       : null;
   return (
@@ -190,7 +188,7 @@ export function BroadcastQueuePanel({
       </p>
       {remainingSeconds !== null && (
         <p className="text-muted-foreground text-xs">
-          Estimativa pelo ritmo médio desde a criação: cerca de{' '}
+          Estimativa pelo ritmo médio desde o início do processamento: cerca de{' '}
           {Math.max(1, Math.ceil(remainingSeconds / 60))} minuto(s). Pausas e
           limites da Meta podem alterar esse tempo.
         </p>

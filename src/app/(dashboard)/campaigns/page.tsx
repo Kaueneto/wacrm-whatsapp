@@ -1,7 +1,10 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { CampaignStatusBadge } from '@/components/campaigns/campaign-status-badge';
 import {
   Table,
   TableBody,
@@ -10,22 +13,27 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, RefreshCw } from 'lucide-react';
+import { LoaderCircle, Play, Plus, RefreshCw } from 'lucide-react';
 import type { CampaignSchedule } from '@/lib/campaigns/definition';
+import { describeSchedule } from '@/lib/campaigns/schedule';
 
 interface Campaign {
   id: string;
   name: string;
   description: string;
   active: boolean;
+  uau: boolean;
+  unfinished: boolean;
   next_run_at: string | null;
   last_error: string | null;
-  schedule: CampaignSchedule;
+  schedule: CampaignSchedule | null;
 }
 export default function CampaignsPage() {
+  const router = useRouter();
   const [rows, setRows] = useState<Campaign[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
       const r = await fetch('/api/campaigns');
@@ -44,6 +52,33 @@ export default function CampaignsPage() {
     const timer = setInterval(() => void load(), 10000);
     return () => clearInterval(timer);
   }, [load]);
+  async function run(campaign: Campaign) {
+    if (running || campaign.unfinished) return;
+    setRunning(campaign.id);
+    try {
+      const response = await fetch(`/api/campaigns/${campaign.id}/run`, {
+        method: 'POST',
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      toast.success(
+        `Disparo enfileirado para ${result.total} destinatário(s).`,
+        {
+          action: {
+            label: 'Ver disparo',
+            onClick: () => router.push(`/broadcasts/${result.broadcastId}`),
+          },
+        }
+      );
+      await load();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Falha ao iniciar o disparo.'
+      );
+    } finally {
+      setRunning(null);
+    }
+  }
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-4 space-y-6 motion-safe:duration-300">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -62,14 +97,18 @@ export default function CampaignsPage() {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button render={<Link href="/campaigns/new" />}>
+          <Button
+            nativeButton={false}
+            className="bg-emerald-700 text-white [a]:hover:bg-emerald-800"
+            render={<Link href="/campaigns/new" />}
+          >
             <Plus className="h-4 w-4" />
             Nova campanha
           </Button>
         </div>
       </div>
       {error && (
-        <p role="alert" className="text-red-400">
+        <p role="alert" className="text-destructive">
           {error}
         </p>
       )}
@@ -105,34 +144,33 @@ export default function CampaignsPage() {
                     <p className="text-muted-foreground mt-1 break-words">
                       {c.description || 'Sem descrição'}
                     </p>
+                    {c.uau && (
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        Consulta UAU
+                      </p>
+                    )}
                     {c.last_error && (
-                      <p className="mt-1 break-words text-amber-400">
+                      <p className="mt-1 break-words text-amber-800 dark:text-amber-300">
                         {c.last_error}
                       </p>
                     )}
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                        c.active
-                          ? 'bg-primary/10 text-primary'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {c.active ? 'Programação ativa' : 'Programação pausada'}
-                    </span>
+                    <CampaignStatusBadge active={c.active} unfinished={c.unfinished} schedule={c.schedule} />
                   </TableCell>
                   <TableCell>
-                    <p>
-                      {c.schedule.kind === 'once'
-                        ? 'Envio único'
-                        : c.schedule.kind === 'daily'
-                          ? 'Diariamente'
-                          : `A cada ${c.schedule.days} dias`}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      {c.schedule.time} · {c.schedule.timezone}
-                    </p>
+                    {c.schedule ? (
+                      <>
+                        <p>{describeSchedule(c.schedule)}</p>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {c.schedule.time} · {c.schedule.timezone}
+                        </p>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Sem agendamento
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {c.active && c.next_run_at
@@ -140,14 +178,30 @@ export default function CampaignsPage() {
                       : 'Sem execução programada'}
                   </TableCell>
                   <TableCell className="px-4 text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-label={`Ver detalhes da campanha ${c.name}`}
-                      render={<Link href={`/campaigns/${c.id}`} />}
-                    >
-                      Ver detalhes
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        className="border-0 bg-emerald-700 text-white shadow-none hover:bg-emerald-800 focus-visible:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-700/20"
+                        size="sm"
+                        disabled={Boolean(running) || c.unfinished}
+                        onClick={() => void run(c)}
+                      >
+                        {running === c.id ? (
+                          <LoaderCircle className="animate-spin" />
+                        ) : (
+                          <Play />
+                        )}
+                        {running === c.id ? 'Preparando…' : 'Executar agora'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        nativeButton={false}
+                        aria-label={`Ver detalhes da campanha ${c.name}`}
+                        render={<Link href={`/campaigns/${c.id}`} />}
+                      >
+                        Ver detalhes
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
