@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag } from '@/types';
 import { Button } from '@/components/ui/button';
+import motion from '@/components/ui/surface-motion.module.css';
 import { Input } from '@/components/ui/input';
 import {
   Table,
@@ -48,13 +50,17 @@ import {
   ChevronRight,
   SlidersHorizontal,
   Filter,
+  Tags,
   X,
 } from 'lucide-react';
 import { ContactForm } from '@/components/contacts/contact-form';
+import { ContactTagPicker } from '@/components/contacts/contact-tag-picker';
+import { ContactTagPills } from '@/components/contacts/contact-tag-pills';
 import { ContactDetailView } from '@/components/contacts/contact-detail-view';
 import { ImportModal } from '@/components/contacts/import-modal';
 import { CustomFieldsManager } from '@/components/contacts/custom-fields-manager';
 import { useCan } from '@/hooks/use-can';
+import { useAuth } from '@/hooks/use-auth';
 import { GatedButton } from '@/components/ui/gated-button';
 import { useLocale, useTranslations } from 'next-intl';
 import {
@@ -62,6 +68,8 @@ import {
   contactSearchPattern,
 } from '@/lib/contacts/search-filter';
 import { pageAfterRangeError, pageAfterShrink } from '@/lib/contacts/page-bounds';
+import { applyContactTagChange } from '@/lib/contacts/tag-catalog';
+import { fetchAccountTags } from '@/lib/settings/account-catalog';
 
 const PAGE_SIZE = 25;
 
@@ -74,6 +82,7 @@ export default function ContactsPage() {
   const locale = useLocale();
   const tGate = useTranslations('GatedButton');
   const supabase = createClient();
+  const { accountId } = useAuth();
   const canEdit = useCan('send-messages');
   const canEditSettings = useCan('edit-settings');
 
@@ -111,8 +120,9 @@ export default function ContactsPage() {
   const fetchSeq = useRef(0);
 
   const fetchTags = useCallback(async () => {
-    const { data } = await supabase.from('tags').select('*');
-    if (data) {
+    if (!accountId) return;
+    try {
+      const data = await fetchAccountTags(supabase, accountId);
       const map: Record<string, Tag> = {};
       data.forEach((t) => (map[t.id] = t));
       setTagsMap(map);
@@ -122,8 +132,10 @@ export default function ContactsPage() {
         const pruned = prev.filter((id) => map[id]);
         return pruned.length === prev.length ? prev : pruned;
       });
+    } catch {
+      toast.error(t('toastFailedLoad'));
     }
-  }, [supabase]);
+  }, [accountId, supabase, t]);
 
   const fetchContacts = useCallback(async () => {
     const seq = ++fetchSeq.current;
@@ -208,26 +220,31 @@ export default function ContactsPage() {
     const contactIds = contactRows.map((c) => c.id);
     const { data: contactTags } = await supabase
       .from('contact_tags')
-      .select('contact_id, tag_id')
+      .select('contact_id, tags(*)')
       .in('contact_id', contactIds);
     if (seq !== fetchSeq.current) return; // superseded by a newer fetch
 
-    const tagsByContact: Record<string, string[]> = {};
-    contactTags?.forEach((ct) => {
-      if (!tagsByContact[ct.contact_id]) tagsByContact[ct.contact_id] = [];
-      tagsByContact[ct.contact_id].push(ct.tag_id);
-    });
+    const tagsByContact: Record<string, Tag[]> = {};
+    for (const row of (contactTags ?? []) as unknown as { contact_id: string; tags: Tag | null }[]) {
+      if (row.tags) (tagsByContact[row.contact_id] ??= []).push(row.tags);
+    }
 
     const enriched: ContactWithTags[] = contactRows.map((c) => ({
       ...c,
-      tags: (tagsByContact[c.id] ?? [])
-        .map((tid) => tagsMap[tid])
-        .filter(Boolean),
+      tags: tagsByContact[c.id] ?? [],
     }));
 
     setContacts(enriched);
     setLoading(false);
-  }, [supabase, page, search, selectedTagIds, tagsMap, t]);
+  }, [supabase, page, search, selectedTagIds, t]);
+
+  function handleContactTagChange(contactId: string, tag: Tag, assigned: boolean) {
+    setTagsMap(previous => previous[tag.id] === tag ? previous : { ...previous, [tag.id]: tag });
+    setContacts(previous => previous.map(contact => contact.id === contactId
+      ? { ...contact, tags: applyContactTagChange(contact.tags ?? [], tag, assigned) }
+      : contact));
+    if (selectedTagIds.includes(tag.id)) void fetchContacts();
+  }
 
   // Load-once-on-mount-ish data fetches. Each setter inside runs
   // inside an async promise completion (Supabase await), not
@@ -369,7 +386,7 @@ export default function ContactsPage() {
             {totalCount > 0 ? t('subtitle', { count: totalCount }) : t('subtitleZero')}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canEditSettings && (
             <Button
               variant="outline"
@@ -380,24 +397,30 @@ export default function ContactsPage() {
               {t('customFieldsBtn')}
             </Button>
           )}
+          {canEditSettings && (
+            <Button variant="outline" nativeButton={false} render={<Link href="/tags" />}>
+              <Tags className="size-4" />
+              {t('manageTags')}
+            </Button>
+          )}
           <GatedButton
             variant="outline"
             canAct={canEdit}
             gateReason={tGate('reasons.addOrImportContacts')}
             onClick={() => setImportOpen(true)}
-            className="border-border text-muted-foreground hover:bg-muted"
+            className={motion.action}
           >
-            <Upload className="size-4" />
-            {t('importBtn')}
+            <Upload className="size-4" aria-hidden="true" />
+            <span className={motion.label}>{t('importBtn')}</span>
           </GatedButton>
           <GatedButton
             canAct={canEdit}
             gateReason={tGate('reasons.addOrImportContacts')}
             onClick={openAddForm}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            className={motion.action}
           >
-            <Plus className="size-4" />
-            {t('addContactBtn')}
+            <Plus className="size-4" aria-hidden="true" />
+            <span className={motion.label}>{t('addContactBtn')}</span>
           </GatedButton>
         </div>
       </div>
@@ -565,7 +588,7 @@ export default function ContactsPage() {
               <TableHead className="text-muted-foreground">{t('tableColumns.phone')}</TableHead>
               <TableHead className="text-muted-foreground hidden md:table-cell">{t('tableColumns.email')}</TableHead>
               <TableHead className="text-muted-foreground hidden lg:table-cell">{t('tableColumns.company')}</TableHead>
-              <TableHead className="text-muted-foreground hidden md:table-cell">{t('tableColumns.tags')}</TableHead>
+              <TableHead className="text-muted-foreground">{t('tableColumns.tags')}</TableHead>
               <TableHead className="text-muted-foreground hidden lg:table-cell">{t('tableColumns.createdAt')}</TableHead>
               <TableHead className="text-muted-foreground w-12" />
             </TableRow>
@@ -632,29 +655,11 @@ export default function ContactsPage() {
                   <TableCell className="text-muted-foreground hidden lg:table-cell text-sm">
                     {contact.company || <span className="text-muted-foreground">-</span>}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {contact.tags && contact.tags.length > 0 ? (
-                        contact.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag.id}
-                            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
-                            style={{
-                              backgroundColor: tag.color + '20',
-                              color: tag.color,
-                            }}
-                          >
-                            {tag.name}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-muted-foreground text-xs">-</span>
-                      )}
-                      {contact.tags && contact.tags.length > 3 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          +{contact.tags.length - 3}
-                        </span>
-                      )}
+                  <TableCell onClick={(event) => event.stopPropagation()}>
+                    <div className="flex items-center gap-1">
+                      {contact.tags?.length ? <ContactTagPills tags={contact.tags} /> : null}
+                      {canEdit && <ContactTagPicker compact contactId={contact.id} assignedTags={contact.tags ?? []}
+                        onChange={(tag, assigned) => handleContactTagChange(contact.id, tag, assigned)} />}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs hidden lg:table-cell">
