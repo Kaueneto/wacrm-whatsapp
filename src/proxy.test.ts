@@ -143,6 +143,21 @@ describe("middleware — every dashboard route requires a session", () => {
 });
 
 describe('support role redirects', () => {
+  it('moves old template links to the dedicated campaign templates page', async () => {
+    mockUser = { id: 'admin' };
+    refreshedCookies = [ROTATED];
+    const response = await middleware(new NextRequest('https://app.test/settings?tab=templates'));
+    expect(response.headers.get('location')).toBe('https://app.test/campaigns/templates');
+    expect(response.cookies.get(ROTATED.name)?.value).toBe(ROTATED.value);
+  });
+  it.each(['agent', 'supervisor'])('keeps %s out of template management and detail routes', async role => {
+    mockUser = { id: role };
+    mockRole = role;
+    for (const path of ['/campaigns/templates', '/campaigns/templates/template-id']) {
+      const response = await middleware(new NextRequest(`https://app.test${path}`));
+      expect(response.headers.get('location')).toBe('https://app.test/inbox');
+    }
+  });
   it('moves legacy member links to the dedicated organization area', async () => {
     mockUser = { id: 'admin' };
     mockRole = 'admin';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronRight, FileText, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { createClient } from '@/lib/supabase/client';
@@ -33,7 +33,7 @@ interface WhatsAppStatus {
 export function SettingsOverview({
   onSelect,
 }: {
-  onSelect: (section: SettingsSection) => void;
+  onSelect: (section: SettingsSection | 'templates') => void;
 }) {
   const { user, profile, accountId, accountRole, defaultCurrency, canManageMembers } =
     useAuth();
@@ -152,7 +152,7 @@ export function SettingsOverview({
   // Per-tile loading + subtitle. `null` counts render as a graceful
   // fallback so a single failed query never blanks a tile.
   const tiles: {
-    section: SettingsSection;
+    section: SettingsSection | 'templates';
     loading: boolean;
     subtitle: ReactNode;
   }[] = [
@@ -238,8 +238,7 @@ export function SettingsOverview({
       {/* Status tiles */}
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {tiles.map(({ section, loading, subtitle }) => {
-          const meta = SECTION_META[section];
-          const Icon = meta.icon;
+          const Icon = section === 'templates' ? FileText : SECTION_META[section].icon;
           return (
             <button
               key={section}

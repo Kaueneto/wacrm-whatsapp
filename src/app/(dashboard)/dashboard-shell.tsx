@@ -19,8 +19,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const t = useTranslations("DashboardShell");
 
-  // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
-  // always visible and this stays at `false` (ignored by the component).
+  // The header controls the mobile drawer. Desktop width is managed in Sidebar.
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 

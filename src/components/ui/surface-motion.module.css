@@ -1,0 +1,68 @@
+.sidebarRow,
+.action,
+.surface {
+  --hover-shadow: 0 4px 10px -3px rgb(0 0 0 / 16%);
+}
+
+:global(.dark) :is(.sidebarRow, .action, .surface) {
+  --hover-shadow:
+    0 0 0 1px color-mix(in oklab, var(--foreground) 14%, transparent),
+    0 5px 12px -4px color-mix(in oklab, var(--primary) 38%, transparent),
+    0 3px 8px -3px rgb(0 0 0 / 65%);
+}
+
+.action,
+.surface {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    box-shadow 180ms ease, translate 180ms ease, scale 180ms ease;
+}
+
+.action > .label {
+  transition: scale 180ms ease;
+}
+
+.sidebarRow:focus-visible,
+.action:not(:disabled, [aria-disabled='true']):focus-visible,
+.surface:focus-visible,
+.surface:has(:focus-visible) {
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000), var(--hover-shadow);
+}
+
+@media (hover: hover) {
+  .sidebarRow:hover,
+  .action:not(:disabled, [aria-disabled='true']):hover,
+  .surface:hover {
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000), var(--hover-shadow);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .action:not(:disabled, [aria-disabled='true'], :active):focus-visible > .label {
+    scale: 1.045;
+  }
+
+  @media (hover: hover) {
+    .action:not(:disabled, [aria-disabled='true'], :active):hover {
+      translate: 0 -1px;
+    }
+
+    .action:not(:disabled, [aria-disabled='true'], :active):hover > .label {
+      scale: 1.045;
+    }
+
+    .surface:hover {
+      translate: 0 -2px;
+      scale: 1.006;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action,
+  .surface,
+  .action > .label {
+    transition: none;
+  }
+}

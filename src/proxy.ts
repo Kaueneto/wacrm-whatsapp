@@ -74,7 +74,7 @@ export async function proxy(request: NextRequest) {
   // Protected pages - redirect to login if not authenticated
   // Every top-level route under src/app/(dashboard)/ belongs here —
   // middleware.test.ts reads that directory and fails on a missing one.
-  const protectedPaths = ['/dashboard', '/inbox', '/contacts', '/pipelines', '/broadcasts', '/campaigns', '/automations', '/flows', '/agents', '/notifications', '/settings', '/organization']
+  const protectedPaths = ['/dashboard', '/inbox', '/contacts', '/tags', '/pipelines', '/broadcasts', '/campaigns', '/automations', '/flows', '/agents', '/notifications', '/settings', '/organization']
   if (!user && protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -110,6 +110,12 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/organization'
       url.search = '?view=users'
+      return withRefreshedCookies(NextResponse.redirect(url))
+    }
+    if (pathname === '/settings' && request.nextUrl.searchParams.get('tab') === 'templates') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/campaigns/templates'
+      url.search = ''
       return withRefreshedCookies(NextResponse.redirect(url))
     }
   }

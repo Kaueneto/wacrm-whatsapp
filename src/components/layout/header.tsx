@@ -50,7 +50,7 @@ import { useTranslations } from "next-intl";
 export function Header({ onOpenSidebar }: HeaderProps) {
   const t = useTranslations("Header");
   const pathname = usePathname();
-  const { profile, signOut } = useAuth();
+  const { account, profile, canEditSettings, signOut } = useAuth();
   const titleKey = getPageTitleKey(pathname);
 
   const initial =
@@ -110,6 +110,11 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             <p className="truncate text-xs text-muted-foreground">
               {profile?.email ?? ""}
             </p>
+            {account?.name && account.name !== profile?.full_name && (
+              <p className="mt-1 truncate text-xs text-muted-foreground" title={account.name}>
+                {account.name}
+              </p>
+            )}
           </div>
           <DropdownMenuSeparator className="bg-border" />
           <DropdownMenuItem
@@ -126,7 +131,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           <DropdownMenuItem
             render={
               <Link
-                href="/settings?tab=whatsapp"
+                href={canEditSettings ? "/settings?tab=whatsapp" : "/settings?tab=appearance"}
                 className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"
               />
             }
