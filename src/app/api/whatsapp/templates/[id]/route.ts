@@ -12,6 +12,7 @@ import {
 } from '@/lib/whatsapp/meta-api'
 import {
   validateTemplatePayload,
+  templateLocalMetadata,
   type TemplatePayload,
 } from '@/lib/whatsapp/template-validators'
 import { buildMetaTemplatePayload } from '@/lib/whatsapp/template-components'
@@ -85,6 +86,15 @@ export async function PATCH(
     } catch {
       return NextResponse.json({ error: t('templates.invalidJsonBody') }, { status: 400 })
     }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return NextResponse.json({ error: t('templates.invalidJsonBody') }, { status: 400 })
+    }
+    let metadata
+    try {
+      metadata = templateLocalMetadata(payload)
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : t('templates.validationFailed') }, { status: 400 })
+    }
 
     // RLS handles ownership, but we need the existing row to read
     // meta_template_id and status — fetch explicitly.
@@ -96,6 +106,13 @@ export async function PATCH(
       .maybeSingle()
     if (lookupErr || !existing) {
       return NextResponse.json({ error: t('templates.notFound') }, { status: 404 })
+    }
+
+    if (Object.keys(metadata).length && Object.keys(payload).every((key) => key === 'display_name' || key === 'description')) {
+      const { data: template, error } = await supabase.from('message_templates')
+        .update(metadata).eq('account_id', accountId).eq('id', id).select().single()
+      if (error) return NextResponse.json({ error: t('templates.editedSaveFailed', { message: error.message }) }, { status: 500 })
+      return NextResponse.json({ template, local_only: true })
     }
 
     if (!existing.meta_template_id) {
@@ -196,6 +213,7 @@ export async function PATCH(
     const { data: row, error: updErr } = await supabase
       .from('message_templates')
       .update({
+        ...metadata,
         category: payload.category,
         header_type: payload.header_type ?? null,
         header_content: payload.header_content ?? null,

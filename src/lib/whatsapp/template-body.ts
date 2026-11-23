@@ -27,7 +27,7 @@ import type { MessageTemplate } from '@/types';
  * blanked, so a caller that under-supplies params gets a visible `{{2}}`
  * instead of a silently truncated sentence.
  */
-export function renderTemplateBody(body: string, params: string[]): string {
+export function renderTemplateBody(body: string, params: readonly (string | undefined)[]): string {
   const keys = extractTemplateVariables(body);
   return body.replace(/\{\{([A-Za-z0-9_]+)\}\}/g, (match, key: string) => {
     const idx = keys.indexOf(key);

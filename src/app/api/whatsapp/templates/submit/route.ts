@@ -10,6 +10,8 @@ import { decrypt } from '@/lib/whatsapp/encryption'
 import { submitMessageTemplate } from '@/lib/whatsapp/meta-api'
 import {
   validateTemplatePayload,
+  normalizeTemplateName,
+  templateLocalMetadata,
   type TemplatePayload,
 } from '@/lib/whatsapp/template-validators'
 import { buildMetaTemplatePayload } from '@/lib/whatsapp/template-components'
@@ -35,6 +37,7 @@ function buildTemplateRow(
     // not-null constraint.
     account_id: accountId,
     name: payload.name,
+    ...templateLocalMetadata(payload),
     category: payload.category,
     language: payload.language,
     header_type: payload.header_type ?? null,
@@ -137,6 +140,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: t('templates.invalidJsonBody') }, { status: 400 })
     }
 
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return NextResponse.json({ error: t('templates.invalidJsonBody') }, { status: 400 })
+    }
     if (payload.category === 'Authentication') {
       return NextResponse.json(
         {
@@ -148,6 +154,14 @@ export async function POST(request: Request) {
     }
 
     try {
+      const metadata = templateLocalMetadata(payload)
+      const title = metadata.display_name ?? payload.name
+      if (typeof title !== 'string') throw new Error(t('templates.validationFailed'))
+      payload.name = normalizeTemplateName(title)
+      if (!payload.name) throw new Error(t('templates.titleNeedsLetters'))
+      if (payload.display_name === undefined && payload.name !== title.trim()) payload.display_name = title.trim()
+      templateLocalMetadata(payload)
+      payload.language = payload.language?.trim() || 'pt_BR'
       validateTemplatePayload(payload)
     } catch (e) {
       return NextResponse.json(

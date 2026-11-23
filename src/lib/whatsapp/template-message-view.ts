@@ -4,6 +4,8 @@ export type TemplateMessageHeader =
   | { type: 'text'; text: string }
   | { type: 'image' | 'video' | 'document'; url: string | null };
 
+export type TemplateMessageContent = Pick<MessageTemplate, 'header_type' | 'header_content' | 'header_media_url' | 'footer_text' | 'buttons'>;
+
 export interface TemplateMessageView {
   header: TemplateMessageHeader | null;
   footer: string | null;
@@ -35,7 +37,7 @@ export function matchMessageTemplate(
 
 export function templateMessageView(
   message: Pick<Message, 'media_url'>,
-  template: MessageTemplate | null
+  template: TemplateMessageContent | null
 ): TemplateMessageView {
   const headerType = template?.header_type;
   let header: TemplateMessageHeader | null = null;

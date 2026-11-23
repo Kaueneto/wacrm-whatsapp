@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { templateCategoryClasses } from "@/lib/semantic-chip";
 import {
   ArrowLeft,
   ChevronRight,
@@ -199,7 +200,7 @@ export function TemplatePicker({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-popover-foreground">
             <LayoutTemplate className="h-4 w-4 text-primary" />
-            {selected ? selected.name : t("sendTemplate")}
+            {selected ? selected.display_name || selected.name : t("sendTemplate")}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {selected
@@ -233,9 +234,9 @@ export function TemplatePicker({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate text-sm font-medium text-popover-foreground">
-                          {t.name}
+                          {t.display_name || t.name}
                         </p>
-                        <Badge className="border border-primary/30 bg-primary/20 text-[10px] text-primary">
+                        <Badge variant="outline" className={`text-[10px] ${templateCategoryClasses[t.category]}`}>
                           {t.category}
                         </Badge>
                         {t.language && (
@@ -244,6 +245,7 @@ export function TemplatePicker({
                           </span>
                         )}
                       </div>
+                      <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" title={t.name}>{t.name}</p>
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                         {t.body_text}
                       </p>

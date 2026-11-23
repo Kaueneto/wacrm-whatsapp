@@ -75,7 +75,7 @@ vi.mock('@/lib/whatsapp/encryption', () => ({
 import { POST } from './route'
 import { __resetRateLimitForTests } from '@/lib/rate-limit'
 
-function submit() {
+function submit(overrides: Record<string, unknown> = {}) {
   return POST(
     new Request('http://localhost/api/whatsapp/templates/submit', {
       method: 'POST',
@@ -85,6 +85,7 @@ function submit() {
         category: 'Utility',
         language: 'en_US',
         body_text: 'Your order shipped.',
+        ...overrides,
       }),
     }),
   )
@@ -104,6 +105,16 @@ afterEach(() => {
 })
 
 describe('POST /api/whatsapp/templates/submit', () => {
+  it('preserves the title and description locally and defaults the Meta submission to pt_BR', async () => {
+    vi.stubEnv('WHATSAPP_TEMPLATES_DRY_RUN', 'false')
+    submitMessageTemplate.mockResolvedValue({ id: 'meta-1', status: 'PENDING' })
+    const res = await submit({ name: 'Cobrança — Parcela nº 2!', language: undefined, description: 'Uso interno' })
+    expect(res.status).toBe(200)
+    expect(writes[0].row).toMatchObject({ name: 'cobranca_parcela_no_2', display_name: 'Cobrança — Parcela nº 2!', description: 'Uso interno', language: 'pt_BR' })
+    const metaRequest = submitMessageTemplate.mock.calls[0][0]
+    expect(JSON.stringify(metaRequest)).toContain('cobranca_parcela_no_2')
+    expect(JSON.stringify(metaRequest)).not.toContain('Uso interno')
+  })
   it('inserts a new template with the caller as author', async () => {
     const res = await submit()
 

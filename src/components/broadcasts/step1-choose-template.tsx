@@ -6,12 +6,7 @@ import { MessageTemplate } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileText, ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-
-const categoryColors: Record<string, string> = {
-  Marketing: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  Utility: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Authentication: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-};
+import { templateCategoryClasses } from '@/lib/semantic-chip';
 
 interface Step1Props {
   selectedTemplate: MessageTemplate | null;
@@ -20,6 +15,12 @@ interface Step1Props {
   onBack?: () => void;
   showNavigation?: boolean;
   layout?: 'grid' | 'list';
+  title?: string;
+  connectedCatalog?: {
+    templates: MessageTemplate[];
+    loading: boolean;
+    error: string | null;
+  };
 }
 
 export function Step1ChooseTemplate({
@@ -29,13 +30,20 @@ export function Step1ChooseTemplate({
   onBack,
   showNavigation = true,
   layout = 'grid',
+  title,
+  connectedCatalog,
 }: Step1Props) {
   const t = useTranslations('Broadcasts.wizard');
-  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const usesConnectedCatalog = Boolean(connectedCatalog);
+  const [localTemplates, setLocalTemplates] = useState<MessageTemplate[]>([]);
+  const [loadingLocal, setLoadingLocal] = useState(true);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const templates = connectedCatalog?.templates ?? localTemplates;
+  const loading = connectedCatalog?.loading ?? loadingLocal;
+  const error = connectedCatalog ? connectedCatalog.error : localError;
 
   useEffect(() => {
+    if (usesConnectedCatalog) return;
     async function fetchTemplates() {
       try {
         const supabase = createClient();
@@ -49,18 +57,18 @@ export function Step1ChooseTemplate({
           .order('created_at', { ascending: false });
 
         if (fetchError) throw fetchError;
-        setTemplates(data ?? []);
+        setLocalTemplates(data ?? []);
       } catch (err) {
-        setError(
+        setLocalError(
           err instanceof Error ? err.message : t('chooseTemplate.errorLoad')
         );
       } finally {
-        setLoading(false);
+        setLoadingLocal(false);
       }
     }
 
     fetchTemplates();
-  }, []);
+  }, [usesConnectedCatalog, t]);
 
   if (loading) {
     return (
@@ -82,21 +90,46 @@ export function Step1ChooseTemplate({
     <div className="min-w-0 space-y-6">
       <div>
         <h2 className="text-foreground text-lg font-semibold">
-          {t('chooseTemplate.title')}
+          {title ?? t('chooseTemplate.title')}
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          {t('chooseTemplate.subtitle')}
+          {t(
+            usesConnectedCatalog
+              ? 'chooseTemplate.connectedSubtitle'
+              : 'chooseTemplate.subtitle'
+          )}
         </p>
       </div>
+
+      {usesConnectedCatalog &&
+        selectedTemplate &&
+        !templates.some(({ id }) => id === selectedTemplate.id) && (
+          <p
+            role="status"
+            className="rounded-lg border border-amber-500/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+          >
+            {t('chooseTemplate.savedUnavailable', {
+              name: selectedTemplate.name,
+            })}
+          </p>
+        )}
 
       {templates.length === 0 ? (
         <div className="border-border bg-card/50 flex h-48 flex-col items-center justify-center rounded-xl border">
           <FileText className="text-muted-foreground mb-2 h-8 w-8" />
           <p className="text-muted-foreground text-sm">
-            {t('chooseTemplate.noTemplates')}
+            {t(
+              usesConnectedCatalog
+                ? 'chooseTemplate.noConnectedTemplates'
+                : 'chooseTemplate.noTemplates'
+            )}
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
-            {t('chooseTemplate.createFirst')}
+            {t(
+              usesConnectedCatalog
+                ? 'chooseTemplate.syncConnected'
+                : 'chooseTemplate.createFirst'
+            )}
           </p>
         </div>
       ) : (
@@ -110,7 +143,7 @@ export function Step1ChooseTemplate({
           {templates.map((template) => {
             const isSelected = selectedTemplate?.id === template.id;
             const catColor =
-              categoryColors[template.category] ?? categoryColors.Utility;
+              templateCategoryClasses[template.category] ?? templateCategoryClasses.Utility;
 
             return (
               <button
@@ -126,7 +159,7 @@ export function Step1ChooseTemplate({
               >
                 <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
                   <h3 className="text-foreground min-w-0 flex-1 text-sm font-medium [overflow-wrap:anywhere]">
-                    {template.name}
+                    {template.display_name ?? template.name}
                   </h3>
                   <span
                     className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${catColor}`}
@@ -134,8 +167,9 @@ export function Step1ChooseTemplate({
                     {template.category}
                   </span>
                 </div>
+                <p className="truncate font-mono text-xs text-muted-foreground" title={template.name}>{template.name}</p>
                 <p className="text-muted-foreground line-clamp-3 text-xs [overflow-wrap:anywhere]">
-                  {template.body_text}
+                  {template.description ?? template.body_text}
                 </p>
                 <div className="text-muted-foreground flex items-center gap-2 text-[10px]">
                   <span>{template.language ?? 'en_US'}</span>

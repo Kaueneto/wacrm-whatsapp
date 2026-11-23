@@ -39,6 +39,8 @@ export const TEMPLATE_LIMITS = {
 
 export interface TemplatePayload {
   name: string;
+  display_name?: string;
+  description?: string;
   category: MessageTemplate['category'];
   language: string;
   header_type?: MessageTemplate['header_type'];
@@ -49,6 +51,26 @@ export interface TemplatePayload {
   footer_text?: string;
   buttons?: TemplateButton[];
   sample_values?: TemplateSampleValues;
+}
+
+export function normalizeTemplateName(title: string): string {
+  const value = title.trim();
+  if (TEMPLATE_LIMITS.nameRegex.test(value)) return value;
+  return value.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+export function templateLocalMetadata(payload: Pick<TemplatePayload, 'display_name' | 'description'>) {
+  const fields = { display_name: 512, description: 1000 } as const;
+  const metadata: Partial<Record<keyof typeof fields, string | null>> = {};
+  for (const field of ['display_name', 'description'] as const) {
+    const value = payload[field];
+    if (value === undefined) continue;
+    if (typeof value !== 'string' || value.trim().length > fields[field])
+      throw new Error(t('metadataInvalid', { max: fields[field] }));
+    metadata[field] = value.trim() || null;
+  }
+  return metadata;
 }
 
 export function validateTemplateName(name: string): void {

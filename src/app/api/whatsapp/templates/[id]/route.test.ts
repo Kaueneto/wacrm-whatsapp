@@ -172,6 +172,19 @@ describe('template lifecycle role gate (GHSA-m4fx-g6pr-hrw8)', () => {
     expect(deleted.status).toBe(200)
     expect(meta.deleteMessageTemplate).toHaveBeenCalledTimes(1)
   })
+
+  it('updates a local title and description without changing approval', async () => {
+    const metadata = { display_name: 'Atualização do pedido', description: 'Uso interno' }
+    const res = await PATCH(new Request('http://localhost/t', {
+      method: 'PATCH',
+      body: JSON.stringify(metadata),
+    }), { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ local_only: true })
+    expect(meta.editMessageTemplate).not.toHaveBeenCalled()
+    expect(templateUpdates).toEqual([metadata])
+  })
 })
 
 describe('template lifecycle rate limit', () => {
