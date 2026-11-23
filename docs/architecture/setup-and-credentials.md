@@ -136,6 +136,22 @@ npm run dev -- --hostname 0.0.0.0 --port 3000
 
 ## Meta: URL do webhook durante o desenvolvimento local
 
+### Recebimento persistente e recuperação — 23/11/2026
+
+As migrations 092–093 adicionam uma caixa de entrada persistente de webhooks. Após validar assinatura e tamanho, o endpoint grava os eventos no banco antes de responder 200 à Meta. Se não conseguir gravar, responde 503 para permitir reentrega. Cada mensagem/status tem uma chave de deduplicação; eventos do mesmo remetente são processados em ordem de chegada, com lease e token para recuperar processos interrompidos. Mensagem, contadores da conversa e checkpoint são gravados na mesma transação.
+
+Executar `npm run worker:webhooks` continuamente, além do servidor da aplicação. `npm run worker:webhooks:check` valida a conexão sem processar mensagens. O recebimento também tenta esvaziar a fila em `after()`, mas o worker independente garante a retomada se a requisição ou o servidor forem interrompidos. Como alternativa de hospedagem, chamar `POST /api/whatsapp/webhook/process` a cada minuto com o header `x-cron-secret` igual a `AUTOMATION_CRON_SECRET`. Não publicar esse segredo no cliente. O worker registra heartbeat e executa a manutenção da fila.
+
+Falhas anteriores ao início das automações usam novas tentativas com espera crescente, até 20 tentativas. Uma interrupção após iniciar efeitos externos fica em `needs_review`: não há como deduzir com certeza se uma resposta chegou a ser enviada à Meta. A plataforma pede revisão do histórico, em vez de repetir mensagens automaticamente. Essa proteção não promete execução exatamente uma vez de todos os sistemas externos. Eventos atrasados mais de cinco minutos, ou anteriores a atividade mais recente da conversa, completam o histórico sem disparar menus, IA ou automações retroativamente. A 093 reavalia essa condição ao retomar um checkpoint já gravado e tolera a precisão de um segundo dos timestamps da Meta.
+
+Configurações → WhatsApp apresenta a fila, falhas, itens para revisão e disponibilidade do worker. A verificação do callback consulta a URL registrada na Meta e testa se ela responde como nosso endpoint, com cache por conta de um minuto. Os alertas são visuais nesse painel; não há envio de alertas externos configurado. As ações administrativas são filtradas pela conta e não expõem o payload bruto ao navegador.
+
+Retenção: payloads de eventos concluídos são removidos após sete dias; as chaves de deduplicação concluídas ficam por 30 dias. Eventos pendentes, falhos ou em revisão não são apagados por essa limpeza. Mensagens em `messages`, conversas, contatos e anexos não são apagados por essa rotina. Texto e metadados do chat são persistidos no PostgreSQL; os arquivos enviados e os recebidos que forem espelhados ficam no Storage, no bucket `chat-media`. Com o espelhamento de entrada desligado ou malsucedido, um registro pode guardar apenas uma referência de mídia da Meta. Respostas pelo aplicativo WhatsApp Business continuam dependendo de uma implementação separada de coexistência/espelhamento.
+
+A fila protege eventos que chegam ao endpoint; ela não busca mensagens que a Meta nunca entregou. O túnel continua sendo uma dependência do ambiente local até a hospedagem definitiva. Backups e hospedagem de produção permanecem pendências de infraestrutura, sem domínio definido nesta etapa.
+
+Validação: testes PostgreSQL isolados cobrem deduplicação, ordem por remetente, lease expirado, gravação atômica, isolamento de conta, retenção e mensagens atrasadas. Testes de aplicação cobrem ACK após persistência, resposta 503 em falha, checkpoint de automações, saúde do callback e permissões do painel. O teste do worker (`--check`) não envia mensagens.
+
 O CRM pode continuar rodando localmente. Para receber callbacks da Meta, expor a porta 3000 por um túnel HTTPS. Exemplo ilustrativo de endereço atribuído pelo túnel:
 
 ```text

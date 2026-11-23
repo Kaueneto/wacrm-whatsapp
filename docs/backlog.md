@@ -19,3 +19,10 @@
 ### Resultado esperado da avaliação
 
 Proposta técnica e jurídica revisável com escopo inicial, limitações das evidências, custos e critérios de aceite antes de decidir pela implementação.
+
+## BL-002 — Ocorrências e pendências no atendimento
+
+- **Registrado em 22/11/2026.**
+- Evoluir a linha do tempo de notas do contato para registrar ocorrências que precisam de acompanhamento.
+- Exibir um ícone de cadeado na Caixa de Entrada de WhatsApp da plataforma quando o contato tiver uma pendência aberta. Remover o indicador assim que todas as pendências forem resolvidas.
+- Definir antes da implementação quem pode abrir e resolver ocorrências, quais dados entram no histórico e em quais pontos da conversa o indicador deve aparecer.
