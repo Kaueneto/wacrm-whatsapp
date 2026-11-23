@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, [data-mode="dark"] *));
 
 @theme inline {
   --color-background: var(--background);
@@ -227,6 +227,67 @@ html[data-theme="rose"] {
   --sidebar-primary: oklch(0.645 0.22 16);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-ring: oklch(0.645 0.22 16);
+}
+
+/* Chat colors are independent of button fills. Metadata stays opaque so
+ * small timestamps and delivery indicators retain contrast in both modes. */
+:root,
+html[data-theme="violet"] {
+  --chat-outgoing: #44316a;
+  --chat-outgoing-foreground: #f5f0ff;
+  --chat-outgoing-meta: #e0d4f5;
+}
+html[data-theme="emerald"] {
+  --chat-outgoing: #164c3c;
+  --chat-outgoing-foreground: #eafff5;
+  --chat-outgoing-meta: #c0e0d2;
+}
+html[data-theme="cobalt"] {
+  --chat-outgoing: #173f70;
+  --chat-outgoing-foreground: #eff6ff;
+  --chat-outgoing-meta: #c5dcfa;
+}
+html[data-theme="amber"] {
+  --chat-outgoing: #513b19;
+  --chat-outgoing-foreground: #fff4db;
+  --chat-outgoing-meta: #eed8ac;
+}
+html[data-theme="rose"] {
+  --chat-outgoing: #642d3a;
+  --chat-outgoing-foreground: #fff1f3;
+  --chat-outgoing-meta: #f5ccd6;
+}
+:root,
+html[data-mode="dark"] {
+  --chat-outgoing-read: #7dd3fc;
+  --chat-outgoing-failed: #fda4af;
+}
+html[data-mode="light"] {
+  --chat-outgoing: #ede9fe;
+  --chat-outgoing-foreground: #2e1065;
+  --chat-outgoing-meta: #59437a;
+  --chat-outgoing-read: #075985;
+  --chat-outgoing-failed: #b91c1c;
+}
+html[data-mode="light"][data-theme="emerald"] {
+  --chat-outgoing: #ddf4e8;
+  --chat-outgoing-foreground: #123d2c;
+  --chat-outgoing-meta: #37644f;
+}
+html[data-mode="light"][data-theme="cobalt"] {
+  --chat-outgoing: #e0edff;
+  --chat-outgoing-foreground: #16365d;
+  --chat-outgoing-meta: #3d597d;
+}
+html[data-mode="light"][data-theme="amber"] {
+  --chat-outgoing: #fff0cc;
+  --chat-outgoing-foreground: #513813;
+  --chat-outgoing-meta: #705426;
+}
+html[data-mode="light"][data-theme="rose"] {
+  --chat-outgoing: #ffe4e9;
+  --chat-outgoing-foreground: #641d32;
+  --chat-outgoing-meta: #805062;
 }
 
 @layer base {

@@ -5,13 +5,12 @@
  * /broadcasts/page.tsx and /broadcasts/[id]/page.tsx with slight
  * drift risk. One source of truth now.
  *
- * Badge shape: bg-*-500/10 + text-*-400 + border-*-500/20. The
- * translucent fills sit fine on both light and dark surfaces; neutral
- * statuses use text-muted-foreground so the label stays legible in
- * light mode (a solid slate-400 would be too faint on white).
+ * Colors come from the shared semantic palette: dark text on light
+ * surfaces and bright text on dark surfaces, independent of brand accent.
  */
 
 import type { BroadcastStatus, RecipientStatus } from "@/types";
+import { semanticChip } from "@/lib/semantic-chip";
 
 export interface StatusDisplay {
   label: string;
@@ -24,55 +23,55 @@ export interface StatusDisplay {
 }
 
 export const broadcastStatusConfig: Record<BroadcastStatus, StatusDisplay> = {
-  completed: { label: 'completed', classes: 'bg-primary/10 text-primary border-primary/20' },
-  cancelled: { label: 'cancelled', classes: 'bg-slate-500/10 text-muted-foreground border-slate-500/20' },
+  completed: { label: 'completed', classes: semanticChip.success },
+  cancelled: { label: 'cancelled', classes: semanticChip.neutral },
   draft: {
     label: "draft",
-    classes: "bg-slate-500/10 text-muted-foreground border-slate-500/20",
+    classes: semanticChip.neutral,
   },
   scheduled: {
     label: "scheduled",
-    classes: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    classes: semanticChip.info,
   },
   sending: {
     label: "sending",
-    classes: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    classes: semanticChip.warning,
     pulse: true,
   },
   sent: {
     label: "sent",
-    classes: "bg-primary/10 text-primary border-primary/20",
+    classes: semanticChip.success,
   },
   failed: {
     label: "failed",
-    classes: "bg-red-500/10 text-red-400 border-red-500/20",
+    classes: semanticChip.danger,
   },
 };
 
 export const recipientStatusConfig: Record<RecipientStatus, StatusDisplay> = {
   pending: {
     label: "pending",
-    classes: "bg-slate-500/10 text-muted-foreground border-slate-500/20",
+    classes: semanticChip.neutral,
   },
   sent: {
     label: "sent",
-    classes: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    classes: semanticChip.info,
   },
   delivered: {
     label: "delivered",
-    classes: "bg-primary/10 text-primary border-primary/20",
+    classes: semanticChip.success,
   },
   read: {
     label: "read",
-    classes: "bg-primary/10 text-primary border-primary/20",
+    classes: semanticChip.success,
   },
   replied: {
     label: "replied",
-    classes: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    classes: semanticChip.purple,
   },
   failed: {
     label: "failed",
-    classes: "bg-red-500/10 text-red-400 border-red-500/20",
+    classes: semanticChip.danger,
   },
 };
 

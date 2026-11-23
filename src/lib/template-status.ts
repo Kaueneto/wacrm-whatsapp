@@ -8,6 +8,7 @@
  */
 
 import type { MessageTemplateStatus } from '@/types';
+import { semanticChip } from '@/lib/semantic-chip';
 import { getT } from '@/lib/i18n/translate';
 
 export interface TemplateStatusDisplay {
@@ -23,34 +24,34 @@ export const templateStatusConfig: Record<
 > = {
   DRAFT: {
     label: t('DRAFT'),
-    classes: 'bg-slate-600/20 text-muted-foreground border-slate-600/30',
+    classes: semanticChip.neutral,
   },
   PENDING: {
     label: t('PENDING'),
-    classes: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30',
+    classes: semanticChip.warning,
   },
   APPROVED: {
     label: t('APPROVED'),
-    classes: 'bg-primary/20 text-primary border-primary/30',
+    classes: semanticChip.success,
   },
   REJECTED: {
     label: t('REJECTED'),
-    classes: 'bg-red-600/20 text-red-400 border-red-600/30',
+    classes: semanticChip.danger,
   },
   PAUSED: {
     label: t('PAUSED'),
-    classes: 'bg-orange-600/20 text-orange-400 border-orange-600/30',
+    classes: semanticChip.orange,
   },
   DISABLED: {
     label: t('DISABLED'),
-    classes: 'bg-red-900/30 text-red-500 border-red-900/40',
+    classes: semanticChip.danger,
   },
   IN_APPEAL: {
     label: t('IN_APPEAL'),
-    classes: 'bg-blue-600/20 text-blue-400 border-blue-600/30',
+    classes: semanticChip.info,
   },
   PENDING_DELETION: {
     label: t('PENDING_DELETION'),
-    classes: 'bg-slate-700/30 text-muted-foreground border-slate-700/40',
+    classes: semanticChip.neutral,
   },
 };
