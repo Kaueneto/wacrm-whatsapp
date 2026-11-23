@@ -12,6 +12,26 @@ export interface ParsedContactRow {
   tagNames: string[];
 }
 
+const CONTACT_CSV_HEADERS = ['phone', 'name', 'email', 'company', 'tags'] as const;
+type CsvDelimiter = ',' | ';';
+
+export function contactCsvTemplate(locale: string): string {
+  const decimal = new Intl.NumberFormat(locale).formatToParts(1.1)
+    .find((part) => part.type === 'decimal')?.value;
+  return `\uFEFF${CONTACT_CSV_HEADERS.join(decimal === ',' ? ';' : ',')}\r\n`;
+}
+
+export function decodeContactCsv(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xFF && bytes[1] === 0xFE) return new TextDecoder('utf-16le').decode(bytes);
+  if (bytes[0] === 0xFE && bytes[1] === 0xFF) return new TextDecoder('utf-16be').decode(bytes);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder('windows-1252').decode(bytes);
+  }
+}
+
 /** Split a CSV cell into unique tag names (case-insensitive de-dupe). */
 export function parseTagCell(value: string | undefined): string[] {
   if (!value?.trim()) return [];
@@ -47,19 +67,14 @@ export interface ParseContactCsvResult {
 }
 
 export function parseContactCsv(text: string): ParseContactCsvResult {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) {
-    return {
-      rows: [],
-      hasPhoneColumn: false,
-      hasTagsColumn: false,
-      hasCompanyColumn: false,
-    };
-  }
-
-  const headers = lines[0]
-    .split(',')
-    .map((h) => h.trim().toLowerCase().replace(/["']/g, ''));
+  const content = text.trimStart();
+  const separator = /^sep=([,;])[ \t]*(?:\r\n|\r|\n)/i.exec(content);
+  const csv = separator ? content.slice(separator[0].length) : content;
+  const header = csv.split(/[\r\n]/, 1)[0] ?? '';
+  const headersFor = (delimiter: CsvDelimiter) =>
+    (parseCsvRows(header, delimiter)[0] ?? []).map(h => h.toLowerCase().replace(/^'|'$/g, ''));
+  const delimiter = separator?.[1] === ';' || (!separator && headersFor(';').includes('phone')) ? ';' : ',';
+  const headers = headersFor(delimiter);
 
   const phoneIdx = headers.indexOf('phone');
   if (phoneIdx === -1) {
@@ -78,35 +93,21 @@ export function parseContactCsv(text: string): ParseContactCsvResult {
 
   const rows: ParsedContactRow[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const values = parseCsvLine(line);
+  for (const values of parseCsvRows(csv, delimiter).slice(1)) {
     // A row with no usable phone is pushed through rather than dropped
     // here — dedupeByPhone (shared with the webhook/manual-form paths)
     // already treats an empty normalized key as invalid, and counting
     // it there means the import result can tell the user "N contacts
     // had no phone" instead of the row just vanishing with the total
     // row count silently short of what's actually in the file.
-    const phone = values[phoneIdx]?.replace(/["']/g, '').trim() ?? '';
+    const phone = values[phoneIdx]?.replace(/^'/, '').trim() ?? '';
 
     rows.push({
       phone,
-      name:
-        nameIdx >= 0
-          ? values[nameIdx]?.replace(/["']/g, '').trim() || undefined
-          : undefined,
-      email:
-        emailIdx >= 0
-          ? values[emailIdx]?.replace(/["']/g, '').trim() || undefined
-          : undefined,
-      company:
-        companyIdx >= 0
-          ? values[companyIdx]?.replace(/["']/g, '').trim() || undefined
-          : undefined,
-      tagNames:
-        tagsIdx >= 0 ? parseTagCell(values[tagsIdx]?.replace(/["']/g, '')) : [],
+      name: values[nameIdx] || undefined,
+      email: values[emailIdx] || undefined,
+      company: values[companyIdx] || undefined,
+      tagNames: parseTagCell(values[tagsIdx]),
     });
   }
 
@@ -118,22 +119,41 @@ export function parseContactCsv(text: string): ParseContactCsvResult {
   };
 }
 
-/** Simple CSV line parse (handles quoted fields). */
-function parseCsvLine(line: string): string[] {
-  const values: string[] = [];
+function parseCsvRows(text: string, delimiter: CsvDelimiter): string[][] {
+  const rows: string[][] = [];
+  let values: string[] = [];
   let current = '';
   let inQuotes = false;
+  let hasContent = false;
 
-  for (const char of line) {
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
     if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
+      hasContent = true;
+      if (inQuotes && text[index + 1] === '"') {
+        current += '"';
+        index++;
+      } else if (inQuotes || !current.trim()) {
+        inQuotes = !inQuotes;
+      } else {
+        current += char;
+      }
+    } else if (!inQuotes && char === delimiter) {
+      hasContent = true;
       values.push(current.trim());
       current = '';
+    } else if (!inQuotes && (char === '\r' || char === '\n')) {
+      values.push(current.trim());
+      if (hasContent || current.trim()) rows.push(values);
+      if (char === '\r' && text[index + 1] === '\n') index++;
+      values = [];
+      current = '';
+      hasContent = false;
     } else {
       current += char;
     }
   }
   values.push(current.trim());
-  return values;
+  if (hasContent || current.trim()) rows.push(values);
+  return rows;
 }

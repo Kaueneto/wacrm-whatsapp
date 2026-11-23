@@ -10,6 +10,8 @@ import {
 } from '@/lib/contacts/dedupe';
 import {
   parseContactCsv,
+  contactCsvTemplate,
+  decodeContactCsv,
   type ParsedContactRow,
 } from '@/lib/contacts/parse-contact-csv';
 import {
@@ -35,9 +37,10 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  Download,
   Tag,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 const DEFAULT_TAG_COLOR = '#3b82f6';
 const PREVIEW_LIMIT = 5;
@@ -128,8 +131,10 @@ export function ImportModal({
 }: ImportModalProps) {
   const t = useTranslations('Contacts.importModal');
   const supabase = createClient();
+  const locale = useLocale();
   const { accountId, canEditSettings } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileReadId = useRef(0);
 
   const [file, setFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedContactRow[]>([]);
@@ -149,6 +154,7 @@ export function ImportModal({
   } | null>(null);
 
   function reset() {
+    fileReadId.current++;
     setFile(null);
     setParsedRows([]);
     setHasTagsColumn(false);
@@ -166,11 +172,24 @@ export function ImportModal({
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
     if (!selected) return;
+    const readId = ++fileReadId.current;
+    e.target.value = '';
 
     setFile(selected);
+    setParsedRows([]);
+    setHasTagsColumn(false);
+    setHasCompanyColumn(false);
+    setTagColorByKey(new Map());
     setResult(null);
 
-    const text = await selected.text();
+    let text: string;
+    try {
+      text = decodeContactCsv(await selected.arrayBuffer());
+    } catch {
+      if (fileReadId.current === readId) toast.error(t('toastError'));
+      return;
+    }
+    if (fileReadId.current !== readId) return;
     const {
       rows,
       hasTagsColumn: csvHasTags,
@@ -179,10 +198,6 @@ export function ImportModal({
 
     if (rows.length === 0) {
       toast.error(t('toastNoValidRows'));
-      setParsedRows([]);
-      setHasTagsColumn(false);
-      setHasCompanyColumn(false);
-      setTagColorByKey(new Map());
       return;
     }
 
@@ -196,14 +211,13 @@ export function ImportModal({
         .select('name, color')
         .eq('account_id', accountId);
 
+      if (fileReadId.current !== readId) return;
       const colors = new Map<string, string>();
       for (const tag of tags ?? []) {
         const key = tag.name.trim().toLowerCase();
         if (!colors.has(key)) colors.set(key, tag.color);
       }
       setTagColorByKey(colors);
-    } else {
-      setTagColorByKey(new Map());
     }
   }
 
@@ -447,6 +461,21 @@ export function ImportModal({
               }}
             />
           </DialogHeader>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a
+                href={`data:text/csv;charset=utf-8,${encodeURIComponent(contactCsvTemplate(locale))}`}
+                download={t('templateFilename')}
+              />}
+            >
+              <Download className="size-4" />
+              {t('downloadTemplate')}
+            </Button>
+            <p className="min-w-48 flex-1 text-xs text-muted-foreground">{t('templateHint')}</p>
+          </div>
 
           <div
             role="button"

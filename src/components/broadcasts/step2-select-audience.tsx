@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
+import { createPortal } from 'react-dom';
 import { createClient } from '@/lib/supabase/client';
-import { countAudience } from '@/lib/broadcast-audience';
-import { parseBroadcastCsv } from '@/lib/broadcast-csv';
+import { countAudience, type AudienceConfig, type AudienceType, type CustomFieldOperator, type CustomFieldFilter } from '@/lib/broadcast-audience';
+import { campaignContactsCsvTemplate, parseBroadcastAudienceFile } from '@/lib/broadcast-csv';
 import { CustomField, Tag } from '@/types';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -12,37 +13,22 @@ import {
   Tags,
   Filter,
   Upload,
+  Download,
   FileText,
   Loader2,
   ArrowRight,
   ArrowLeft,
   X,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-
-type AudienceType = 'all' | 'tags' | 'custom_field' | 'csv';
-type CustomFieldOperator = 'is' | 'is_not' | 'contains';
-
-interface CustomFieldFilter {
-  fieldId: string;
-  operator: CustomFieldOperator;
-  value: string;
-}
-
-interface AudienceConfig {
-  type: AudienceType;
-  tagIds?: string[];
-  customField?: CustomFieldFilter;
-  csvContacts?: { phone: string; name?: string }[];
-  excludeTagIds?: string[];
-}
+import { useLocale, useTranslations } from 'next-intl';
 
 interface Step2Props {
   audience: AudienceConfig;
-  onUpdate: (audience: AudienceConfig) => void;
+  onUpdate: Dispatch<SetStateAction<AudienceConfig>>;
   onNext?: () => void;
   onBack?: () => void;
   showNavigation?: boolean;
+  exclusionsContainer?: HTMLElement | null;
 }
 
 export function Step2SelectAudience({
@@ -51,8 +37,10 @@ export function Step2SelectAudience({
   onNext,
   onBack,
   showNavigation = true,
+  exclusionsContainer,
 }: Step2Props) {
   const t = useTranslations('Broadcasts.wizard');
+  const locale = useLocale();
 
   const OPERATOR_OPTIONS = useMemo<
     { value: CustomFieldOperator; label: string }[]
@@ -110,13 +98,17 @@ export function Step2SelectAudience({
   // The picked file's name, shown back to the user. The parsed rows
   // themselves live on `audience.csvContacts` (owned by the wizard) so
   // they survive stepping forward and back.
-  const [pickedCsvName, setPickedCsvName] = useState<string | null>(null);
-  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [pickedFileName, setPickedFileName] = useState<string | null>(null);
+  const [readingFile, setReadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const importRequest = useRef(0);
 
   const csvCount = audience.csvContacts?.length ?? 0;
   // Only meaningful while the rows it produced are still in play —
   // picking another audience type wipes `csvContacts`.
-  const csvFileName = csvCount > 0 ? pickedCsvName : null;
+  const importedFileName = csvCount > 0 ? pickedFileName : null;
+
+  useEffect(() => () => { importRequest.current++; }, []);
 
   // Tags are used both by the primary "Filter by Tags" audience type
   // AND by the exclude-list below — so always load once on mount.
@@ -184,37 +176,48 @@ export function Step2SelectAudience({
     fetchEstimatedCount();
   }, [fetchEstimatedCount]);
 
-  async function handleCsvChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
     if (!selected) return;
+    const request = ++importRequest.current;
+    e.target.value = '';
+    setReadingFile(true);
+    setPickedFileName(null);
+    onUpdate((current) => ({ ...current, csvContacts: undefined }));
 
-    const result = parseBroadcastCsv(await selected.text());
+    const result = await parseBroadcastAudienceFile(selected);
+    if (request !== importRequest.current) return;
+    setReadingFile(false);
 
     if (!result.ok) {
-      toast.error(
-        result.error === 'missing_phone_column'
-          ? t('selectAudience.errorCsvMissingPhone')
-          : t('selectAudience.errorCsvParse')
-      );
-      // Clear the input so re-picking the same corrected file still
-      // fires `change` (the browser suppresses it for an identical value).
-      e.target.value = '';
-      setPickedCsvName(null);
-      onUpdate({ ...audience, csvContacts: undefined });
+      const errors = {
+        missing_phone_column: 'selectAudience.errorCsvMissingPhone',
+        no_valid_rows: 'selectAudience.errorNoValidPhones',
+        unsupported_format: 'selectAudience.errorFileFormat',
+        unreadable_file: 'selectAudience.errorCsvParse',
+      } as const;
+      toast.error(t(errors[result.error]));
       return;
     }
 
-    // Rows without a leading `+` and country code were refused (issue
-    // #586). Say so, or a spreadsheet export that stripped the `+` looks
-    // like a mysteriously smaller audience.
     if (result.invalid > 0) {
       toast.warning(
         t('selectAudience.csvInvalidPhones', { count: result.invalid })
       );
     }
 
-    setPickedCsvName(selected.name);
-    onUpdate({ ...audience, csvContacts: result.contacts });
+    setPickedFileName(selected.name);
+    onUpdate((current) => current.type === 'csv'
+      ? { ...current, csvContacts: result.contacts }
+      : current);
+  }
+
+  function removeImportedFile() {
+    importRequest.current++;
+    setPickedFileName(null);
+    setReadingFile(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    onUpdate((current) => ({ ...current, csvContacts: undefined }));
   }
 
   function toggleTag(tagId: string) {
@@ -254,6 +257,46 @@ export function Step2SelectAudience({
       audience.csvContacts &&
       audience.csvContacts.length > 0);
 
+  const exclusions = (
+    <div className="border-border bg-card/50 rounded-xl border p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <X className="h-4 w-4 text-red-400" />
+        <p className="text-foreground text-sm font-medium">
+          {t('selectAudience.excludeTags')}
+        </p>
+      </div>
+      {tags.length === 0 ? (
+        <p className="text-muted-foreground text-xs">
+          {t('selectAudience.noTagsFound')}
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag) => {
+            const isExcluded = audience.excludeTagIds?.includes(tag.id);
+            return (
+              <button
+                key={tag.id}
+                onClick={() => toggleExcludeTag(tag.id)}
+                aria-pressed={isExcluded}
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                  isExcluded
+                    ? 'border-red-500/30 bg-red-500/10 text-red-300'
+                    : 'border-border bg-muted text-muted-foreground hover:border-border'
+                }`}
+              >
+                <span
+                  className="mr-1.5 h-2 w-2 rounded-full"
+                  style={{ backgroundColor: tag.color }}
+                />
+                {tag.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -278,7 +321,13 @@ export function Step2SelectAudience({
             return (
               <button
                 key={option.type}
-                onClick={() =>
+                type="button"
+                onClick={() => {
+                  if (option.type !== 'csv') {
+                    importRequest.current++;
+                    setReadingFile(false);
+                    setPickedFileName(null);
+                  }
                   onUpdate({
                     ...audience,
                     type: option.type,
@@ -292,8 +341,8 @@ export function Step2SelectAudience({
                         : undefined,
                     csvContacts:
                       option.type === 'csv' ? audience.csvContacts : undefined,
-                  })
-                }
+                  });
+                }}
                 className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${
                   isSelected
                     ? 'border-primary bg-primary/5 ring-primary/30 ring-1'
@@ -426,20 +475,48 @@ export function Step2SelectAudience({
             </p>
           </div>
 
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<a
+                href={`data:text/csv;charset=utf-8,${encodeURIComponent(campaignContactsCsvTemplate(locale))}`}
+                download="campaign-contacts.csv"
+              />}
+            >
+              <Download aria-hidden />
+              {t('selectAudience.downloadCsv')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<a href="/templates/campaign-contacts.xlsx" download="campaign-contacts.xlsx" />}
+            >
+              <Download aria-hidden />
+              {t('selectAudience.downloadXlsx')}
+            </Button>
+          </div>
+
           <button
             type="button"
-            onClick={() => csvInputRef.current?.click()}
-            className="group border-border bg-muted/40 hover:border-primary/40 hover:bg-muted/70 flex w-full flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={readingFile}
+            aria-busy={readingFile}
+            className="group border-border bg-muted/40 hover:border-primary/40 hover:bg-muted/70 flex w-full flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center transition-colors disabled:opacity-60"
           >
             <div className="bg-muted text-muted-foreground group-hover:text-foreground flex h-10 w-10 items-center justify-center rounded-lg">
-              {csvFileName ? (
+              {readingFile ? (
+                <Loader2 className="h-5 w-5 motion-safe:animate-spin" aria-hidden />
+              ) : importedFileName ? (
                 <FileText className="h-5 w-5" />
               ) : (
                 <Upload className="h-5 w-5" />
               )}
             </div>
             <p className="text-foreground text-sm">
-              {csvFileName ?? t('selectAudience.uploadCsv')}
+              {readingFile ? t('selectAudience.readingFile') : importedFileName ?? t('selectAudience.uploadCsv')}
             </p>
             {csvCount > 0 && (
               <p className="text-primary text-xs">
@@ -448,53 +525,26 @@ export function Step2SelectAudience({
             )}
           </button>
 
+          {(readingFile || csvCount > 0) && (
+            <Button type="button" variant="outline" size="sm" onClick={removeImportedFile}>
+              <X aria-hidden />
+              {t('selectAudience.removeFile')}
+            </Button>
+          )}
+
           <input
-            ref={csvInputRef}
+            ref={fileInputRef}
             type="file"
-            accept=".csv,text/csv"
-            onChange={handleCsvChange}
+            accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={handleFileChange}
             className="hidden"
           />
         </div>
       )}
 
-      {/* Exclude list — applies regardless of audience type */}
-      <div className="border-border bg-card/50 rounded-xl border p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <X className="h-4 w-4 text-red-400" />
-          <p className="text-foreground text-sm font-medium">
-            {t('selectAudience.excludeTags')}
-          </p>
-        </div>
-        {tags.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
-            {t('selectAudience.noTagsFound')}
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => {
-              const isExcluded = audience.excludeTagIds?.includes(tag.id);
-              return (
-                <button
-                  key={tag.id}
-                  onClick={() => toggleExcludeTag(tag.id)}
-                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-all ${
-                    isExcluded
-                      ? 'border-red-500/30 bg-red-500/10 text-red-300'
-                      : 'border-border bg-muted text-muted-foreground hover:border-border'
-                  }`}
-                >
-                  <span
-                    className="mr-1.5 h-2 w-2 rounded-full"
-                    style={{ backgroundColor: tag.color }}
-                  />
-                  {tag.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {exclusionsContainer === undefined
+        ? exclusions
+        : exclusionsContainer && createPortal(exclusions, exclusionsContainer)}
 
       {/* Audience Summary */}
       <div className="border-border bg-card/50 rounded-xl border p-4">

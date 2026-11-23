@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseBroadcastCsv } from './broadcast-csv';
+import { campaignContactsCsvTemplate, parseBroadcastAudienceFile, parseBroadcastCsv } from './broadcast-csv';
 
 describe('parseBroadcastCsv', () => {
   it('parses phone + name into the audience shape', () => {
@@ -74,11 +75,8 @@ describe('parseBroadcastCsv', () => {
 
   // A national-format number has no country code, so Meta reads its
   // leading digits as one: "4155551212" (US) is delivered to +41
-  // (Switzerland). Rows without a leading `+` are refused and counted,
-  // not silently dropped, so a whole-file export from a spreadsheet that
-  // stripped the `+` is visible to the user before anything is sent
-  // (issue #586).
-  it('rejects rows without a leading + and reports them as invalid', () => {
+  // (Switzerland). Reject numbers without a clear international prefix.
+  it('reports ambiguous national-format phones as invalid', () => {
     const result = parseBroadcastCsv(
       `phone,name
 4155551212,National US
@@ -91,6 +89,22 @@ describe('parseBroadcastCsv', () => {
       duplicates: 0,
       invalid: 2,
       contacts: [{ phone: '+14155551212', name: 'Ada' }],
+    });
+  });
+
+  it('adds + to complete Brazilian numbers and deduplicates mixed formats', () => {
+    expect(parseBroadcastCsv(`phone,name
+55 (62) 98558-2600,Ana
++5562985582600,Repeated
+556232221234,Bruno
+55985582600,Local Brazilian number with area code 55`)).toEqual({
+      ok: true,
+      duplicates: 1,
+      invalid: 1,
+      contacts: [
+        { phone: '+5562985582600', name: 'Ana' },
+        { phone: '+556232221234', name: 'Bruno' },
+      ],
     });
   });
 
@@ -133,5 +147,33 @@ describe('parseBroadcastCsv', () => {
         { phone: '+15559990000', name: 'Grace' },
       ],
     });
+  });
+});
+
+describe('campaign contacts files', () => {
+  it('imports a populated Portuguese CSV template and preserves the contact name', async () => {
+    const template = campaignContactsCsvTemplate('pt-BR');
+    expect(template).toContain('phone;name');
+    const filled = template.replace('+55 (DDD) XXXXX-XXXX;Alex Silva', '+5562999990123;"Ana, Nunes"');
+
+    await expect(parseBroadcastAudienceFile(new File([filled], 'contatos.CSV'))).resolves.toEqual({
+      ok: true,
+      contacts: [{ phone: '+5562999990123', name: 'Ana, Nunes' }],
+      duplicates: 0,
+      invalid: 0,
+    });
+  });
+
+  it('reads the downloadable Excel template without importing its placeholder as a recipient', async () => {
+    const template = readFileSync('public/templates/campaign-contacts.xlsx');
+    const file = new File([new Uint8Array(template)], 'contatos.xlsx');
+    await expect(parseBroadcastAudienceFile(file)).resolves.toEqual({ ok: false, error: 'no_valid_rows' });
+  });
+
+  it('reports damaged workbooks and unsupported formats', async () => {
+    await expect(parseBroadcastAudienceFile(new File(['broken'], 'contatos.xlsx')))
+      .resolves.toEqual({ ok: false, error: 'unreadable_file' });
+    await expect(parseBroadcastAudienceFile(new File(['irrelevant'], 'contatos.xls')))
+      .resolves.toEqual({ ok: false, error: 'unsupported_format' });
   });
 });
