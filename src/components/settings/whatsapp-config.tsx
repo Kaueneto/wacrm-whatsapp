@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import {
   Eye,
   EyeOff,
-  Copy,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -24,6 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { SettingsPanelHead } from './settings-panel-head';
+import { WhatsAppWebhookCallback } from './whatsapp-webhook-callback';
+import { WhatsAppWebhookHealth } from './whatsapp-webhook-health';
 import {
   Accordion,
   AccordionItem,
@@ -75,6 +76,7 @@ export function WhatsAppConfig() {
     profileLoading,
     canEditSettings,
   } = useAuth();
+  const userId = user?.id;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -134,11 +136,6 @@ export function WhatsAppConfig() {
   };
   const [registrationProbe, setRegistrationProbe] =
     useState<RegistrationProbe | null>(null);
-
-  const webhookUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/api/whatsapp/webhook`
-      : '';
 
   const fetchConfig = useCallback(async (acctId: string) => {
     setLoading(true);
@@ -233,7 +230,7 @@ export function WhatsAppConfig() {
     // for the first render window and bail without ever retrying
     // once the profile arrives.
     if (authLoading || profileLoading) return;
-    if (!user || !accountId) {
+    if (!userId || !accountId) {
       loadedAccountIdRef.current = null;
       setLoading(false);
       return;
@@ -241,7 +238,7 @@ export function WhatsAppConfig() {
     if (loadedAccountIdRef.current === accountId) return;
     loadedAccountIdRef.current = accountId;
     fetchConfig(accountId);
-  }, [authLoading, profileLoading, user?.id, accountId, fetchConfig]);
+  }, [authLoading, profileLoading, userId, accountId, fetchConfig]);
 
   async function handleToggleMirrorMedia(next: boolean) {
     if (!config || !accountId || savingMirror) return;
@@ -485,11 +482,6 @@ export function WhatsAppConfig() {
     }
   }
 
-  function handleCopyWebhookUrl() {
-    navigator.clipboard.writeText(webhookUrl);
-    toast.success(t('webhookCopied'));
-  }
-
   if (loading) {
     return (
       <section className="animate-in fade-in-50 duration-200">
@@ -635,6 +627,8 @@ export function WhatsAppConfig() {
           )}
           {connectionStatus !== 'connected' && statusMeta && renderMetaDetails(statusMeta)}
         </Alert>
+
+        {config && canEditSettings && <WhatsAppWebhookHealth />}
 
         {/* Registration Status — the "is it actually live?" check.
             Credentials being valid is necessary but not sufficient;
@@ -849,35 +843,7 @@ export function WhatsAppConfig() {
           </CardContent>
         </Card>
 
-        {/* Webhook URL */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-foreground">{t('webhookTitle')}</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              {t('webhookDesc')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">{t('webhookUrl')}</Label>
-              <div className="flex gap-2">
-                <Input
-                  readOnly
-                  value={webhookUrl}
-                  className="bg-muted border-border text-muted-foreground font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopyWebhookUrl}
-                  className="shrink-0 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
-                >
-                  <Copy className="size-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <WhatsAppWebhookCallback key={`${accountId}:${config?.phone_number_id}`} accountId={accountId} editable={canEditSettings} phoneNumberId={config?.phone_number_id ?? null} />
 
         {/* Attachment retention. Only meaningful once a number is
             connected, since it governs what the webhook does with

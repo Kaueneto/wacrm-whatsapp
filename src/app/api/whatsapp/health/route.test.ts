@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 let storedConfig: Record<string, unknown> | null = null
+let configError: Error | null = null
 const getPhoneNumberHealth = vi.fn()
 
 vi.mock('@/lib/auth/account', async () => {
@@ -17,7 +18,7 @@ vi.mock('@/lib/auth/account', async () => {
           const b: Record<string, unknown> = {}
           b.select = () => b
           b.eq = () => b
-          b.maybeSingle = async () => ({ data: storedConfig, error: null })
+          b.maybeSingle = async () => ({ data: storedConfig, error: configError })
           return b
         },
       },
@@ -34,6 +35,7 @@ import { GET } from './route'
 
 beforeEach(() => {
   storedConfig = null
+  configError = null
   getPhoneNumberHealth.mockReset()
 })
 
@@ -41,6 +43,12 @@ describe('GET /api/whatsapp/health', () => {
   it('reports disconnected without calling Meta when no number is connected', async () => {
     const res = await GET()
     expect(await res.json()).toMatchObject({ state: 'disconnected', quality: 'UNKNOWN', limit: null })
+    expect(getPhoneNumberHealth).not.toHaveBeenCalled()
+  })
+
+  it('distinguishes a configuration lookup failure from a disconnected number', async () => {
+    configError = new Error('Database unavailable')
+    expect(await (await GET()).json()).toMatchObject({ state: 'unavailable' })
     expect(getPhoneNumberHealth).not.toHaveBeenCalled()
   })
 

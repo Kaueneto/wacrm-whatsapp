@@ -14,6 +14,9 @@ const h = vi.hoisted(() => ({
     messageUpsertResult: [{ id: 'msg-1' }] as { id: string }[],
     firstInboundUnclaimed: true,
     firstInboundClaims: 0,
+    queuedBody: null as unknown,
+    durableReceipt: false,
+    lateReceipt: false,
     /** Row `lookupInternalIdByMetaId` resolves for a `context.id`. */
     replyContextParent: null as { id: string } | null,
     conversation: { id: 'conv-1', unread_count: 0, account_id: 'acc-1' },
@@ -211,6 +214,7 @@ vi.mock('@supabase/supabase-js', () => ({
     },
     rpc: (name: string, args: Record<string, unknown>) => {
       h.state.rpcCalls.push({ name, args })
+      if (name === 'store_whatsapp_inbound_event') return Promise.resolve({ data: { inserted:true,resume:false,history_only:h.state.lateReceipt,first_inbound:true },error:null });
       return Promise.resolve({ data: null, error: null })
     },
     // Service-role Storage, used by the inbound-media mirror (#466).
@@ -276,6 +280,18 @@ vi.mock('@/lib/webhooks/deliver', () => ({
 vi.mock('@/lib/whatsapp/message-status-sync', () => ({
   applyMessageStatus: h.applyMessageStatus,
 }))
+
+vi.mock('@/lib/whatsapp/webhook-queue', async (original) => ({
+  ...await original<typeof import('@/lib/whatsapp/webhook-queue')>(),
+  persistWebhookEnvelope: async (_db: unknown, body: unknown) => { h.state.queuedBody=body; return 1; },
+}));
+vi.mock('@/lib/whatsapp/webhook-worker', () => ({
+  drainWebhookInbox: async () => {
+    const { processWebhook } = await import('@/lib/whatsapp/webhook-processor');
+    await processWebhook(h.state.queuedBody as import('@/lib/whatsapp/webhook-processor').WhatsAppWebhookBody,
+      h.state.durableReceipt ? { receipt: { id:'receipt-1',token:'lease-1',beginEffects:async()=>{ h.state.rpcCalls.push({name:'begin_effects',args:{}}); } } } : {});
+  },
+}));
 
 import { POST } from './route'
 import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
@@ -365,6 +381,8 @@ beforeEach(() => {
   h.state.messageUpsertResult = [{ id: 'msg-1' }]
   h.state.firstInboundUnclaimed = true
   h.state.firstInboundClaims = 0
+  h.state.durableReceipt = false;
+  h.state.lateReceipt = false;
   h.state.replyContextParent = null
   h.state.conversation = { id: 'conv-1', unread_count: 0, account_id: 'acc-1' }
   h.state.upsertCalls = []
@@ -412,6 +430,30 @@ beforeEach(() => {
 })
 
 describe('inbound webhook: idempotent insert (#367)', () => {
+  it('uses the atomic receipt storage before dispatching a fresh message', async () => {
+    h.state.durableReceipt=true;
+    await runWebhook();
+    expect(h.state.rpcCalls.map(call=>call.name)).toContain('store_whatsapp_inbound_event');
+    expect(h.state.rpcCalls.map(call=>call.name)).toContain('begin_effects');
+    expect(h.state.rpcCalls.map(call=>call.name)).not.toContain('bump_conversation_on_inbound');
+    expect(h.dispatchInboundToFlows).toHaveBeenCalled();
+  });
+  it('stores historical messages without firing menus, AI or message automations', async () => {
+    h.state.durableReceipt=true;h.state.lateReceipt=true;
+    await runWebhook();
+    expect(h.state.rpcCalls.map(call=>call.name)).toContain('store_whatsapp_inbound_event');
+    expect(h.state.rpcCalls.map(call=>call.name)).not.toContain('begin_effects');
+    expect(h.dispatchInboundToFlows).not.toHaveBeenCalled();
+    expect(h.dispatchInboundToAiReply).not.toHaveBeenCalled();
+    expect(h.runAutomationsForTrigger).not.toHaveBeenCalled();
+  });
+  it('does not dispatch another responder after a flow reports a processing error', async () => {
+    h.state.durableReceipt=true;
+    h.dispatchInboundToFlows.mockResolvedValue({consumed:false,outcome:'run_error'});
+    await runWebhook();
+    expect(h.dispatchInboundToAiReply).not.toHaveBeenCalled();
+    expect(h.runAutomationsForTrigger).not.toHaveBeenCalled();
+  });
   it('a genuine first delivery persists once and fans out downstream', async () => {
     await runWebhook()
 
@@ -423,7 +465,7 @@ describe('inbound webhook: idempotent insert (#367)', () => {
       ignoreDuplicates: true,
     })
     // Downstream side effects ran exactly once.
-    expect(h.state.rpcCalls).toHaveLength(1)
+    expect(h.state.rpcCalls.map(({ name }) => name)).toEqual(['bump_conversation_on_inbound', 'record_broadcast_reply'])
     expect(h.dispatchInboundToFlows).toHaveBeenCalledTimes(1)
     expect(h.dispatchWebhookEvent).toHaveBeenCalledTimes(1)
   })
@@ -448,7 +490,7 @@ describe('inbound webhook: atomic unread bump (#369)', () => {
   it('increments unread through the DB-side RPC, not a read-modify-write', async () => {
     await runWebhook()
 
-    expect(h.state.rpcCalls).toHaveLength(1)
+    expect(h.state.rpcCalls.filter(({ name }) => name === 'bump_conversation_on_inbound')).toHaveLength(1)
     expect(h.state.rpcCalls[0]).toMatchObject({
       name: 'bump_conversation_on_inbound',
       args: { p_conversation_id: 'conv-1' },
@@ -1096,6 +1138,15 @@ describe('status webhook: failed statuses keep Meta\'s reason (#535)', () => {
 })
 
 describe('inbound webhook: automation waiting for a reply', () => {
+  it('keeps an explicit flow AI session out of menus and message automations', async () => {
+    Object.assign(h.state.conversation, { ai_flow_context: { kind: 'flow' }, assigned_agent_id: null, ai_autoreply_disabled: false });
+    await runWebhook();
+    expect(h.dispatchInboundToFlows).not.toHaveBeenCalled();
+    expect(h.resumeAwaitingReply).not.toHaveBeenCalled();
+    expect(h.runAutomationsForTrigger.mock.calls.map((call) => call[0].triggerType)).not.toContain('new_message_received');
+    expect(h.runAutomationsForTrigger.mock.calls.map((call) => call[0].triggerType)).not.toContain('keyword_match');
+    expect(h.dispatchInboundToAiReply).toHaveBeenCalledTimes(1);
+  });
   const triggersFired = () =>
     h.runAutomationsForTrigger.mock.calls.map(
       (call) => (call[0] as { triggerType: string }).triggerType,
