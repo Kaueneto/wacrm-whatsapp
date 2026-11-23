@@ -17,6 +17,9 @@ describe('support roles', () => {
     'restricts %s to support and personal settings',
     (role) => {
       expect(canAccessWorkspacePage(role, '/inbox')).toBe(true);
+      expect(canAccessWorkspacePage(role, '/dashboard')).toBe(true);
+      expect(canAccessWorkspacePage(role, '/tags')).toBe(false);
+      expect(canAccessWorkspacePage(role, '/dashboard/costs')).toBe(role === 'supervisor');
       expect(canAccessWorkspacePage(role, '/campaigns/new')).toBe(false);
       expect(canAccessSettingsSection(role, 'profile')).toBe(true);
       expect(canAccessSettingsSection(role, 'whatsapp')).toBe(false);
@@ -29,6 +32,10 @@ describe('support roles', () => {
       expect(canAccessWorkspaceApi(role, '/api/whatsapp/config', 'GET')).toBe(
         false
       );
+      expect(canAccessWorkspaceApi(role, '/api/whatsapp/cost-overview', 'GET')).toBe(role === 'supervisor');
+      expect(canAccessWorkspaceApi(role, '/api/whatsapp/cost-overview', 'POST')).toBe(false);
+      expect(canAccessWorkspaceApi(role, '/api/whatsapp/cost-details', 'GET')).toBe(role === 'supervisor');
+      expect(canAccessWorkspaceApi(role, '/api/ai/usage', 'GET')).toBe(false);
       expect(
         canAccessWorkspaceApi(role, '/api/whatsapp/broadcast', 'POST')
       ).toBe(false);

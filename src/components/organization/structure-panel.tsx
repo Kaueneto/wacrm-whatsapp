@@ -11,12 +11,13 @@ import {
   Building2,
   ChevronRight,
   Loader2,
-  Plus,
   RefreshCw,
+  UsersRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
+import motion from '@/components/ui/surface-motion.module.css';
 import { Input } from '@/components/ui/input';
 import {
   Table,
@@ -61,8 +62,10 @@ const selectClass =
 export default function StructurePanel({
   revision,
   view = 'structure',
+  onUpdated,
 }: {
   revision: number;
+  onUpdated?: () => void;
   view?: 'structure' | 'departments' | 'teams';
 }) {
   const [display, setDisplay] = useState<'chart' | 'list'>('chart');
@@ -153,6 +156,7 @@ export default function StructurePanel({
         previous ? update(previous, result.entity) : previous
       );
       toast.success('Estrutura atualizada.');
+      onUpdated?.();
       return true;
     } catch (error) {
       toast.error(
@@ -349,20 +353,20 @@ export default function StructurePanel({
           </Button>
           {view !== 'teams' && (
             <Button
-              variant="outline"
-              size="sm"
+              variant={view === 'departments' ? 'default' : 'outline'}
+              className={`${motion.action} ${view === 'departments' ? '' : 'border-primary/30 bg-primary/8 text-primary hover:border-primary/55 hover:bg-primary/14 hover:text-primary dark:border-primary/40 dark:bg-primary/12 dark:hover:bg-primary/20'}`}
               disabled={saving}
               onClick={() =>
                 setEditor({ kind: 'department', name: '', departmentId: '' })
               }
             >
-              <Building2 className="size-3.5" />
-              Novo departamento
+              <Building2 className="size-4" aria-hidden="true" />
+              <span className={motion.label}>Novo departamento</span>
             </Button>
           )}
           {view !== 'departments' && (
             <Button
-              size="sm"
+              className={motion.action}
               disabled={saving || !data.departments.length}
               onClick={() =>
                 setEditor({
@@ -372,8 +376,8 @@ export default function StructurePanel({
                 })
               }
             >
-              <Plus className="size-3.5" />
-              Nova equipe
+              <UsersRound className="size-4" aria-hidden="true" />
+              <span className={motion.label}>Nova equipe</span>
             </Button>
           )}
         </div>

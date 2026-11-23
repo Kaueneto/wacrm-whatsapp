@@ -55,6 +55,7 @@ function Workspace() {
   const [view, setView] = useState(initialView);
   const [visited, setVisited] = useState(() => new Set([initialView]));
   const [revision, setRevision] = useState(0);
+  const [usersRevision, setUsersRevision] = useState(0);
   const { accountRole, profileLoading } = useAuth();
   const refreshStructure = useCallback(
     () => setRevision((value) => value + 1),
@@ -144,6 +145,7 @@ function Workspace() {
         {[...visited].some((item) => item !== 'users') && (
           <StructurePanel
             revision={revision}
+            onUpdated={() => setUsersRevision((value) => value + 1)}
             view={view === 'users' ? 'structure' : view}
           />
         )}
@@ -154,7 +156,9 @@ function Workspace() {
         aria-labelledby="organization-tab-users"
         hidden={view !== 'users'}
       >
-        {visited.has('users') && <UsersPanel onUpdated={refreshStructure} />}
+        {visited.has('users') && (
+          <UsersPanel onUpdated={refreshStructure} revision={usersRevision} />
+        )}
       </div>
     </div>
   );

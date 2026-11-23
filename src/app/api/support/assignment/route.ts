@@ -40,6 +40,8 @@ export async function POST(request: Request) {
       .eq('account_id', accountId)
       .select('id, team_id, assigned_agent_id')
       .maybeSingle();
+    if (error?.code === '23514')
+      return NextResponse.json({ error: error.message }, { status: 422 });
     if (error)
       return NextResponse.json(
         {
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
       );
     if (!data)
       return NextResponse.json(
-        { error: 'Atendimento não encontrado ou fora das suas equipes.' },
+        { error: 'Atendimento não encontrado ou fora dos departamentos que você supervisiona.' },
         { status: 404 }
       );
     return NextResponse.json({ conversation: data });

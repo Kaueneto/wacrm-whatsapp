@@ -103,7 +103,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
     }
-    const { error } = await supabaseAdmin().auth.admin.createUser({
+    const { data: created, error } = await supabaseAdmin().auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -139,6 +139,19 @@ export async function POST(request: Request) {
           error:
             'Não foi possível criar o acesso. Atualize a lista antes de tentar novamente.',
         },
+        { status: 502 }
+      );
+    }
+    const { data: member, error: memberError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', created.user.id)
+      .eq('account_id', accountId)
+      .eq('account_role', role)
+      .maybeSingle();
+    if (memberError || !member) {
+      return NextResponse.json(
+        { error: 'Não foi possível confirmar o vínculo do usuário com a empresa.' },
         { status: 502 }
       );
     }

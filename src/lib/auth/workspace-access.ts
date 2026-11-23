@@ -1,10 +1,12 @@
-import { canEditSettings, type AccountRole } from './roles';
+import { canEditSettings, canSendMessages, type AccountRole } from './roles';
 
 export function canAccessWorkspacePage(
   role: AccountRole,
   pathname: string
 ): boolean {
   if (canEditSettings(role)) return true;
+  if (pathname === '/dashboard') return canSendMessages(role);
+  if (pathname === '/dashboard/costs') return role === 'supervisor';
   return ['/inbox', '/notifications', '/settings'].some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
@@ -24,7 +26,7 @@ export function canAccessSettingsSection(
 // callbacks keep their own authentication and are not subject to this policy.
 export function isWorkspaceApi(path: string): boolean {
   return (
-    /^\/api\/(account|support|campaigns|automations|flows|ai|whatsapp|quick-replies)(\/|$)/.test(
+    /^\/api\/(account|support|campaigns|automations|flows|ai|whatsapp|quick-replies|integrations)(\/|$)/.test(
       path
     ) && !path.startsWith('/api/whatsapp/webhook')
   );
@@ -59,8 +61,9 @@ export function canAccessWorkspaceApi(
   )
     return true;
   return (
-    path === '/api/support/assignment' &&
-    method === 'POST' &&
-    role === 'supervisor'
+    role === 'supervisor' && (
+      (path === '/api/support/assignment' && method === 'POST') ||
+      (['/api/whatsapp/cost-overview', '/api/whatsapp/cost-details'].includes(path) && method === 'GET')
+    )
   );
 }

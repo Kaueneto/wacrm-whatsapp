@@ -4,10 +4,9 @@
 // MembersTab — Settings → Members
 //
 // Two stacked sections:
-//   1. Roster   — every member of the account. Admin+ can change a
-//                 teammate's role inline and remove them. Owner row
-//                 is non-editable everywhere (transfer is its own
-//                 separate flow, deferred to a later PR).
+//   1. Roster   — account members, departments, teams and presence.
+//                 Admin+ can edit names, roles and team memberships.
+//                 Owner/self roles and ownership remain protected.
 //   2. Pending  — outstanding invite links. Admin+ can revoke. The
 //                 plaintext URL is gone after the create dialog
 //                 closes, so we surface a "revoke + new link" hint
@@ -28,13 +27,15 @@ import {
   AlertTriangle,
   Loader2,
   MailX,
-  Plus,
+  Pencil,
+  UserPlus,
   Trash2,
   UsersRound,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import motion from '@/components/ui/surface-motion.module.css';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
@@ -78,6 +79,12 @@ interface Invitation {
   expires_at: string;
 }
 
+interface Organization {
+  departments: { id: string; name: string }[];
+  teams: { id: string; name: string; department_id: string }[];
+  members: { user_id: string; team_id: string }[];
+}
+
 interface PendingUser {
   id: string;
   full_name: string;
@@ -119,7 +126,10 @@ function fmtExpiresIn(
   return t('expiresInHours', { hours });
 }
 
-export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
+export function MembersTab({
+  onUpdated,
+  revision = 0,
+}: { onUpdated?: () => void; revision?: number } = {}) {
   const t = useTranslations('Settings.members');
   const tRoles = useTranslations('Settings.roles');
   const { user, canManageMembers } = useAuth();
@@ -131,10 +141,12 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [activating, setActivating] = useState<PendingUser | null>(null);
-  const [organization, setOrganization] = useState<{
-    departments: { id: string; name: string }[];
-    teams: { id: string; name: string; department_id: string }[];
-  } | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [editing, setEditing] = useState<Member | null>(null);
+  const [editTeamIds, setEditTeamIds] = useState<string[]>([]);
+  const [editRole, setEditRole] = useState<AccountRole>('agent');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
   const [organizationError, setOrganizationError] = useState(false);
   const [departmentId, setDepartmentId] = useState('');
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -147,7 +159,7 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
 
   const loadEverything = useCallback(async () => {
     try {
-      const [mres, ires, pres] = await Promise.all([
+      const [mres, ires, pres, ores] = await Promise.all([
         fetch('/api/account/members', { cache: 'no-store' }),
         canManageMembers
           ? fetch('/api/account/invitations', { cache: 'no-store' })
@@ -155,7 +167,13 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
         canManageMembers
           ? fetch('/api/account/pending-users', { cache: 'no-store' })
           : Promise.resolve(null),
+        canManageMembers
+          ? fetch('/api/account/teams', { cache: 'no-store' })
+          : Promise.resolve(null),
       ]);
+
+      setOrganizationError(!!ores && !ores.ok);
+      setOrganization(ores?.ok ? await ores.json() : null);
 
       if (!mres.ok) {
         const payload = await mres.json().catch(() => ({}));
@@ -193,7 +211,7 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
 
   useEffect(() => {
     void loadEverything();
-  }, [loadEverything]);
+  }, [loadEverything, revision]);
 
   async function loadOrganization() {
     setOrganization(null);
@@ -213,6 +231,52 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
     setCreateError('');
     setCreateOpen(true);
     void loadOrganization();
+  }
+
+  function openEdit(member: Member) {
+    if (!organization) return;
+    setEditing(member);
+    setEditRole(member.role);
+    setEditTeamIds(
+      organization.members
+        .filter((link) => link.user_id === member.user_id)
+        .map((link) => link.team_id)
+    );
+    setEditError('');
+  }
+
+  async function handleEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editing || savingEdit) return;
+    const form = new FormData(event.currentTarget);
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      const response = await fetch(`/api/account/members/${editing.user_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.get('name'),
+          role: editRole,
+          teamIds: editTeamIds,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || 'Não foi possível salvar o usuário.');
+      setEditing(null);
+      toast.success('Usuário atualizado.');
+      onUpdated?.();
+      await loadEverything();
+    } catch (error) {
+      setEditError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível salvar o usuário.'
+      );
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
@@ -370,9 +434,9 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
         description={t('description')}
         action={
           <RequireRole min="admin">
-            <Button onClick={() => openCreate()}>
-              <Plus className="size-4" />
-              Criar usuário
+            <Button onClick={() => openCreate()} className={motion.action}>
+              <UserPlus className="size-4" aria-hidden="true" />
+              <span className={motion.label}>Criar usuário</span>
             </Button>
           </RequireRole>
         }
@@ -405,6 +469,18 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
         })()}
 
       {/* Usuários da empresa */}
+      {organizationError && (
+        <div role="alert" className="flex items-center gap-3 text-sm">
+          <p>Não foi possível carregar departamentos e equipes.</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadEverything()}
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      )}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -414,6 +490,8 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
                   <th className="px-4 py-2 font-medium">Usuário</th>
                   <th className="px-4 py-2 font-medium">E-mail</th>
                   <th className="px-4 py-2 font-medium">Perfil</th>
+                  <th className="px-4 py-2 font-medium">Departamentos</th>
+                  <th className="px-4 py-2 font-medium">Equipes</th>
                   <th className="px-4 py-2 font-medium">Disponibilidade</th>
                   <th className="px-4 py-2 font-medium">Ações</th>
                 </tr>
@@ -424,6 +502,19 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
                   const editable =
                     canManageMembers && member.role !== 'owner' && !isSelf;
                   const presence = getPresence(member.user_id);
+                  const teamIds = new Set(
+                    organization?.members
+                      .filter((link) => link.user_id === member.user_id)
+                      .map((link) => link.team_id)
+                  );
+                  const teams =
+                    organization?.teams.filter((team) =>
+                      teamIds.has(team.id)
+                    ) ?? [];
+                  const departments =
+                    organization?.departments.filter((department) =>
+                      teams.some((team) => team.department_id === department.id)
+                    ) ?? [];
                   return (
                     <tr key={member.user_id} className="hover:bg-muted/50">
                       <td className="px-4 py-2 font-medium">
@@ -464,6 +555,45 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
                           tRoles(member.role)
                         )}
                       </td>
+                      <td className="px-4 py-2">
+                        <div className="flex flex-wrap gap-1">
+                          {departments.map((department) => (
+                            <Badge key={department.id} variant="secondary">
+                              {department.name}
+                            </Badge>
+                          ))}
+                          {!departments.length && (
+                            <span className="text-muted-foreground">
+                              {organization
+                                ? 'Sem departamento'
+                                : 'Indisponível'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex flex-wrap gap-1">
+                          {teams.map((team) => (
+                            <Badge
+                              key={team.id}
+                              variant="outline"
+                              title={
+                                organization?.departments.find(
+                                  (department) =>
+                                    department.id === team.department_id
+                                )?.name
+                              }
+                            >
+                              {team.name}
+                            </Badge>
+                          ))}
+                          {!teams.length && (
+                            <span className="text-muted-foreground">
+                              {organization ? 'Sem equipe' : 'Indisponível'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="text-muted-foreground px-4 py-2">
                         <span className="inline-flex items-center gap-2">
                           <PresenceDot status={presence} />
@@ -475,17 +605,34 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
                         </span>
                       </td>
                       <td className="px-4 py-2">
-                        {editable && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            aria-label={`Remover ${member.full_name || 'usuário'}`}
-                            onClick={() => setRemovingMember(member)}
-                            disabled={pendingMemberAction === member.user_id}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {canManageMembers && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              aria-label={`Editar ${member.full_name || 'usuário'}`}
+                              onClick={() => openEdit(member)}
+                              disabled={
+                                !organization ||
+                                pendingMemberAction === member.user_id
+                              }
+                            >
+                              <Pencil className="size-4" />
+                              Editar
+                            </Button>
+                          )}
+                          {editable && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              aria-label={`Remover ${member.full_name || 'usuário'}`}
+                              onClick={() => setRemovingMember(member)}
+                              disabled={pendingMemberAction === member.user_id}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -500,6 +647,12 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
                         {member.email}
                       </td>
                       <td className="px-4 py-2">{tRoles(member.role)}</td>
+                      <td className="text-muted-foreground px-4 py-2">
+                        Sem departamento
+                      </td>
+                      <td className="text-muted-foreground px-4 py-2">
+                        Sem equipe
+                      </td>
                       <td className="px-4 py-2">—</td>
                       <td className="px-4 py-2">
                         <Button
@@ -517,6 +670,145 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!editing}
+        onOpenChange={(open) => {
+          if (!open && !savingEdit) setEditing(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar usuário</DialogTitle>
+            <DialogDescription>
+              Atualize o nome, o perfil e as equipes de atendimento.
+            </DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <form onSubmit={handleEdit} className="space-y-4">
+              <label className="block space-y-1 text-sm">
+                <span>Nome completo</span>
+                <Input
+                  name="name"
+                  defaultValue={editing.full_name}
+                  required
+                  maxLength={120}
+                  disabled={savingEdit}
+                />
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span>E-mail de acesso</span>
+                <Input type="email" value={editing.email ?? ''} readOnly />
+                <span className="text-muted-foreground block text-xs">
+                  O e-mail de acesso não é alterado neste formulário.
+                </span>
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span>Perfil</span>
+                <select
+                  value={editRole}
+                  onChange={(event) =>
+                    setEditRole(event.target.value as AccountRole)
+                  }
+                  disabled={
+                    savingEdit ||
+                    editing.role === 'owner' ||
+                    editing.user_id === user?.id
+                  }
+                  className="border-input bg-background h-9 w-full rounded-md border px-3"
+                >
+                  {(editing.role === 'owner' || editing.role === 'viewer') && (
+                    <option value={editing.role}>{tRoles(editing.role)}</option>
+                  )}
+                  {EDITABLE_ROLES.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {tRoles(role.value)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <fieldset
+                disabled={savingEdit || editRole === 'viewer'}
+                className="space-y-3"
+              >
+                <legend className="mb-1 text-sm font-medium">
+                  Departamentos e equipes
+                </legend>
+                <p className="text-muted-foreground text-xs">
+                  Marque as equipes das quais o usuário faz parte. Os
+                  departamentos são definidos pelas equipes selecionadas.
+                </p>
+                {organization?.departments.map((department) => {
+                  const teams = organization.teams.filter(
+                    (team) => team.department_id === department.id
+                  );
+                  if (!teams.length) return null;
+                  return (
+                    <div
+                      key={department.id}
+                      className="space-y-2 rounded-md border p-3"
+                    >
+                      <p className="text-sm font-medium">{department.name}</p>
+                      {teams.map((team) => (
+                        <label
+                          key={team.id}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editTeamIds.includes(team.id)}
+                            onChange={(event) =>
+                              setEditTeamIds((previous) =>
+                                event.target.checked
+                                  ? [...previous, team.id]
+                                  : previous.filter((id) => id !== team.id)
+                              )
+                            }
+                          />
+                          {team.name}
+                        </label>
+                      ))}
+                    </div>
+                  );
+                })}
+                {!organization?.teams.length && (
+                  <p className="text-muted-foreground text-sm">
+                    Nenhuma equipe cadastrada.
+                  </p>
+                )}
+              </fieldset>
+              {organization?.members.some(
+                (link) =>
+                  link.user_id === editing.user_id &&
+                  !editTeamIds.includes(link.team_id)
+              ) && (
+                <p className="text-muted-foreground rounded-md border p-3 text-xs">
+                  Ao remover uma equipe, os atendimentos desse usuário nela
+                  voltarão à fila para redistribuição.
+                </p>
+              )}
+              {editError && (
+                <p role="alert" className="text-destructive text-sm">
+                  {editError}
+                </p>
+              )}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={savingEdit}
+                  onClick={() => setEditing(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={savingEdit}>
+                  {savingEdit ? 'Salvando…' : 'Salvar alterações'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Preserve access to previously issued links. */}
       {invitations.length > 0 && (
@@ -739,12 +1031,14 @@ export function MembersTab({ onUpdated }: { onUpdated?: () => void } = {}) {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={creating}>
-                {creating
-                  ? 'Salvando…'
-                  : activating
-                    ? 'Ativar acesso'
-                    : 'Criar usuário'}
+              <Button type="submit" disabled={creating} className={motion.action}>
+                <span className={motion.label}>
+                  {creating
+                    ? 'Salvando…'
+                    : activating
+                      ? 'Ativar acesso'
+                      : 'Criar usuário'}
+                </span>
               </Button>
             </DialogFooter>
           </form>

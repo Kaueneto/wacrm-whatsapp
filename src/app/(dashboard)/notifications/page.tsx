@@ -48,10 +48,13 @@ export default function NotificationsPage() {
       return;
     }
     const rows = (data ?? []) as Notification[];
-    const actorIds = [...new Set(rows.flatMap((row) => row.actor_user_id ? [row.actor_user_id] : []))];
-    const contactIds = [...new Set(rows.flatMap((row) => row.contact_id ? [row.contact_id] : []))];
-    // The database stores English notification copy. Resolve the structured
-    // references so the UI can translate it while preserving people's names.
+    // Resolve names for older notifications without stored snapshots.
+    const actorIds = [...new Set(rows.flatMap((row) =>
+      row.actor_user_id && !row.actor_name ? [row.actor_user_id] : [],
+    ))];
+    const contactIds = [...new Set(rows.flatMap((row) =>
+      row.contact_id && !row.contact_name ? [row.contact_id] : [],
+    ))];
     const [actors, contacts] = await Promise.all([
       actorIds.length
         ? supabase.from("profiles").select("user_id, full_name").eq("account_id", accountId).in("user_id", actorIds)

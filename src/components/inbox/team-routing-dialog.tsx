@@ -133,7 +133,7 @@ export function TeamRoutingDialog({
             <DialogDescription>
               Escolha a equipe e o responsável. Sem responsável, o atendimento
               fica na fila da equipe. Supervisores só podem movimentar
-              atendimentos entre suas equipes.
+              atendimentos entre equipes dos departamentos que supervisionam.
             </DialogDescription>
           </DialogHeader>
           {error ? (
