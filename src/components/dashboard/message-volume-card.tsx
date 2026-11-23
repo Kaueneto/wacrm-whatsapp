@@ -1,5 +1,7 @@
 'use client'
 
+import motion from '@/components/ui/surface-motion.module.css'
+
 import { useState } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
@@ -18,14 +20,14 @@ import {
   bucketDate,
   busiestBucket,
   busiestHours,
-  type DashboardOverview,
+  type OperationalOverview,
 } from '@/lib/dashboard/overview'
 import { EmptyState } from './empty-state'
 import { Skeleton } from './skeleton'
 
 type View = 'time' | 'hours'
 
-export function MessageVolumeCard({ data }: { data: DashboardOverview | null }) {
+export function MessageVolumeCard({ data }: { data: OperationalOverview | null }) {
   const t = useTranslations('Dashboard.overview.volume')
   const format = useFormatter()
   const [view, setView] = useState<View>('time')
@@ -68,7 +70,7 @@ export function MessageVolumeCard({ data }: { data: DashboardOverview | null }) 
     : t('none')
 
   return (
-    <Card className="h-full">
+    <Card className={`${motion.surface} h-full`}>
       <CardHeader>
         <CardTitle>{t('title')}</CardTitle>
         <CardDescription>{view === 'time' ? t('description') : t('hoursDescription')}</CardDescription>
@@ -85,7 +87,10 @@ export function MessageVolumeCard({ data }: { data: DashboardOverview | null }) 
           </Tabs>
         </CardAction>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-4">
+      <CardContent
+        key={data?.days ?? 'loading'}
+        className={`flex flex-1 flex-col gap-4 ${data ? 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200' : ''}`}
+      >
         {!data ? (
           <Skeleton className="h-[260px] w-full" />
         ) : totalIn + totalOut === 0 ? (
@@ -118,6 +123,7 @@ export function MessageVolumeCard({ data }: { data: DashboardOverview | null }) 
             </dl>
             {view === 'time' ? (
               <BarChart
+                highlightBars
                 className="min-h-[240px] flex-1"
                 data={timeData}
                 index="label"
@@ -130,6 +136,7 @@ export function MessageVolumeCard({ data }: { data: DashboardOverview | null }) 
               />
             ) : (
               <BarChart
+                highlightBars
                 className="min-h-[240px] flex-1"
                 data={hoursData}
                 index="label"

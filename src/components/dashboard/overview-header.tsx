@@ -5,21 +5,21 @@ import { Briefcase, ChevronDown, Plus, Radio, UserPlus, Zap } from 'lucide-react
 import { useTranslations } from 'next-intl'
 
 import { buttonVariants } from '@/components/ui/button'
+import motion from '@/components/ui/surface-motion.module.css'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  OVERVIEW_RANGES,
   minutesBetween,
   needsSetup,
   type DashboardOverview,
   type OverviewRange,
 } from '@/lib/dashboard/overview'
 import { Skeleton } from './skeleton'
+import { OverviewRangeControl } from './overview-range-control'
 import { useFormatDuration } from './use-format-duration'
 import { WhatsAppHealthChip } from './whatsapp-health-chip'
 
@@ -88,20 +88,15 @@ export function OverviewHeader({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <WhatsAppHealthChip />
-        <Tabs value={String(range)} onValueChange={(v) => onRangeChange(Number(v) as OverviewRange)}>
-          <TabsList aria-label={t('rangeLabel')}>
-            {OVERVIEW_RANGES.map((r) => (
-              <TabsTrigger key={r} value={String(r)} className="px-2.5 text-xs">
-                {t(`range.${r}`)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <OverviewRangeControl range={range} onRangeChange={onRangeChange} />
         <DropdownMenu>
-          <DropdownMenuTrigger className={buttonVariants({ size: 'sm' })}>
+          <DropdownMenuTrigger className={buttonVariants({ size: 'sm', className: motion.action })}>
             <Plus aria-hidden />
-            {t('new')}
-            <ChevronDown className="opacity-70" aria-hidden />
+            <span className={motion.label}>{t('new')}</span>
+            <ChevronDown
+              className="opacity-70 group-data-popup-open/button:rotate-180 motion-safe:transition-transform"
+              aria-hidden
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             {NEW_ITEMS.map(({ key, href, icon: Icon }) => (

@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 
 import { createClient } from '@/lib/supabase/client'
@@ -30,11 +30,21 @@ import { PipelineCard } from '@/components/dashboard/pipeline-card'
 import { ReplyQueueCard } from '@/components/dashboard/reply-queue-card'
 import { SetupChecklist } from '@/components/dashboard/setup-checklist'
 import { TeamCard } from '@/components/dashboard/team-card'
+import { SupportDashboard } from '@/components/dashboard/support-dashboard'
+import { SupervisorDashboard } from '@/components/dashboard/supervisor-dashboard'
+import { WhatsAppCostCard } from '@/components/dashboard/whatsapp-cost-card'
 
 const POLL_MS = 60_000
 const REALTIME_DEBOUNCE_MS = 2_000
 
 export default function DashboardPage() {
+  const { accountId, accountRole, canEditSettings, profileLoading } = useAuth()
+  if (profileLoading || !accountId) return null
+  if (accountRole === 'supervisor') {
+    return <SupervisorDashboard key={accountId} />
+  }
+  if (!canEditSettings) return <SupportDashboard key={accountId} accountId={accountId} />
+
   return (
     <Suspense fallback={null}>
       <DashboardPageInner />
@@ -44,7 +54,6 @@ export default function DashboardPage() {
 
 function DashboardPageInner() {
   const t = useTranslations('Dashboard.overview')
-  const router = useRouter()
   const searchParams = useSearchParams()
   const range = parseOverviewRange(searchParams.get('range'))
   const { defaultCurrency, profile } = useAuth()
@@ -112,12 +121,13 @@ function DashboardPageInner() {
 
   const handleRangeChange = useCallback(
     (next: OverviewRange) => {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set('range', String(next))
+      const url = new URL(window.location.href)
+      url.searchParams.set('range', String(next))
       setFailed(false)
-      router.replace(`/dashboard?${params.toString()}`, { scroll: false })
+      // The dashboard fetches its data on the client when the URL filter changes.
+      window.history.replaceState(null, '', url)
     },
-    [router, searchParams],
+    [],
   )
 
   const data = overview?.days === range ? overview : null
@@ -151,6 +161,7 @@ function DashboardPageInner() {
         onRangeChange={handleRangeChange}
       />
 
+      <WhatsAppCostCard scope="account" />
       {data && needsSetup(data.setup) ? (
         <SetupChecklist setup={data.setup} />
       ) : (

@@ -1,5 +1,7 @@
 'use client'
 
+import motion from '@/components/ui/surface-motion.module.css'
+
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -18,7 +20,7 @@ import {
 import {
   minutesBetween,
   waitTone,
-  type DashboardOverview,
+  type OperationalOverview,
 } from '@/lib/dashboard/overview'
 import { cn } from '@/lib/utils'
 import { EmptyState } from './empty-state'
@@ -34,13 +36,13 @@ const WAIT_CLASS = {
 
 const WINDOW_WARNING_MINUTES = 120
 
-export function ReplyQueueCard({ data, now }: { data: DashboardOverview | null; now: number }) {
+export function ReplyQueueCard({ data, now }: { data: OperationalOverview | null; now: number }) {
   const t = useTranslations('Dashboard.overview.queue')
   const formatDuration = useFormatDuration()
   const names = new Map((data?.replies.team ?? []).map((m) => [m.userId, m.name]))
 
   return (
-    <Card className="h-full">
+    <Card className={`${motion.surface} h-full`}>
       <CardHeader>
         <CardTitle>{t('title')}</CardTitle>
         <CardDescription>{t('description')}</CardDescription>
@@ -70,7 +72,7 @@ export function ReplyQueueCard({ data, now }: { data: DashboardOverview | null; 
                 <li key={q.conversationId}>
                   <Link
                     href={`/inbox?c=${q.conversationId}`}
-                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className={cn(motion.action, 'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none')}
                   >
                     <Avatar>
                       {q.avatarUrl ? <AvatarImage src={q.avatarUrl} alt="" /> : null}

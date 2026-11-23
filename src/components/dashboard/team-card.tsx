@@ -1,5 +1,7 @@
 'use client'
 
+import motion from '@/components/ui/surface-motion.module.css'
+
 import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
@@ -15,7 +17,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import type { DashboardOverview } from '@/lib/dashboard/overview'
+import type { OperationalOverview } from '@/lib/dashboard/overview'
 import { derivePresence, type PresenceStatus } from '@/lib/presence'
 import { cn } from '@/lib/utils'
 import { initialsOf } from './initials'
@@ -28,7 +30,7 @@ const PRESENCE_CLASS: Record<PresenceStatus, string> = {
   offline: 'bg-muted-foreground/50',
 }
 
-export function TeamCard({ data, now }: { data: DashboardOverview | null; now: number }) {
+export function TeamCard({ data, now, supervisor = false }: { data: OperationalOverview | null; now: number; supervisor?: boolean }) {
   const t = useTranslations('Dashboard.overview.team')
   const format = useFormatter()
   const formatDuration = useFormatDuration()
@@ -37,15 +39,15 @@ export function TeamCard({ data, now }: { data: DashboardOverview | null; now: n
   const target = data?.replyTargetMinutes ?? 5
 
   return (
-    <Card className="h-full">
+    <Card className={`${motion.surface} h-full`}>
       <CardHeader>
         <CardTitle>{t('title')}</CardTitle>
         <CardDescription>{t('description')}</CardDescription>
-        <CardAction>
+        {!supervisor && <CardAction>
           <Link href="/settings?tab=members" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
             {t('link')}
           </Link>
-        </CardAction>
+        </CardAction>}
       </CardHeader>
       <CardContent className="px-2">
         {!data ? (
@@ -57,6 +59,7 @@ export function TeamCard({ data, now }: { data: DashboardOverview | null; now: n
                 <TableHead>{t('member')}</TableHead>
                 <TableHead className="text-right">{t('open')}</TableHead>
                 <TableHead className="text-right">{t('replies')}</TableHead>
+                {supervisor && <TableHead className="text-right">{t('resolved')}</TableHead>}
                 <TableHead className="text-right">{t('median')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -73,7 +76,14 @@ export function TeamCard({ data, now }: { data: DashboardOverview | null; now: n
                           <AvatarFallback className="text-[10px]">{initialsOf(name)}</AvatarFallback>
                           <AvatarBadge className={PRESENCE_CLASS[presence]} />
                         </Avatar>
-                        <span className="truncate">{name}</span>
+                        <div className="min-w-0">
+                          <div className="truncate">{name}</div>
+                          {supervisor && m.memberships?.map(({ department, team }) => (
+                            <div key={`${department}/${team}`} className="text-xs text-muted-foreground">
+                              {department} / {team}
+                            </div>
+                          ))}
+                        </div>
                         <span className="sr-only">{t(`presence.${presence}`)}</span>
                       </div>
                     </TableCell>
@@ -89,6 +99,7 @@ export function TeamCard({ data, now }: { data: DashboardOverview | null; now: n
                       </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{format.number(m.replies)}</TableCell>
+                    {supervisor && <TableCell className="text-right tabular-nums">{format.number(m.resolved ?? 0)}</TableCell>}
                     <TableCell
                       className={cn(
                         'text-right tabular-nums',
@@ -114,6 +125,7 @@ export function TeamCard({ data, now }: { data: DashboardOverview | null; now: n
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">{t('none')}</TableCell>
                   <TableCell className="text-right tabular-nums">{format.number(data.replies.ai.replies)}</TableCell>
+                  {supervisor && <TableCell className="text-right text-muted-foreground">{t('none')}</TableCell>}
                   <TableCell className="text-right tabular-nums">
                     {data.replies.ai.medianMinutes == null ? t('none') : formatDuration(data.replies.ai.medianMinutes)}
                   </TableCell>

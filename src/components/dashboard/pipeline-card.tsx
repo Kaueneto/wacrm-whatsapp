@@ -1,5 +1,7 @@
 'use client'
 
+import motion from '@/components/ui/surface-motion.module.css'
+
 import Link from 'next/link'
 import { useState } from 'react'
 import { AlertTriangle, GitBranch } from 'lucide-react'
@@ -42,7 +44,7 @@ export function PipelineCard({
   const pipelineName = pipelines.find((p) => p.id === pipelineId)?.name
 
   return (
-    <Card className="h-full">
+    <Card className={`${motion.surface} h-full`}>
       <CardHeader>
         <CardTitle>{t('title')}</CardTitle>
         <CardDescription>{t('description')}</CardDescription>

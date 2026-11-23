@@ -7,7 +7,7 @@ import {
   compare,
   ratio,
   seriesValues,
-  type DashboardOverview,
+  type OperationalOverview,
 } from '@/lib/dashboard/overview'
 import { KpiTile, KpiTileSkeleton, TargetBar } from './kpi-tile'
 import { Sparkline } from './sparkline'
@@ -16,9 +16,11 @@ import { useFormatDuration } from './use-format-duration'
 export function KpiRow({
   data,
   currency,
+  supervisor = false,
 }: {
-  data: DashboardOverview | null
-  currency: string
+  data: OperationalOverview | null
+  currency?: string
+  supervisor?: boolean
 }) {
   const t = useTranslations('Dashboard.overview.kpi')
   const format = useFormatter()
@@ -35,13 +37,15 @@ export function KpiRow({
   }
 
   const { kpis, replies, volume } = data
+  const replyTime = (supervisor ? replies.averageHuman : replies.medianHuman) ?? null
+  const previousReplyTime = (supervisor ? replies.averageHumanPrevious : replies.medianHumanPrevious) ?? null
   const comparisonLabel = t(`vsPrevious.${data.days}`)
   const readRate = ratio(kpis.broadcastRead, kpis.broadcastDelivered)
   const readRatePrevious = ratio(kpis.broadcastReadPrevious, kpis.broadcastDeliveredPrevious)
   const percent = (v: number) => format.number(v, { style: 'percent', maximumFractionDigits: 0 })
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div className={supervisor ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-4" : "grid gap-3 sm:grid-cols-2 xl:grid-cols-5"}>
       <KpiTile
         title={t('newConversations')}
         info={t('newConversationsInfo')}
@@ -51,12 +55,12 @@ export function KpiRow({
         footer={<Sparkline values={seriesValues(volume.series, 'newConversations')} />}
       />
       <KpiTile
-        title={t('medianReply')}
-        info={t('medianReplyInfo')}
-        value={replies.medianHuman == null ? t('none') : formatDuration(replies.medianHuman)}
-        change={compare(replies.medianHuman, replies.medianHumanPrevious, true)}
+        title={t(supervisor ? 'averageReply' : 'medianReply')}
+        info={t(supervisor ? 'averageReplyInfo' : 'medianReplyInfo')}
+        value={replyTime == null ? t('none') : formatDuration(replyTime)}
+        change={compare(replyTime, previousReplyTime, true)}
         comparisonLabel={comparisonLabel}
-        footer={<TargetBar value={replies.medianHuman} target={data.replyTargetMinutes} />}
+        footer={<TargetBar value={replyTime} target={data.replyTargetMinutes} />}
       />
       <KpiTile
         title={t('resolved')}
@@ -66,7 +70,7 @@ export function KpiRow({
         comparisonLabel={comparisonLabel}
         footer={<Sparkline values={seriesValues(volume.series, 'resolved')} />}
       />
-      <KpiTile
+      {!supervisor && <KpiTile
         title={t('dealsWon')}
         info={t('dealsWonInfo')}
         value={format.number(kpis.dealsWon)}
@@ -74,7 +78,7 @@ export function KpiRow({
         change={compare(kpis.dealsWon, kpis.dealsWonPrevious)}
         comparisonLabel={comparisonLabel}
         footer={<Sparkline values={seriesValues(volume.series, 'dealsWon')} />}
-      />
+      />}
       <KpiTile
         title={t('readRate')}
         info={t('readRateInfo')}

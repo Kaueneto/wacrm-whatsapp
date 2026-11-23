@@ -1,5 +1,7 @@
 'use client'
 
+import motion from '@/components/ui/surface-motion.module.css'
+
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
@@ -60,7 +62,7 @@ export function CampaignsCard({ data }: { data: DashboardOverview | null }) {
   const success = c ? ratio(c.automationRuns - c.automationFailed, c.automationRuns) : null
 
   return (
-    <Card className="h-full">
+    <Card className={`${motion.surface} h-full`}>
       <CardHeader>
         <CardTitle>{t('title')}</CardTitle>
         <CardDescription>{t('description')}</CardDescription>

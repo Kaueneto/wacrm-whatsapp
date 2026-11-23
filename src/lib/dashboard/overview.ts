@@ -48,11 +48,15 @@ export interface TeamMemberStat {
   open: number
   replies: number
   medianMinutes: number | null
+  resolved?: number
+  memberships?: { department: string; team: string }[]
 }
 
 export interface OverviewReplies {
   medianHuman: number | null
   medianHumanPrevious: number | null
+  averageHuman?: number | null
+  averageHumanPrevious?: number | null
   team: TeamMemberStat[]
   ai: { replies: number; medianMinutes: number | null }
 }
@@ -154,6 +158,20 @@ export interface DashboardOverview {
   pipeline: OverviewPipeline
   campaigns: OverviewCampaigns
   setup: OverviewSetup
+}
+
+export type OperationalOverview = Pick<DashboardOverview,
+  'days' | 'unit' | 'replyTargetMinutes' | 'attention' | 'replies' | 'volume' | 'kpis'>
+
+export type SupervisorOverview = OperationalOverview & {
+  queues: {
+    id: string; team: string; department: string
+    open: number; pending: number; closed: number; waiting: number; unassigned: number
+  }[]
+  broadcasts: (LatestBroadcast & {
+    department: string
+    state: 'queued' | 'running' | 'paused' | 'completed' | 'cancelled' | null
+  })[]
 }
 
 export function isOverviewRange(value: number): value is OverviewRange {
@@ -283,7 +301,7 @@ export function setupSteps(setup: OverviewSetup): SetupStep[] {
   return [
     { id: 'whatsapp', done: setup.whatsappConnected, href: '/settings?tab=whatsapp' },
     { id: 'contacts', done: setup.hasContacts, href: '/contacts' },
-    { id: 'template', done: setup.hasApprovedTemplate, href: '/settings?tab=templates' },
+    { id: 'template', done: setup.hasApprovedTemplate, href: '/campaigns/templates' },
     { id: 'teammate', done: setup.memberCount > 1, href: '/settings?tab=members' },
   ]
 }

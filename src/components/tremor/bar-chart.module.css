@@ -1,0 +1,24 @@
+.highlightBar {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (hover: hover) {
+  .highlightBar:hover {
+    filter: brightness(1.12) drop-shadow(0 2px 4px rgb(0 0 0 / 28%));
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .highlightBar {
+    transition: scale 150ms ease-out, filter 150ms ease-out;
+  }
+
+  .highlightBar:hover {
+    scale: 1.09 1;
+  }
+
+  .highlightBar[data-bar-layout='vertical']:hover {
+    scale: 1 1.09;
+  }
+}

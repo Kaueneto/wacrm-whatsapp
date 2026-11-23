@@ -5,9 +5,10 @@ import { useState, type ComponentType, type ReactNode } from 'react'
 import { AlertTriangle, ChevronRight, Clock, MessageSquare, UserPlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
-import type { DashboardOverview } from '@/lib/dashboard/overview'
+import type { OperationalOverview } from '@/lib/dashboard/overview'
 import { minutesBetween } from '@/lib/dashboard/overview'
 import { cn } from '@/lib/utils'
+import motion from '@/components/ui/surface-motion.module.css'
 import { FailedMessagesDialog } from './failed-messages-dialog'
 import { Skeleton } from './skeleton'
 import { useFormatDuration } from './use-format-duration'
@@ -21,8 +22,10 @@ const TONE_CLASS: Record<Tone, string> = {
   calm: 'bg-muted text-muted-foreground',
 }
 
-const TILE_CLASS =
-  'group flex w-full items-center gap-3 rounded-xl bg-card px-4 py-3 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+const TILE_CLASS = cn(
+  motion.surface,
+  'group flex w-full items-center gap-3 rounded-xl bg-card px-4 py-3 text-left ring-1 ring-foreground/10 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+)
 
 function TileBody({
   icon: Icon,
@@ -49,7 +52,7 @@ function TileBody({
         </span>
         <span className="mt-1 block truncate text-xs text-muted-foreground">{meta}</span>
       </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5" />
     </>
   )
 }
@@ -59,7 +62,7 @@ export function AttentionRow({
   now,
   onlineCount,
 }: {
-  data: DashboardOverview | null
+  data: OperationalOverview | null
   now: number
   onlineCount: number
 }) {

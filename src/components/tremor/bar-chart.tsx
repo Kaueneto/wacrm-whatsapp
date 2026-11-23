@@ -1,7 +1,7 @@
 // ============================================================
 // Tremor BarChart [v1.0.0] — vendored from tremorlabs/tremor.
 //
-// Two local adaptations vs the upstream file:
+// Local adaptations vs the upstream file:
 //   1. `cx` (Tremor's `clsx`+`twMerge` helper) is replaced with
 //      our own `cn` from `@/lib/utils`. Aliased locally so the
 //      diff against upstream stays scoped to this `import` line.
@@ -10,9 +10,7 @@
 //      for `ChevronLeft` / `ChevronRight` from `lucide-react`,
 //      which is already in the project's deps.
 //
-// Everything else — the chart logic, accessibility behaviour,
-// tooltip / legend / slider implementation — is unchanged from
-// the canonical Tremor Raw source.
+// Chart consumers can also opt into a hover treatment for each bar.
 //
 // License: Apache 2.0 (Tremor).
 // Source: https://github.com/tremorlabs/tremor/blob/main/src/components/BarChart/BarChart.tsx
@@ -38,6 +36,7 @@ import {
 import type { AxisDomain } from "recharts/types/util/types"
 
 import { cn as cx } from "@/lib/utils"
+import styles from "./bar-chart.module.css"
 import {
   AvailableChartColors,
   type AvailableChartColorsKeys,
@@ -78,6 +77,7 @@ const renderShape = (
   activeBar: any | undefined,
   activeLegend: string | undefined,
   layout: string,
+  highlightBars: boolean,
 ) => {
   const { fillOpacity, name, payload, value } = props
   let { x, width, y, height } = props
@@ -92,6 +92,8 @@ const renderShape = (
 
   return (
     <rect
+      className={highlightBars ? styles.highlightBar : undefined}
+      data-bar-layout={highlightBars ? layout : undefined}
       x={x}
       y={y}
       width={width}
@@ -544,6 +546,7 @@ interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   yAxisWidth?: number
   intervalType?: "preserveStartEnd" | "equidistantPreserveStart"
   showTooltip?: boolean
+  highlightBars?: boolean
   showLegend?: boolean
   autoMinValue?: boolean
   minValue?: number
@@ -577,6 +580,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       yAxisWidth = 56,
       intervalType = "equidistantPreserveStart",
       showTooltip = true,
+      highlightBars = false,
       showLegend = true,
       autoMinValue = false,
       minValue,
@@ -786,7 +790,9 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               wrapperStyle={{ outline: "none" }}
               isAnimationActive={true}
               animationDuration={100}
-              cursor={{ fill: "#d1d5db", opacity: "0.15" }}
+              cursor={highlightBars
+                ? { fill: "var(--foreground)", fillOpacity: 0.07, pointerEvents: "none" }
+                : { fill: "#d1d5db", opacity: "0.15" }}
               offset={20}
               position={{
                 y: layout === "horizontal" ? 0 : undefined,
@@ -872,7 +878,7 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                 isAnimationActive={false}
                 fill=""
                 shape={(props: any) =>
-                  renderShape(props, activeBar, activeLegend, layout)
+                  renderShape(props, activeBar, activeLegend, layout, highlightBars)
                 }
                 onClick={onBarClick}
               />
