@@ -8,12 +8,16 @@ import {
   CONVERSATION_SELECT,
   normalizeConversation,
 } from "@/lib/inbox/conversations";
-import type { Conversation, Message, Contact, ConversationStatus } from "@/types";
+import type { Conversation, Message, Contact, ConversationStatus, Tag } from "@/types";
+import { applyContactTagChange } from "@/lib/contacts/tag-catalog";
+import { useAuth } from "@/hooks/use-auth";
 import { useRealtime } from "@/hooks/use-realtime";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
+import { ResizableContactPanel } from "@/components/inbox/resizable-contact-panel";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,6 +50,8 @@ export default function InboxPage() {
 
 function InboxPageInner() {
   const t = useTranslations("Inbox.page");
+  const tSidebar = useTranslations("Inbox.sidebar");
+  const { accountId, canEditSettings } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   /**
@@ -72,15 +78,9 @@ function InboxPageInner() {
    */
   const [resyncToken, setResyncToken] = useState(0);
 
-  /**
-   * Whether the desktop contact sidebar (tags / deals / notes) is shown.
-   * Defaults to `true` (the historical behaviour) and is restored from
-   * localStorage after mount. We deliberately do NOT read localStorage in
-   * the initializer: the server renders with `true`, so reading a stored
-   * `false` synchronously would produce a hydration mismatch. The effect
-   * below reconciles to the stored value right after mount instead.
-   */
-  const [contactPanelOpen, setContactPanelOpen] = useState(true);
+  const [contactPanelOpen, setContactPanelOpen] = useState(false);
+  const [contactPanelWidth, setContactPanelWidth] = useState(280);
+  const [mobileContactPanelOpen, setMobileContactPanelOpen] = useState(false);
   useEffect(() => {
     try {
       const stored = localStorage.getItem(CONTACT_PANEL_STORAGE_KEY);
@@ -91,23 +91,27 @@ function InboxPageInner() {
   }, []);
 
   /**
-   * Whether the viewport is wide enough to show the panel at all. The
-   * wrapper's `hidden lg:block` only hides it: below `lg` the sidebar still
-   * mounted and ran its deals / notes / tags fetches on every phone, for a
-   * panel nobody can see. Starts `true` to match the server render and
-   * reconciles after mount, for the same hydration reason as the flag above.
+   * Wide screens have room for a persistent sidebar. Narrow screens use
+   * a sheet and only mount the contact panel when it is opened.
    */
   const [panelFits, setPanelFits] = useState(true);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia(CONTACT_PANEL_MEDIA_QUERY);
-    const apply = () => setPanelFits(mq.matches);
+    const apply = () => {
+      setPanelFits(mq.matches);
+      if (mq.matches) setMobileContactPanelOpen(false);
+    };
     apply();
     mq.addEventListener?.("change", apply);
     return () => mq.removeEventListener?.("change", apply);
   }, []);
 
   const handleToggleContactPanel = useCallback(() => {
+    if (!panelFits) {
+      setMobileContactPanelOpen((open) => !open);
+      return;
+    }
     setContactPanelOpen((prev) => {
       const next = !prev;
       try {
@@ -117,7 +121,7 @@ function InboxPageInner() {
       }
       return next;
     });
-  }, []);
+  }, [panelFits]);
 
   // Fire the deep-link auto-select exactly once per URL — subsequent
   // list refreshes (realtime, manual refetch) must not snap the user
@@ -201,45 +205,22 @@ function InboxPageInner() {
     }
   }, []);
 
-  // Check WhatsApp connection status on mount
   useEffect(() => {
-    const checkConnection = async () => {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const user = session?.user;
-
-      if (!user) return;
-
-      // whatsapp_config is one-row-per-account post-multi-user, so
-      // the previous `.eq('user_id', user.id)` would miss the row
-      // for any teammate who didn't personally save the config —
-      // the "WhatsApp not connected" banner would show in the
-      // shared inbox even though the admin had it configured.
-      // Resolve account_id via the profile and query by that.
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("account_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const accountId = profile?.account_id as string | undefined;
-      if (!accountId) {
-        setWhatsappConnected(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("whatsapp_config")
-        .select("status")
-        .eq("account_id", accountId)
-        .maybeSingle();
-
-      setWhatsappConnected(data?.status === "connected");
-    };
-
-    checkConnection();
-  }, []);
+    if (!canEditSettings || !accountId) return;
+    const controller = new AbortController();
+    void createClient()
+      .from("whatsapp_config")
+      .select("status")
+      .eq("account_id", accountId)
+      .abortSignal(controller.signal)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!controller.signal.aborted && !error) {
+          setWhatsappConnected(data?.status === "connected");
+        }
+      });
+    return () => controller.abort();
+  }, [accountId, canEditSettings]);
 
   // Handle realtime message events
   const handleMessageEvent = useCallback(
@@ -421,6 +402,16 @@ function InboxPageInner() {
     setResyncToken((n) => n + 1);
   }, []);
 
+  const handleContactTagChange = useCallback((contactId: string, tag: Tag, assigned: boolean) => {
+    const updateContact = (contact: Contact) => ({
+      ...contact, tags: applyContactTagChange(contact.tags ?? [], tag, assigned),
+    });
+    setConversations(previous => previous.map(conversation => conversation.contact?.id === contactId
+      ? { ...conversation, contact: updateContact(conversation.contact) }
+      : conversation));
+    setActiveContact(previous => previous?.id === contactId ? updateContact(previous) : previous);
+  }, []);
+
   // Reassignment can revoke SELECT access, so Realtime may omit the UPDATE
   // for the previous attendant. Refresh periodically to evict revoked rows.
   useEffect(() => {
@@ -433,10 +424,14 @@ function InboxPageInner() {
   const handleConversationsLoaded = useCallback(
     (loaded: Conversation[]) => {
       setConversations(loaded);
-      if (activeConversation && !loaded.some(conversation => conversation.id === activeConversation.id)) {
+      const active = activeConversation && loaded.find(conversation => conversation.id === activeConversation.id);
+      if (activeConversation && !active) {
         setActiveConversation(null);
         setActiveContact(null);
+        setMobileContactPanelOpen(false);
         setMessages([]);
+      } else if (active?.contact) {
+        setActiveContact(active.contact);
       }
       // Resolve a pending deep-link here rather than in an effect — this
       // is an event handler, so the setState calls below are allowed by
@@ -529,6 +524,7 @@ function InboxPageInner() {
   const handleCloseConversation = useCallback(() => {
     setActiveConversation(null);
     setActiveContact(null);
+    setMobileContactPanelOpen(false);
     setMessages([]);
     // Clearing the ref lets the deep-link auto-selector fire again if
     // the user later visits /inbox?c=<same-id> — desirable UX.
@@ -605,7 +601,7 @@ function InboxPageInner() {
     <div className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6">
       {/* WhatsApp connection banner — in the flex column, not absolute,
           so it pushes the panels down instead of overlapping them. */}
-      {whatsappConnected === false && (
+      {canEditSettings && whatsappConnected === false && (
         <div className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2">
           <WifiOff className="h-4 w-4 text-amber-400" />
           <p className="text-xs text-amber-400">
@@ -663,19 +659,23 @@ function InboxPageInner() {
             onBack={handleCloseConversation}
             resyncToken={resyncToken}
             onRefresh={handleManualRefresh}
-            contactPanelOpen={contactPanelOpen}
+            contactPanelOpen={!!activeContact && (panelFits ? contactPanelOpen : mobileContactPanelOpen)}
             onToggleContactPanel={handleToggleContactPanel}
           />
         </div>
 
-        {/* Right panel: Contact sidebar — desktop only, and only when the
-            agent hasn't collapsed it via the thread-header toggle (#258).
-            Below `lg` it isn't rendered at all (`panelFits`), so the
-            toggle — which is itself desktop-only — never affects it. */}
-        {contactPanelOpen && panelFits && (
-          <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} />
-          </div>
+        {contactPanelOpen && panelFits && activeContact && (
+          <ResizableContactPanel width={contactPanelWidth} onWidthChange={setContactPanelWidth}>
+            <ContactSidebar key={activeContact.id} contact={activeContact} onContactTagChange={handleContactTagChange} />
+          </ResizableContactPanel>
+        )}
+        {!panelFits && activeContact && (
+          <Sheet open={mobileContactPanelOpen} onOpenChange={setMobileContactPanelOpen}>
+            <SheetContent className="gap-0">
+              <SheetTitle className="sr-only">{tSidebar("contactInfo")}</SheetTitle>
+              <ContactSidebar key={activeContact.id} contact={activeContact} onContactTagChange={handleContactTagChange} className="border-l-0" />
+            </SheetContent>
+          </Sheet>
         )}
       </div>
     </div>

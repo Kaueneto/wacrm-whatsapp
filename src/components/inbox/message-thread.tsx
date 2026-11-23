@@ -27,8 +27,6 @@ import {
   Clock,
   ArrowLeft,
   RefreshCw,
-  PanelRightOpen,
-  PanelRightClose,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
@@ -196,12 +194,13 @@ export function MessageThread({
 
   const { user, accountRole } = useAuth();
   const { getPresence, getRow, now } = usePresence();
-  const [loading, setLoading] = useState(false);
+  const [loadedConversationId, setLoadedConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollAnchorRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
   const [olderPages, setOlderPages] = useState<{
     conversationId: string;
     hasOlder: boolean;
+    paginated?: true;
   } | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -333,6 +332,15 @@ export function MessageThread({
   });
 
   const conversationId = conversation?.id;
+  if (loadedConversationId !== null && loadedConversationId !== conversationId) {
+    setLoadedConversationId(null);
+  }
+  if (olderPages && olderPages.conversationId !== conversationId) {
+    setOlderPages(null);
+  }
+  const initialLoading = loadedConversationId !== conversationId && messages.length === 0;
+  const firstMessageId = messages[0]?.id;
+  const lastMessageId = messages.at(-1)?.id;
   const hasUnread = (conversation?.unread_count ?? 0) > 0;
   const hasOlderMessages =
     !!olderPages && olderPages.conversationId === conversationId && olderPages.hasOlder;
@@ -350,50 +358,43 @@ export function MessageThread({
     [conversationId],
   );
 
-  // Fetch messages whenever the selected conversation changes. Kept
-  // separate from the unread-reset effect so that incoming messages
-  // arriving while the thread is open don't trigger a full refetch —
-  // they only flip hasUnread, which only the reset effect listens to.
+  // The first fetch settles the loading state for this conversation.
+  // Reconnects, periodic checks and manual refreshes merge in the background.
   useEffect(() => {
     if (!conversationId) return;
 
     const supabase = createClient();
-    let cancelled = false;
+    const request = new AbortController();
 
     (async () => {
-      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(MESSAGE_PAGE_SIZE)
+          .abortSignal(request.signal);
 
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(MESSAGE_PAGE_SIZE);
+        if (request.signal.aborted) return;
+        if (error) throw error;
 
-      if (cancelled) return;
-
-      if (error) {
-        console.error("Failed to fetch messages:", error);
-      } else {
         const newestPage = ((data ?? []) as Message[]).slice().reverse();
-        setOlderPages({
-          conversationId,
-          hasOlder: newestPage.length === MESSAGE_PAGE_SIZE,
-        });
+        setOlderPages((previous) =>
+          previous?.conversationId === conversationId && previous.paginated
+            ? previous
+            : { conversationId, hasOlder: newestPage.length === MESSAGE_PAGE_SIZE },
+        );
         onMessagesLoadedRef.current(newestPage, conversationId);
+      } catch (error) {
+        if (!request.signal.aborted) console.error("Failed to fetch messages:", error);
+      } finally {
+        if (!request.signal.aborted) setLoadedConversationId(conversationId);
       }
-
-      if (!cancelled) setLoading(false);
     })();
 
-    return () => {
-      cancelled = true;
-    };
-    // `resyncToken` is included so the parent can force a refetch when
-    // the realtime channel reconnects or the tab regains focus —
-    // realtime is best-effort and any message events sent while the WS
-    // was disconnected or throttled are otherwise lost.
+    return () => request.abort();
   }, [conversationId, resyncToken]);
 
   const loadOlderMessages = useCallback(async () => {
@@ -418,6 +419,7 @@ export function MessageThread({
       setOlderPages({
         conversationId,
         hasOlder: olderPage.length === MESSAGE_PAGE_SIZE,
+        paginated: true,
       });
       const knownIds = new Set(messages.map((m) => m.id));
       const el = scrollRef.current;
@@ -563,7 +565,8 @@ export function MessageThread({
       });
   }, [conversationId, hasUnread]);
 
-  // Auto-scroll to bottom on new messages
+  // Refreshing the same messages or updating delivery status must leave the
+  // scroll position alone. Prepending history still uses the scroll anchor.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -574,7 +577,7 @@ export function MessageThread({
       return;
     }
     el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [conversationId, firstMessageId, lastMessageId, initialLoading]);
 
   const handleSend = useCallback(
     async (text: string, replyToId?: string) => {
@@ -955,7 +958,7 @@ export function MessageThread({
 
       if (error) {
         console.error("Failed to update assignment:", error);
-        toast.error(t("assignmentUpdateFailed"));
+        toast.error(error.code === "23514" ? error.message : t("assignmentUpdateFailed"));
         return;
       }
 
@@ -1029,15 +1032,24 @@ export function MessageThread({
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
-            <p className="truncate text-xs text-muted-foreground">
-              {contactHandle(contact)}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onToggleContactPanel}
+            aria-expanded={contactPanelOpen}
+            title={t("contactDetails")}
+            className="-m-1 flex min-w-0 items-center gap-2 rounded-lg p-1 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring sm:gap-3"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-medium text-foreground">
+              {contact.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={contact.avatar_url} alt="" className="size-full object-cover" />
+              ) : displayName.charAt(0).toUpperCase()}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-foreground">{displayName}</span>
+              <span className="block truncate text-xs text-muted-foreground">{contactHandle(contact)}</span>
+            </span>
+          </button>
           {/* Session timer badge — hidden on the narrowest phones so
               the name + back arrow keep their room. */}
           <Badge
@@ -1053,33 +1065,6 @@ export function MessageThread({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Contact-panel toggle — desktop only. The contact sidebar
-              eats a chunk of horizontal width that crowds the thread on
-              smaller laptops; this lets agents reclaim it when they just
-              want to read and reply. Hidden on mobile, where the sidebar
-              never renders as a permanent panel anyway. Issue #258. */}
-          {onToggleContactPanel && (
-            <button
-              type="button"
-              onClick={onToggleContactPanel}
-              aria-label={
-                contactPanelOpen ? t("hideContactPanel") : t("showContactPanel")
-              }
-              title={contactPanelOpen ? t("hideContact") : t("showContact")}
-              aria-pressed={contactPanelOpen}
-              className={cn(
-                "hidden h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground lg:inline-flex",
-                contactPanelOpen ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              {contactPanelOpen ? (
-                <PanelRightClose className="h-4 w-4" />
-              ) : (
-                <PanelRightOpen className="h-4 w-4" />
-              )}
-            </button>
-          )}
-
           {/* Manual refresh — forces a refetch of the messages + the
               conversation list (the parent bumps its resyncToken). Useful
               when realtime missed an event or the agent just wants to be
@@ -1206,7 +1191,7 @@ export function MessageThread({
 
       {/* Messages Area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
-        {loading ? (
+        {initialLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
@@ -1298,6 +1283,7 @@ export function MessageThread({
       <AiThreadBanner
         conversationId={conversation.id}
         disabled={conversation.ai_autoreply_disabled ?? false}
+        flowAiActive={!!conversation.ai_flow_context}
         handoffSummary={conversation.ai_handoff_summary}
         assignedAgentId={assignedAgentId}
         currentUserId={user?.id}

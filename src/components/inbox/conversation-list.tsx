@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
   CONVERSATION_SELECT,
@@ -10,7 +11,10 @@ import {
 import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X } from "lucide-react";
+import { Search, ChevronDown, ListFilter, Tag as TagIcon, X } from "lucide-react";
+import { useCan } from "@/hooks/use-can";
+import { useAuth } from "@/hooks/use-auth";
+import { fetchAccountTags } from "@/lib/settings/account-catalog";
 import { formatDistanceToNow } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
 import { getDateLocale } from "@/i18n/date-locale";
@@ -19,10 +23,17 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ConversationTagLabels } from "@/components/inbox/conversation-tag-labels";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface ConversationListProps {
   activeConversationId: string | null;
@@ -55,7 +66,9 @@ export function ConversationList({
   initialFilter = "all",
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
-  
+  const canManageTags = useCan("edit-settings");
+  const { accountId } = useAuth();
+
   const FILTER_OPTIONS: { label: string; value: InboxFilter }[] = useMemo(() => [
     { label: t("filterAll"), value: "all" },
     { label: t("filterUnread"), value: "unread" },
@@ -68,6 +81,7 @@ export function ConversationList({
   ], [t]);
 
   const [search, setSearch] = useState("");
+  const [tagsExpanded, setTagsExpanded] = useState(false);
   const [filter, setFilter] = useState<InboxFilter>(initialFilter);
   const [now, setNow] = useState(() => Date.now());
 
@@ -80,6 +94,8 @@ export function ConversationList({
   // matches if its contact carries any selected tag), consistent with
   // Broadcast audience filtering. Company is an exact match on the field.
   const [tags, setTags] = useState<Tag[]>([]);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [tagCatalogState, setTagCatalogState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
 
@@ -136,19 +152,20 @@ export function ConversationList({
     // up on any events sent while the WS was disconnected or throttled.
   }, [resyncToken]);
 
-  // Tag definitions for the filter picker — loaded once so labels/colours
-  // stay stable regardless of which conversations happen to be loaded.
   useEffect(() => {
-    const supabase = createClient();
+    if (!filterMenuOpen || !accountId) return;
     let cancelled = false;
-    (async () => {
-      const { data } = await supabase.from("tags").select("*").order("name");
-      if (!cancelled && data) setTags(data as Tag[]);
-    })();
+    void fetchAccountTags(createClient(), accountId).then(data => {
+      if (cancelled) return;
+      setTags(data.sort((a, b) => a.name.localeCompare(b.name)));
+      const validIds = new Set(data.map(tag => tag.id));
+      setSelectedTagIds(ids => ids.filter(id => validIds.has(id)));
+      setTagCatalogState('ready');
+    }).catch(() => { if (!cancelled) setTagCatalogState('failed'); });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [accountId, filterMenuOpen]);
 
   // Company options are derived from the loaded conversations — there's no
   // separate companies table, and only companies with a live conversation
@@ -222,6 +239,7 @@ export function ConversationList({
   );
 
   const activeFilter = FILTER_OPTIONS.find((o) => o.value === filter);
+  const toggleLabelDisplay = () => setTagsExpanded((expanded) => !expanded);
 
   return (
     // w-full on mobile so the list occupies the whole viewport when it's
@@ -241,73 +259,62 @@ export function ConversationList({
         </div>
 
         <div className="flex flex-wrap items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center justify-center h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted">
-                {activeFilter?.label ?? t("filterAll")}
-                <ChevronDown className="h-3 w-3" />
+          <DropdownMenu onOpenChange={setFilterMenuOpen}>
+            <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-foreground hover:bg-muted">
+              <ListFilter className="size-3.5" aria-hidden />
+              {t("filters")}
+              <span className="text-muted-foreground">{activeFilter?.label ?? t("filterAll")}</span>
+              {selectedTagIds.length > 0 && (
+                <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{selectedTagIds.length}</span>
+              )}
+              <ChevronDown className="size-3" aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              className="border-border bg-popover"
+              className="w-56 border-border bg-popover"
             >
-              {FILTER_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  onClick={() => setFilter(opt.value)}
-                  className={cn(
-                    "text-sm",
-                    filter === opt.value
-                      ? "text-primary"
-                      : "text-popover-foreground"
-                  )}
-                >
-                  {opt.label}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>{t("filterStatus")}</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={filter} onValueChange={(value) => {
+                  const option = FILTER_OPTIONS.find(item => item.value === value);
+                  if (option) setFilter(option.value);
+                }}>
+                  {FILTER_OPTIONS.map((opt) => (
+                    <DropdownMenuRadioItem key={opt.value} value={opt.value}>{opt.label}</DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="flex items-center gap-1.5">
+                  <TagIcon className="size-3.5" aria-hidden />
+                  {t("filterByTags")}
+                </DropdownMenuLabel>
+                <div className="max-h-40 overflow-y-auto">
+                  {tagCatalogState !== 'ready' || tags.length === 0 ? (
+                    <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                      {t(tagCatalogState === 'loading' ? "loadingTags" : tagCatalogState === 'failed' ? "loadTagsFailed" : "noTagsAvailable")}
+                    </p>
+                  ) : tags.map((tag) => (
+                    <DropdownMenuCheckboxItem
+                      key={tag.id}
+                      closeOnClick={false}
+                      checked={selectedTagIds.includes(tag.id)}
+                      onCheckedChange={() => toggleTag(tag.id)}
+                    >
+                      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+                      <span className="truncate">{tag.name}</span>
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </div>
+                {canManageTags && (
+                  <DropdownMenuItem render={<Link href="/tags" />}>
+                    {t("manageTags")}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {tags.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={cn(
-                  "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
-                  selectedTagIds.length > 0
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t("tags")}
-                {selectedTagIds.length > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                    {selectedTagIds.length}
-                  </span>
-                )}
-                <ChevronDown className="h-3 w-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="max-h-64 w-56 border-border bg-popover"
-              >
-                {tags.map((t) => (
-                  <DropdownMenuCheckboxItem
-                    key={t.id}
-                    checked={selectedTagIds.includes(t.id)}
-                    onCheckedChange={() => toggleTag(t.id)}
-                    className="text-sm text-popover-foreground"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: t.color }}
-                      />
-                      <span className="truncate">{t.name}</span>
-                    </span>
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
 
           {companies.length > 0 && (
             <DropdownMenu>
@@ -410,17 +417,21 @@ export function ConversationList({
             <p className="text-sm text-muted-foreground">{t("noConversations")}</p>
           </div>
         ) : (
-          <div className="flex flex-col">
-            {filtered.map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conversation={conv}
-                isActive={conv.id === activeConversationId}
-                onSelect={handleSelect}
-                t={t}
-              />
-            ))}
-          </div>
+          <TooltipProvider delay={350}>
+            <div className="flex flex-col">
+              {filtered.map((conv) => (
+                <ConversationItem
+                  key={conv.id}
+                  conversation={conv}
+                  isActive={conv.id === activeConversationId}
+                  onSelect={handleSelect}
+                  tagsExpanded={tagsExpanded}
+                  onToggleTags={toggleLabelDisplay}
+                  t={t}
+                />
+              ))}
+            </div>
+          </TooltipProvider>
         )}
       </ScrollArea>
     </div>
@@ -431,6 +442,8 @@ interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
   onSelect: (conversation: Conversation) => void;
+  tagsExpanded: boolean;
+  onToggleTags: () => void;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -438,6 +451,8 @@ function ConversationItem({
   conversation,
   isActive,
   onSelect,
+  tagsExpanded,
+  onToggleTags,
   t,
 }: ConversationItemProps) {
   const dateLocale = getDateLocale(useLocale());
@@ -457,54 +472,59 @@ function ConversationItem({
     : "";
 
   return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
-        isActive && "border-l-2 border-primary bg-muted/70"
-      )}
-    >
-      {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
-        {contact?.avatar_url ? (
-          <img
-            src={contact.avatar_url}
-            alt={displayName}
-            className="h-10 w-10 rounded-full object-cover"
-          />
-        ) : (
-          initials
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
-            {displayName}
-          </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
-        </div>
-        <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-xs text-muted-foreground">
-            {conversation.last_message_text || t("noMessagesYet")}
-          </p>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {conversation.unread_count > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                {conversation.unread_count}
-              </span>
-            )}
-            <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                STATUS_COLORS[conversation.status]
-              )}
-              title={conversation.status}
+    <div className={cn("hover:bg-muted/50", isActive && "border-l-2 border-primary bg-muted/70")}>
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex w-full min-w-0 items-start gap-3 px-3 py-3 text-left"
+      >
+        {/* Avatar */}
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+          {contact?.avatar_url ? (
+            <img
+              src={contact.avatar_url}
+              alt={displayName}
+              className="h-10 w-10 rounded-full object-cover"
             />
+          ) : (
+            initials
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-medium text-foreground">
+              {displayName}
+            </span>
+            <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
+          </div>
+          <div className="mt-0.5 flex items-center justify-between gap-2">
+            <p className="truncate text-xs text-muted-foreground">
+              {conversation.last_message_text || t("noMessagesYet")}
+            </p>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {conversation.unread_count > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {conversation.unread_count}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  STATUS_COLORS[conversation.status]
+                )}
+                title={conversation.status}
+              />
+            </div>
           </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {!!contact?.tags?.length && (
+        <div className="-mt-2 ml-16 pr-3 pb-2">
+          <ConversationTagLabels tags={contact.tags} expanded={tagsExpanded} onToggle={onToggleTags} />
+        </div>
+      )}
+    </div>
   );
 }
