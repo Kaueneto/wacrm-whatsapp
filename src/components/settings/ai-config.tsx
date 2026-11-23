@@ -42,11 +42,13 @@ const HANDOFF_QUEUE = '__queue__';
 const PROVIDER_LABEL: Record<Exclude<AiProvider, 'openai_compatible'>, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic (Claude)',
+  gemini: 'Gemini (Google)',
 };
 
 const KEY_PLACEHOLDER: Record<AiProvider, string> = {
   openai: 'sk-...',
   anthropic: 'sk-ant-...',
+  gemini: 'AIza... / AQ...',
   openai_compatible: 'your-api-key',
 };
 
@@ -128,16 +130,14 @@ export function AiConfig() {
     void fetchAccountMembers().then(setMembers);
   }, [accountId, fetchConfig]);
 
-  // Swap the model default when the provider changes, unless the user
-  // typed a custom model.
+  // Model IDs and credentials belong to a provider; start with that provider's default.
   const handleProviderChange = (next: AiProvider) => {
+    if (next === provider) return;
     setProvider(next);
-    const isDefaultModel =
-      model === AI_PROVIDER_DEFAULT_MODEL.openai ||
-      model === AI_PROVIDER_DEFAULT_MODEL.anthropic ||
-      model === AI_PROVIDER_DEFAULT_MODEL.openai_compatible ||
-      model.trim() === '';
-    if (isDefaultModel) setModel(next === 'openai_compatible' ? '' : AI_PROVIDER_DEFAULT_MODEL[next]);
+    setModel(next === 'openai_compatible' ? '' : AI_PROVIDER_DEFAULT_MODEL[next]);
+    setApiKey('');
+    setKeyEdited(false);
+    setHasStoredKey(false);
   };
 
   const keyPayload = () => (keyEdited ? apiKey.trim() : undefined);
@@ -290,14 +290,20 @@ export function AiConfig() {
                   onValueChange={(v) => handleProviderChange(v as AiProvider)}
                   disabled={disabled}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger
+                    className="h-auto min-h-9 w-full whitespace-normal *:data-[slot=select-value]:line-clamp-none"
+                    title={provider === 'openai_compatible' ? t('providerOpenAiCompatible') : PROVIDER_LABEL[provider]}
+                  >
+                    <SelectValue className="min-w-0 whitespace-normal">
+                      {provider === 'openai_compatible' ? t('providerOpenAiCompatible') : PROVIDER_LABEL[provider]}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="openai">{PROVIDER_LABEL.openai}</SelectItem>
                     <SelectItem value="anthropic">
                       {PROVIDER_LABEL.anthropic}
                     </SelectItem>
+                    <SelectItem value="gemini">{PROVIDER_LABEL.gemini}</SelectItem>
                     <SelectItem value="openai_compatible">
                       {t('providerOpenAiCompatible')}
                     </SelectItem>
@@ -331,6 +337,12 @@ export function AiConfig() {
                 </div>
               )}
             </div>
+            {provider === 'gemini' && (
+              <p className="text-muted-foreground text-xs">
+                {t('geminiHint')}{' '}
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline">Google AI Studio</a>
+              </p>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="ai-key">{t('apiKey')}</Label>

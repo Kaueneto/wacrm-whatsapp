@@ -823,7 +823,62 @@ function validateNode(
       break;
     }
 
-    case "handoff":
+    case "ai_assistant": {
+      const cfg = node.config;
+      const checks: [string, boolean][] = [
+        ['team_id', typeof cfg.team_id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cfg.team_id)],
+        ['welcome_message', typeof cfg.welcome_message === 'string' && !!cfg.welcome_message.trim() && cfg.welcome_message.length <= 1024],
+        ['fallback_message', typeof cfg.fallback_message === 'string' && !!cfg.fallback_message.trim() && cfg.fallback_message.length <= 1024],
+        ['handoff_mode', ['queue', 'round_robin'].includes(cfg.handoff_mode as string)],
+        ['instructions', cfg.instructions === undefined || (typeof cfg.instructions === 'string' && cfg.instructions.length <= 4000)],
+        ['note', cfg.note === undefined || (typeof cfg.note === 'string' && cfg.note.length <= 2000)],
+      ];
+      for (const [field, valid] of checks) if (!valid) issues.push({ severity: 'error', scope: 'node', node_key: node.node_key, field, message: t('aiInvalidConfig', { field }) });
+      break;
+    }
+    case "handoff": {
+      const cfg = node.config;
+      if (
+        cfg.mode !== undefined &&
+        !["queue", "round_robin", "specific"].includes(cfg.mode as string)
+      ) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "mode",
+          message: t("handoffInvalidMode"),
+        });
+      }
+      const uuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (
+        cfg.team_id &&
+        (typeof cfg.team_id !== "string" || !uuid.test(cfg.team_id))
+      ) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "team_id",
+          message: t("handoffInvalidTeam"),
+        });
+      }
+      if (
+        (cfg.mode === "specific" && !cfg.assign_to) ||
+        (cfg.assign_to &&
+          (typeof cfg.assign_to !== "string" || !uuid.test(cfg.assign_to)))
+      ) {
+        issues.push({
+          severity: "error",
+          scope: "node",
+          node_key: node.node_key,
+          field: "assign_to",
+          message: t("handoffInvalidAgent"),
+        });
+      }
+      break;
+    }
     case "end":
       // Terminal nodes have no outgoing edges; nothing to validate
       // beyond their existence.
@@ -908,6 +963,7 @@ function outgoingEdges(node: NodeInput): string[] {
       return out;
     }
     case "handoff":
+    case "ai_assistant":
     case "end":
     default:
       return [];

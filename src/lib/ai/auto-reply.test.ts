@@ -14,8 +14,7 @@ const h = vi.hoisted(() => ({
     conv: null as Record<string, unknown> | null,
     autoResponders: [] as { id: string }[],
     claim: true as boolean,
-    updatePayload: null as Record<string, unknown> | null,
-    updates: [] as { payload: Record<string, unknown>; isNull: string[] }[],
+    updates: [] as Record<string, unknown>[],
     rpcCalls: [] as { name: string; args: unknown }[],
     latestInbound: [] as { message_id: string }[],
   },
@@ -65,17 +64,8 @@ vi.mock('./admin-client', () => ({
           }),
         }),
         update: (payload: Record<string, unknown>) => {
-          h.state.updatePayload = { ...h.state.updatePayload, ...payload }
-          const record = { payload, isNull: [] as string[] }
-          h.state.updates.push(record)
-          const result = Promise.resolve({ error: null })
-          const filter = Object.assign(result, {
-            is: (column: string) => {
-              record.isNull.push(column)
-              return result
-            },
-          })
-          return { eq: () => filter }
+          h.state.updates.push(payload)
+          return { eq: () => Promise.resolve({ error: null }) }
         },
       }
     },
@@ -95,6 +85,48 @@ const ARGS = {
   configOwnerUserId: 'user-1',
   inboundMessageId: 'wamid.inbound-1',
 }
+
+describe('AI session started by a flow', () => {
+  const context = { kind: 'flow', flow_run_id: 'run-1', node_key: 'finance-ai', instructions: 'Atenda apenas Financeiro.', note: 'Cliente escolheu Financeiro.', handoff_mode: 'round_robin', fallback_message: 'Vou encaminhar à equipe financeira.' };
+  beforeEach(() => {
+    h.state.conv!.ai_flow_context = context;
+    h.loadAiConfig.mockResolvedValue(aiConfig({ autoReplyEnabled: false, systemPrompt: 'Empresa de serviços.' }));
+  });
+  it('responds after explicit handoff even with account-wide auto-reply off and message automations active', async () => {
+    h.state.autoResponders = [{ id: 'other-automation' }];
+    await dispatchInboundToAiReply(ARGS);
+    expect(h.generateReply).toHaveBeenCalled();
+    expect(h.generateReply.mock.calls[0][0].systemPrompt).toContain(context.instructions);
+    expect(h.engineSendText).toHaveBeenCalledWith(expect.objectContaining({ text: 'Hello!', aiGenerated: true }));
+  });
+  it('returns to the chosen team with its internal note when a person is needed', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true });
+    await dispatchInboundToAiReply(ARGS);
+    expect(h.state.rpcCalls).toContainEqual({ name: 'finish_flow_ai', args: expect.objectContaining({ p_account_id: 'acct-1', p_conversation_id: 'conv-1', p_summary: expect.stringContaining(context.note) }) });
+    expect(h.engineSendText).toHaveBeenCalledWith(expect.objectContaining({ text: context.fallback_message, aiGenerated: false }));
+    expect(h.state.updates.some((update) => 'assigned_agent_id' in update)).toBe(false);
+  });
+  it.each(['unavailable', 'limit', 'provider_error'])('routes to human support on %s', async (reason) => {
+    if (reason === 'unavailable') h.loadAiConfig.mockResolvedValue(null);
+    if (reason === 'limit') h.state.conv!.ai_reply_count = 3;
+    if (reason === 'provider_error') h.generateReply.mockRejectedValue(new Error('Quota exhausted'));
+    await dispatchInboundToAiReply(ARGS);
+    expect(h.state.rpcCalls.some((call) => call.name === 'finish_flow_ai')).toBe(true);
+    expect(h.engineSendText).toHaveBeenCalledWith(expect.objectContaining({ text: context.fallback_message }));
+  });
+  it('does not answer after a human takes ownership', async () => {
+    h.state.conv!.assigned_agent_id = 'agent-1';
+    await dispatchInboundToAiReply(ARGS);
+    expect(h.generateReply).not.toHaveBeenCalled();
+    expect(h.state.rpcCalls).toEqual([]);
+  });
+  it('does not send a duplicate transfer message when another worker already transferred', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true });
+    h.state.claim = false;
+    await dispatchInboundToAiReply(ARGS);
+    expect(h.engineSendText).not.toHaveBeenCalled();
+  });
+});
 
 function aiConfig(overrides: Partial<AiConfig> = {}): AiConfig {
   return {
@@ -120,7 +152,6 @@ beforeEach(() => {
   }
   h.state.autoResponders = []
   h.state.claim = true
-  h.state.updatePayload = null
   h.state.updates = []
   h.state.rpcCalls = []
   h.state.latestInbound = [{ message_id: 'wamid.inbound-1' }]
@@ -317,34 +348,24 @@ describe('dispatchInboundToAiReply — handoff', () => {
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
     await dispatchInboundToAiReply(ARGS)
     expect(h.engineSendText).not.toHaveBeenCalled()
-    expect(h.state.rpcCalls).toHaveLength(0)
-    expect(h.state.updatePayload).toMatchObject({ ai_autoreply_disabled: true })
-    expect(h.state.updatePayload?.ai_handoff_summary).toContain(
-      'AI agent handed off',
-    )
-    // No handoff target configured → conversation left unassigned.
-    expect(h.state.updatePayload).not.toHaveProperty('assigned_agent_id')
+    expect(h.state.rpcCalls).toEqual([{
+      name: 'handoff_conversation_from_ai',
+      args: {
+        p_account_id: ARGS.accountId,
+        p_conversation_id: ARGS.conversationId,
+        p_agent_id: null,
+        p_summary: expect.stringContaining('AI agent handed off'),
+      },
+    }])
   })
 
   it('routes to the configured handoff agent on handoff', async () => {
     h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'agent-7' }))
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
     await dispatchInboundToAiReply(ARGS)
-    expect(h.state.updatePayload).toMatchObject({
-      ai_autoreply_disabled: true,
-      assigned_agent_id: 'agent-7',
-    })
-  })
-
-  it('assigns the handoff agent only while the thread is still unassigned', async () => {
-    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'agent-7' }))
-    h.generateReply.mockResolvedValue({ text: '', handoff: true })
-    await dispatchInboundToAiReply(ARGS)
-    const pause = h.state.updates.find((u) => 'ai_autoreply_disabled' in u.payload)
-    const assign = h.state.updates.find((u) => 'assigned_agent_id' in u.payload)
-    expect(pause?.payload).not.toHaveProperty('assigned_agent_id')
-    expect(pause?.isNull).toEqual([])
-    expect(assign?.payload).toEqual({ assigned_agent_id: 'agent-7' })
-    expect(assign?.isNull).toEqual(['assigned_agent_id'])
+    expect(h.state.rpcCalls).toEqual([{
+      name: 'handoff_conversation_from_ai',
+      args: expect.objectContaining({ p_agent_id: 'agent-7' }),
+    }])
   })
 })

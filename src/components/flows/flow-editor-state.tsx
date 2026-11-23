@@ -69,24 +69,34 @@ export interface BuilderState {
   nodes: BuilderNode[];
 }
 
+type FlowEditSection = 'name' | 'description' | 'graph';
+
+export function getPendingFlowChanges(state: BuilderState, saved: BuilderState): FlowEditSection[] {
+  const changes: FlowEditSection[] = [];
+  if (state.name !== saved.name) changes.push('name');
+  if (state.description !== saved.description) changes.push('description');
+  if (state.trigger_type !== saved.trigger_type || state.entry_node_id !== saved.entry_node_id ||
+    (state.trigger_config !== saved.trigger_config && JSON.stringify(state.trigger_config) !== JSON.stringify(saved.trigger_config)) ||
+    (state.nodes !== saved.nodes && JSON.stringify(state.nodes) !== JSON.stringify(saved.nodes))) changes.push('graph');
+  return changes;
+}
+
 export interface FlowEditorContextValue {
   /** Immutable post-load envelope: id, created_at, fallback_policy, etc. */
   flow: FlowRow;
 
   // Authored state
   state: BuilderState;
-  /**
-   * Dirty-tracking React setState. Flips `dirty` on every call. Used
-   * by the list view's existing subcomponents (Header, TriggerPanel,
-   * EntryPicker) which mutate multiple fields atomically — granular
-   * setters below would force them to fan out the update.
-   */
   setState: (
     updaterOrValue:
       | BuilderState
       | ((prev: BuilderState) => BuilderState),
   ) => void;
   dirty: boolean;
+  pendingChanges: FlowEditSection[];
+  lastSavedChanges: FlowEditSection[];
+  saveError: string | null;
+  lastEditedAt: string | null;
   saving: boolean;
   activating: boolean;
   issues: ValidationIssue[];
@@ -105,7 +115,7 @@ export interface FlowEditorContextValue {
   removeNode: (key: string) => void;
 
   // Actions
-  save: () => Promise<boolean>;
+  save: (scope?: 'details') => Promise<boolean>;
   setStatus: (status: BuilderState["status"]) => Promise<void>;
   deleteFlow: () => Promise<void>;
 
@@ -205,7 +215,9 @@ export function defaultConfigFor(type: NodeType): Record<string, unknown> {
     case "set_tag":
       return { mode: "add", tag_id: "", next_node_key: "" };
     case "handoff":
-      return { note: "" };
+      return { note: "", mode: "queue", team_id: "" };
+    case "ai_assistant":
+      return { team_id: "", welcome_message: tForm('aiWelcomeDefault'), instructions: "", note: "", handoff_mode: "round_robin", fallback_message: tForm('aiFallbackDefault') };
     case "end":
       return {};
   }
@@ -278,19 +290,19 @@ export function FlowEditorProvider({
   }));
 
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [savedState, setSavedState] = useState(state);
+  const [lastSavedChanges, setLastSavedChanges] = useState<FlowEditSection[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const pendingChanges = useMemo(() => getPendingFlowChanges(state, savedState), [state, savedState]);
+  const dirty = pendingChanges.length > 0;
+  const [lastEditedAt, setLastEditedAt] = useState(initialFlow.last_edited_at ?? null);
   const latestNodesRef = useRef(state.nodes);
   useEffect(() => {
     latestNodesRef.current = state.nodes;
   }, [state.nodes]);
   const [activating, setActivating] = useState(false);
-  // dirty flips on user edits; status-only updates (after the activate
-  // API succeeds) use setStateRaw so they don't falsely re-flag the
-  // form as dirty.
-  const [dirty, setDirty] = useState(false);
-  const setState = useCallback<typeof setStateRaw>((updaterOrValue) => {
-    setDirty(true);
-    setStateRaw(updaterOrValue);
-  }, []);
+  const setState = setStateRaw;
 
   // Cross-view "look here" signal (see FlowEditorContextValue docs).
   // Tracked via a ref alongside state so a rapid second click on a
@@ -354,36 +366,69 @@ export function FlowEditorProvider({
   );
 
   // ---- Save (PUT) ----
-  const save = useCallback(async () => {
+  const save = useCallback(async (scope?: 'details') => {
+    if (savingRef.current) return false;
+    const changes = pendingChanges.filter((change) => scope !== 'details' || change !== 'graph');
+    if (!changes.length) return true;
+    const nameChanged = changes.includes('name');
+    const descriptionChanged = changes.includes('description');
+    const graphChanged = changes.includes('graph');
+    savingRef.current = true;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch(`/api/flows/${initialFlow.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: state.name,
-          description: state.description || null,
-          trigger_type: state.trigger_type,
-          trigger_config: state.trigger_config,
-          entry_node_id: state.entry_node_id,
-          nodes: state.nodes,
+          ...(nameChanged ? { name: state.name } : {}),
+          ...(descriptionChanged ? { description: state.description || null } : {}),
+          ...(graphChanged ? {
+            trigger_type: state.trigger_type,
+            trigger_config: state.trigger_config,
+            entry_node_id: state.entry_node_id,
+            nodes: state.nodes,
+          } : {}),
         }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error ?? t("saveFailedStatus", { status: res.status }));
       }
-      setDirty(false);
+      const result = (await res.json()) as { flow: FlowRow };
+      if (!result.flow) throw new Error(t('saveFailed'));
+      const persistedName = result.flow.name;
+      const persistedDescription = result.flow.description ?? '';
+      setSavedState((previous) => ({
+        ...previous,
+        ...(nameChanged ? { name: persistedName } : {}),
+        ...(descriptionChanged ? { description: persistedDescription } : {}),
+        ...(graphChanged ? {
+          trigger_type: state.trigger_type,
+          trigger_config: state.trigger_config,
+          entry_node_id: state.entry_node_id,
+          nodes: state.nodes,
+        } : {}),
+      }));
+      setStateRaw((current) => ({
+        ...current,
+        name: nameChanged && current.name === state.name ? persistedName : current.name,
+        description: descriptionChanged && current.description === state.description ? persistedDescription : current.description,
+      }));
+      setLastEditedAt(result.flow.last_edited_at ?? null);
+      setLastSavedChanges(changes);
       toast.success(t("saved"));
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("saveFailed");
+      setSaveError(msg);
       toast.error(msg);
       return false;
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
-  }, [initialFlow.id, state, t]);
+  }, [initialFlow.id, pendingChanges, state, t]);
 
   // ---- Activate / Pause / Archive ----
   const setStatus = useCallback(
@@ -409,6 +454,8 @@ export function FlowEditorProvider({
           const json = await res.json().catch(() => ({}));
           throw new Error(json.error ?? t("statusUpdateFailedStatus", { status: res.status }));
         }
+        const result = (await res.json()) as { flow: FlowRow };
+        setLastEditedAt(result.flow.last_edited_at ?? null);
         setStateRaw((s) => ({ ...s, status: next }));
         toast.success(
           next === "active"
@@ -493,6 +540,7 @@ export function FlowEditorProvider({
         ...s,
         nodes: applyNodePositions(s.nodes, positions),
       }));
+      setSavedState((s) => ({ ...s, nodes: applyNodePositions(s.nodes, positions) }));
     },
     [],
   );
@@ -531,6 +579,10 @@ export function FlowEditorProvider({
       state,
       setState,
       dirty,
+      pendingChanges,
+      lastSavedChanges,
+      saveError,
+      lastEditedAt,
       saving,
       activating,
       issues,
@@ -552,6 +604,10 @@ export function FlowEditorProvider({
       state,
       setState,
       dirty,
+      pendingChanges,
+      lastSavedChanges,
+      saveError,
+      lastEditedAt,
       saving,
       activating,
       issues,

@@ -14,6 +14,13 @@ const validFlow = {
   entry_node_id: "start",
 };
 
+describe('AI assistant node validation', () => {
+  const config = { team_id: '00000000-0000-0000-0000-000000000001', welcome_message: 'Olá!', fallback_message: 'Vou transferir.', handoff_mode: 'round_robin' };
+  const validate = (patch: Record<string, unknown>) => validateFlowForActivation({ name: 'AI', trigger_type: 'manual', trigger_config: {}, entry_node_id: 'ai' }, [{ node_key: 'ai', node_type: 'ai_assistant', config: { ...config, ...patch } }]);
+  it('accepts a terminal AI node', () => expect(validate({})).toEqual([]));
+  it.each([{ team_id: '' }, { welcome_message: '' }, { fallback_message: '' }, { handoff_mode: 'specific' }, { instructions: 'x'.repeat(4001) }, { note: 'x'.repeat(2001) }])('rejects invalid configuration %j', (patch) => expect(validate(patch).some((issue) => issue.severity === 'error')).toBe(true));
+});
+
 const validNodes = [
   { node_key: "start", node_type: "start", config: { next_node_key: "menu" } },
   {
@@ -667,4 +674,40 @@ describe("auto-advancing chain length", () => {
       }),
     ]);
   });
+});
+
+describe("handoff routing validation", () => {
+  it.each([
+    [{ mode: "invalid" }, "mode"],
+    [{ mode: "specific" }, "assign_to"],
+    [{ mode: "queue", team_id: "invalid" }, "team_id"],
+  ])("rejects incomplete or malformed routing %j", (config, field) => {
+    const nodes = validNodes.map((node) =>
+      node.node_type === "handoff" ? { ...node, config } : node,
+    );
+    expect(validateFlowForActivation(validFlow, nodes)).toContainEqual(
+      expect.objectContaining({ severity: "error", node_key: "ho", field }),
+    );
+  });
+  it.each(["queue", "round_robin", "specific"])(
+    "accepts %s routing",
+    (mode) => {
+      const nodes = validNodes.map((node) =>
+        node.node_type === "handoff"
+          ? {
+              ...node,
+              config: {
+                mode,
+                team_id: "00000000-0000-0000-0000-000000000001",
+                assign_to:
+                  mode === "specific"
+                    ? "00000000-0000-0000-0000-000000000002"
+                    : "",
+              },
+            }
+          : node,
+      );
+      expect(validateFlowForActivation(validFlow, nodes)).toEqual([]);
+    },
+  );
 });

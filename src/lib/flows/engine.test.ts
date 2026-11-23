@@ -10,6 +10,11 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 // ============================================================
 
 const h = vi.hoisted(() => ({
+  route: vi.fn(async () => ({
+    data: null as string | boolean | null,
+    error: null as { message: string } | null,
+  })),
+
   state: {
     /** Rows loadActiveRunForContact sees. */
     activeRuns: [] as Record<string, unknown>[],
@@ -73,7 +78,7 @@ vi.mock("./admin-client", () => {
   return {
     supabaseAdmin: () => ({
       from: (t: string) => builder(t),
-      rpc: () => Promise.resolve({ error: null }),
+      rpc: h.route,
     }),
   };
 });
@@ -99,6 +104,7 @@ import type {
   engineSendInteractiveList,
 } from "./meta-send";
 import type { ParsedInbound } from "./types";
+import { engineSendText } from './meta-send';
 
 describe("matchReplyId", () => {
   it("returns null for nodes without options", () => {
@@ -624,5 +630,136 @@ describe("send_buttons / send_list interpolate {{vars.*}} (#553)", () => {
         }),
       }),
     );
+  });
+});
+
+describe("handoff routing", () => {
+  beforeEach(() => {
+    h.route.mockReset();
+    h.route.mockResolvedValue({ data: null, error: null });
+    h.state.activeRuns = [{ ...RUN, vars: {} }];
+    h.state.flows = [FLOW];
+    h.state.events = [];
+    h.state.updates = [];
+  });
+  function setup(config: Record<string, unknown>) {
+    h.state.nodes = [
+      {
+        id: "n1",
+        flow_id: "flow-1",
+        node_key: "ask_name",
+        node_type: "collect_input",
+        config: { var_key: "name", next_node_key: "handoff" },
+      },
+      {
+        id: "n2",
+        flow_id: "flow-1",
+        node_key: "handoff",
+        node_type: "handoff",
+        config,
+      },
+    ];
+  }
+  it('starts AI with the selected team, interpolated context and greeting, ending the menu run', async () => {
+    setup({ team_id: 'team-1', instructions: 'Cliente {{vars.name}}', note: 'Financeiro', handoff_mode: 'round_robin', welcome_message: 'Olá {{vars.name}}', fallback_message: 'Vou transferir.' });
+    (h.state.nodes[1] as Record<string, unknown>).node_type = 'ai_assistant';
+    h.route.mockResolvedValueOnce({ data: true, error: null });
+    expect(await dispatch(text('Alice'))).toMatchObject({ outcome: 'handed_off' });
+    expect(h.route).toHaveBeenCalledWith('start_flow_ai', expect.objectContaining({ p_team_id: 'team-1', p_context: expect.objectContaining({ instructions: 'Cliente Alice', note: 'Financeiro' }) }));
+    expect(vi.mocked(engineSendText)).toHaveBeenCalledWith(expect.objectContaining({ text: 'Olá Alice' }));
+    expect(h.state.updates).toContainEqual({ table: 'flow_runs', row: expect.objectContaining({ status: 'handed_off', end_reason: 'ai_assistant_node' }) });
+  });
+
+  it('returns to the team when the assistant is unavailable', async () => {
+    setup({ team_id: 'team-1', handoff_mode: 'queue', welcome_message: 'Olá', fallback_message: 'Vou transferir.' });
+    (h.state.nodes[1] as Record<string, unknown>).node_type = 'ai_assistant';
+    h.route.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValueOnce({ data: true, error: null });
+    await dispatch(text('Alice'));
+    expect(h.route).toHaveBeenCalledWith('finish_flow_ai', expect.anything());
+    expect(vi.mocked(engineSendText)).toHaveBeenCalledWith(expect.objectContaining({ text: 'Vou transferir.' }));
+  });
+  it.each(["queue", "round_robin", "specific"])(
+    "routes %s through the existing team distribution",
+    async (mode) => {
+      setup({
+        mode,
+        team_id: "team-1",
+        assign_to: "agent-1",
+        note: "Customer {{vars.name}}",
+      });
+      h.route.mockResolvedValueOnce({
+        data: mode === "queue" ? null : "agent-1",
+        error: null,
+      });
+      expect(await dispatch(text("Alice"))).toMatchObject({
+        consumed: true,
+        outcome: "handed_off",
+      });
+      expect(h.route).toHaveBeenCalledWith("route_support_conversation", {
+        p_account_id: "acct-1",
+        p_contact_id: "ct-1",
+        p_team_id: "team-1",
+        p_agent_id: mode === "specific" ? "agent-1" : null,
+        p_mode: mode,
+      });
+      expect(h.state.updates).toContainEqual({
+        table: "conversations",
+        row: expect.objectContaining({
+          status: "pending",
+          ai_autoreply_disabled: true,
+        }),
+      });
+      expect(h.state.events).toContainEqual(
+        expect.objectContaining({
+          event_type: "handoff",
+          payload: expect.objectContaining({
+            note: "Customer Alice",
+            assigned_to: mode === "queue" ? null : "agent-1",
+          }),
+        }),
+      );
+    },
+  );
+  it("keeps a round robin with no online agents in the queue", async () => {
+    setup({ mode: "round_robin", team_id: "team-1" });
+    expect(await dispatch(text("Alice"))).toMatchObject({
+      outcome: "handed_off",
+    });
+    expect(h.state.events).toContainEqual(
+      expect.objectContaining({
+        event_type: "handoff",
+        payload: expect.objectContaining({ assigned_to: null }),
+      }),
+    );
+  });
+  it("logs routing rejection and fails without claiming successful handoff", async () => {
+    setup({ mode: "specific", team_id: "other-account", assign_to: "agent-1" });
+    h.route.mockResolvedValueOnce({
+      data: null,
+      error: { message: "Team is outside the account" },
+    });
+    expect(await dispatch(text("Alice"))).toMatchObject({
+      outcome: "completed",
+    });
+    expect(h.state.updates).toContainEqual({
+      table: "flow_runs",
+      row: expect.objectContaining({
+        status: "failed",
+        end_reason: "handoff_failed",
+      }),
+    });
+    expect(h.state.events.some((event) => event.event_type === "handoff")).toBe(
+      false,
+    );
+  });
+  it("preserves assignments in legacy nodes", async () => {
+    setup({ note: "Legacy" });
+    expect(await dispatch(text("Alice"))).toMatchObject({
+      outcome: "handed_off",
+    });
+    expect(h.route).not.toHaveBeenCalled();
+    expect(
+      h.state.updates.find((update) => update.table === "conversations")?.row,
+    ).not.toHaveProperty("assigned_agent_id");
   });
 });

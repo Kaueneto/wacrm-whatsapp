@@ -7,6 +7,9 @@ import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
+import { handoffFlowAi, isFlowAiActive, type FlowAiContext } from './flow-session'
+import type { ChatMessage } from './types'
+import { getT } from '@/lib/i18n/translate'
 import {
   engineSendText,
   loadAccountMetaCredentials,
@@ -58,11 +61,33 @@ export async function dispatchInboundToAiReply(
     inboundMessageId,
   } = args
 
+  let flowContext: FlowAiContext | null = null
+  let replyCount = 0
+  let recentMessages: ChatMessage[] = []
+  const transferFlow = async (reason: string) => {
+    if (!flowContext) return
+    const context = flowContext
+    flowContext = null
+    if (recentMessages.length === 0) recentMessages = await buildConversationContext(supabaseAdmin(), conversationId).catch(() => [])
+    const t = getT('FlowAi')
+    await handoffFlowAi({ db: supabaseAdmin(), accountId, conversationId, contactId,
+      userId: configOwnerUserId, context,
+      summary: `${t(reason)}\n${buildHandoffSummary({ messages: recentMessages, replyCount })}` })
+  }
   try {
     const db = supabaseAdmin()
 
+    const { data: conv, error: convErr } = await db
+      .from('conversations')
+      .select('assigned_agent_id, ai_autoreply_disabled, ai_reply_count, ai_flow_context')
+      .eq('id', conversationId)
+      .maybeSingle()
+    if (convErr || !conv || conv.assigned_agent_id || conv.ai_autoreply_disabled) return
+    if (isFlowAiActive(conv)) flowContext = conv.ai_flow_context as FlowAiContext
+    replyCount = conv.ai_reply_count ?? 0
     const config = await loadAiConfig(db, accountId)
-    if (!config || !config.autoReplyEnabled) return
+    if (!config) { await transferFlow('unavailable'); return }
+    if (!config.autoReplyEnabled && !flowContext) return
 
     // Deterministic, user-configured responders win over the LLM — the
     // caller already excludes messages a Flow consumed. Message-level
@@ -72,7 +97,7 @@ export async function dispatchInboundToAiReply(
     // avoid double-texting the customer. (Relationship triggers like
     // `first_inbound_message` don't count — they're not per-message
     // auto-responders.)
-    const { data: autoResponders } = await db
+    const { data: autoResponders } = flowContext ? { data: [] } : await db
       .from('automations')
       .select('id')
       .eq('account_id', accountId)
@@ -81,19 +106,12 @@ export async function dispatchInboundToAiReply(
       .limit(1)
     if (autoResponders && autoResponders.length > 0) return
 
-    const { data: conv, error: convErr } = await db
-      .from('conversations')
-      .select('assigned_agent_id, ai_autoreply_disabled, ai_reply_count')
-      .eq('id', conversationId)
-      .maybeSingle()
-    if (convErr || !conv) return
-    if (conv.assigned_agent_id) return // a human owns this thread
-    if (conv.ai_autoreply_disabled) return // handed off / turned off here
     // Cheap early-out; the authoritative cap check is the atomic claim
     // below (this read can race a concurrent inbound).
-    if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) return
+    if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) { await transferFlow('limit'); return }
 
     const messages = await buildConversationContext(db, conversationId)
+    recentMessages = messages
     if (messages.length === 0) return
 
     // Account-wide throttle on the shared BYO key. The per-conversation
@@ -109,6 +127,7 @@ export async function dispatchInboundToAiReply(
       console.warn(
         `[ai auto-reply] account ${accountId} hit the per-account rate limit — skipping this inbound.`,
       )
+      await transferFlow('limit')
       return
     }
 
@@ -131,7 +150,7 @@ export async function dispatchInboundToAiReply(
     )
 
     const systemPrompt = buildSystemPrompt({
-      userPrompt: config.systemPrompt,
+      userPrompt: [config.systemPrompt, flowContext?.instructions].filter(Boolean).join('\n\n') || null,
       mode: 'auto_reply',
       knowledge,
     })
@@ -157,6 +176,7 @@ export async function dispatchInboundToAiReply(
     })
 
     if (handoff || !text) {
+      if (flowContext) { await transferFlow('human_requested'); return }
       // The model can't (or shouldn't) answer — stop auto-replying on
       // this thread and hand it to a human. We (a) pause the bot here
       // (sticky until re-enabled), (b) route the conversation to the
@@ -168,19 +188,13 @@ export async function dispatchInboundToAiReply(
         messages,
         replyCount: conv.ai_reply_count ?? 0,
       })
-      await db
-        .from('conversations')
-        .update({ ai_autoreply_disabled: true, ai_handoff_summary: summary })
-        .eq('id', conversationId)
-      // Only set the assignee when a target is configured AND the thread
-      // isn't already owned — never stomp an existing human assignment.
-      if (config.handoffAgentId) {
-        await db
-          .from('conversations')
-          .update({ assigned_agent_id: config.handoffAgentId })
-          .eq('id', conversationId)
-          .is('assigned_agent_id', null)
-      }
+      const { error } = await db.rpc('handoff_conversation_from_ai', {
+        p_account_id: accountId,
+        p_conversation_id: conversationId,
+        p_agent_id: config.handoffAgentId,
+        p_summary: summary,
+      })
+      if (error) throw error
       return
     }
 
@@ -209,9 +223,10 @@ export async function dispatchInboundToAiReply(
       // service role, or the migration not applied. Log it loudly: a
       // silent return makes "auto-reply never fires" undiagnosable.
       console.error('[ai auto-reply] claim_ai_reply_slot failed:', claimErr)
+      await transferFlow('provider_error')
       return
     }
-    if (claimed !== true) return
+    if (claimed !== true) { await transferFlow('limit'); return }
 
     await engineSendText({
       accountId,
@@ -223,6 +238,7 @@ export async function dispatchInboundToAiReply(
     })
   } catch (err) {
     console.error('[ai auto-reply] dispatch failed:', err)
+    await transferFlow('provider_error').catch((error) => console.error('[ai flow] handoff failed:', error))
   }
 }
 

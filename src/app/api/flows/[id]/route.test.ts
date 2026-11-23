@@ -123,6 +123,17 @@ describe('PUT /api/flows/[id]', () => {
     expect(h.tables.flows[0]).toMatchObject({ name: 'Renamed' })
   })
 
+  it('confirms a description change independently of an active graph', async () => {
+    seed('active')
+    h.tables.flow_nodes = DANGLING_NODES.map((node) => ({ ...node, flow_id: 'flow-1' }))
+    const res = await put({ name: ' Menu atualizado ', description: 'Nova descrição' })
+
+    expect(res.status).toBe(200)
+    expect((await res.json()).flow).toMatchObject({ name: 'Menu atualizado', description: 'Nova descrição' })
+    expect(h.rpc).not.toHaveBeenCalled()
+    expect(h.tables.flow_nodes).toEqual(DANGLING_NODES.map((node) => ({ ...node, flow_id: 'flow-1' })))
+  })
+
   it('lets a draft save an incomplete graph', async () => {
     seed('draft')
     const res = await put({ nodes: DANGLING_NODES })

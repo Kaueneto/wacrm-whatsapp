@@ -1,5 +1,7 @@
 'use client';
 
+import motion from '@/components/ui/surface-motion.module.css';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useLocale, useTranslations } from 'next-intl';
@@ -54,7 +56,7 @@ const WINDOWS = [7, 30, 90] as const;
  * billing-class), mirroring the `ai_usage_log` SELECT policy and the
  * `GET /api/ai/usage` route. Renders nothing for non-admins.
  */
-export function AiUsageCard() {
+export function AiUsageCard({ showModelChart = false }: { showModelChart?: boolean }) {
   const t = useTranslations('Agents.usage');
   const locale = useLocale();
   const { accountId, accountRole, profileLoading } = useAuth();
@@ -112,7 +114,7 @@ export function AiUsageCard() {
   const hasSpend = (data?.totals.total_tokens ?? 0) > 0;
 
   return (
-    <Card>
+    <Card className={showModelChart ? motion.surface : undefined}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -141,8 +143,10 @@ export function AiUsageCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        {loading || !data ? (
+        {loading ? (
           <Skeleton className="h-[220px] w-full" />
+        ) : !data ? (
+          <p className="text-sm text-muted-foreground">{t('loadFailed')}</p>
         ) : !hasSpend ? (
           <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
             <BarChart3 className="h-8 w-8 opacity-40" />
@@ -173,6 +177,7 @@ export function AiUsageCard() {
                 {t('tokensPerDay')}
               </p>
               <BarChart
+                highlightBars={showModelChart}
                 data={chartData}
                 index="day"
                 categories={[tokensLabel]}
@@ -189,6 +194,21 @@ export function AiUsageCard() {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">
                   {t('byModel')}
                 </p>
+                {showModelChart && (
+                  <BarChart
+                    highlightBars
+                    className="mb-4"
+                    style={{ height: Math.max(120, Math.min(data.by_model.length, 8) * 36 + 30) }}
+                    data={data.by_model.slice(0, 8).map(m => ({ label: `${m.model} (${m.provider})`, [tokensLabel]: m.tokens }))}
+                    index="label"
+                    categories={[tokensLabel]}
+                    layout="vertical"
+                    colors={['violet']}
+                    showLegend={false}
+                    yAxisWidth={120}
+                    valueFormatter={formatCompactNumber}
+                  />
+                )}
                 <ul className="divide-y divide-border rounded-md border border-border">
                   {data.by_model.map((m) => (
                     <li

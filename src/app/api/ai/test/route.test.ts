@@ -68,6 +68,11 @@ beforeEach(() => {
 })
 
 describe('POST /api/ai/test stored key reuse', () => {
+  it('tests a Gemini key without a custom endpoint', async () => {
+    const res = await post({ provider: 'gemini', model: 'gemini-3.1-flash-lite', api_key: 'google-key' });
+    expect(res.status).toBe(200);
+    expect(h.validateCalls).toEqual([{ provider: 'gemini', apiKey: 'google-key', baseUrl: null }]);
+  })
   it('reuses the stored key against the stored endpoint', async () => {
     const res = await post({ provider: 'openai_compatible', model: 'm', base_url: 'https://8.8.8.8/v1/' })
     expect(res.status).toBe(200)

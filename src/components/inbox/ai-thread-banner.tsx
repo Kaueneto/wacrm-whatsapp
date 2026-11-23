@@ -19,6 +19,7 @@ interface AiThreadBannerProps {
   assignedAgentId?: string | null;
   /** The acting agent — "Take over" assigns the thread to them. */
   currentUserId?: string | null;
+  flowAiActive?: boolean;
   /** Called after a successful toggle so the parent can patch its local
    *  conversation state (the realtime UPDATE also arrives, but this keeps
    *  the banner instant). */
@@ -42,6 +43,7 @@ export function AiThreadBanner({
   handoffSummary,
   assignedAgentId,
   currentUserId,
+  flowAiActive = false,
   onChange,
 }: AiThreadBannerProps) {
   const t = useTranslations("Inbox.aiBanner");
@@ -101,7 +103,7 @@ export function AiThreadBanner({
   );
 
   // Account has no auto-reply → nothing to show. (Still loading → nothing.)
-  if (!autoReplyOn) return null;
+  if (!autoReplyOn && !flowAiActive && !handoffSummary) return null;
 
   // Paused here (a human took over, or the model handed off).
   if (paused) {
@@ -115,9 +117,9 @@ export function AiThreadBanner({
             </p>
           )}
         </div>
-        <BannerButton onClick={() => toggle(false)} busy={busy} icon={Undo2}>
+        {(autoReplyOn || flowAiActive) && <BannerButton onClick={() => toggle(false)} busy={busy} icon={Undo2}>
           {t("resume")}
-        </BannerButton>
+        </BannerButton>}
       </Banner>
     );
   }

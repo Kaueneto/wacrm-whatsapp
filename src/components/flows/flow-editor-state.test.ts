@@ -4,10 +4,21 @@ import {
   applyNodePositions,
   buildNewNode,
   defaultConfigFor,
+  getPendingFlowChanges,
   uniqueNodeKey,
   type BuilderState,
 } from "./flow-editor-state";
 import type { BuilderNode, NodeType } from "./shared";
+
+it('keeps the graph and newer text edits pending after a partial save', () => {
+  const saved: BuilderState = {
+    name: 'Menu', description: '', status: 'draft', trigger_type: 'manual', trigger_config: {}, entry_node_id: null, nodes: [],
+  };
+  const current: BuilderState = { ...saved, name: 'Menu atualizado', description: 'Descrição revisada', entry_node_id: 'start' };
+  expect(getPendingFlowChanges(current, saved)).toEqual(['name', 'description', 'graph']);
+  expect(getPendingFlowChanges(current, { ...saved, name: current.name, description: 'Descrição anterior' })).toEqual(['description', 'graph']);
+  expect(getPendingFlowChanges({ ...saved, status: 'active' }, saved)).toEqual([]);
+});
 
 describe("uniqueNodeKey", () => {
   it("returns the base key when it isn't taken", () => {

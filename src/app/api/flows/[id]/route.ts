@@ -15,9 +15,7 @@ const t = getT('Api')
  * DELETE /api/flows/[id] — hard delete (RLS+CASCADE clean up nodes,
  *                          runs, events).
  *
- * All three require a signed-in caller who owns the flow. Flows is in
- * soft-GA — the beta gate that previously 404'd non-beta accounts is
- * gone; the "Beta" label in the UI is the only remaining signal.
+ * Reads require access to the flow. Writes require a workspace admin.
  */
 
 async function requireOwnership(
@@ -108,14 +106,17 @@ export async function PUT(
   if (!guard.ok) return NextResponse.json(guard.body, { status: guard.status })
 
   const body = (await request.json().catch(() => null)) as PutBody | null
-  if (!body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return NextResponse.json({ error: t('common.invalidJson') }, { status: 400 })
   }
-  if (body.name !== undefined && !body.name.trim()) {
+  if (body.name !== undefined && (typeof body.name !== 'string' || !body.name.trim())) {
     return NextResponse.json(
       { error: t('flows.nameEmpty') },
       { status: 400 },
     )
+  }
+  if (body.description !== undefined && body.description !== null && typeof body.description !== 'string') {
+    return NextResponse.json({ error: t('common.invalidJson') }, { status: 400 })
   }
 
   if (!isValidFallbackPolicy(body.fallback_policy)) {
@@ -127,7 +128,8 @@ export async function PUT(
 
   const admin = supabaseAdmin()
 
-  const activeBlockers = await validateIfActive(admin, id, body)
+  const detailsOnly = Object.keys(body).every((key) => key === 'name' || key === 'description')
+  const activeBlockers = detailsOnly ? null : await validateIfActive(admin, id, body)
   if (activeBlockers) {
     return NextResponse.json(
       { error: t('flows.cannotSaveActive'), issues: activeBlockers },
@@ -174,7 +176,7 @@ export async function PUT(
 
   // Re-fetch and return the new state — the editor uses the response
   // to reconcile its local form state.
-  const [{ data: flow }, { data: nodes }] = await Promise.all([
+  const [{ data: flow, error: flowErr }, { data: nodes, error: nodesErr }] = await Promise.all([
     admin.from('flows').select('*').eq('id', id).maybeSingle(),
     admin
       .from('flow_nodes')
@@ -182,6 +184,9 @@ export async function PUT(
       .eq('flow_id', id)
       .order('created_at', { ascending: true }),
   ])
+  if (flowErr || nodesErr || !flow) {
+    return NextResponse.json({ error: flowErr?.message ?? nodesErr?.message ?? t('common.notFound') }, { status: 500 })
+  }
   return NextResponse.json({ flow, nodes: nodes ?? [] })
 }
 

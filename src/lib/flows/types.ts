@@ -98,6 +98,9 @@ export interface SendMediaNodeConfig {
 }
 
 export interface HandoffNodeConfig {
+  /** Omitted on legacy nodes to preserve their current assignment. */
+  mode?: "queue" | "round_robin" | "specific";
+  team_id?: string;
   /** Optional internal note written to flow_run_events.payload.note. */
   note?: string;
   /**
@@ -105,6 +108,15 @@ export interface HandoffNodeConfig {
    * node fires. Leave unset to flip the status without assignment.
    */
   assign_to?: string;
+}
+
+export interface AiAssistantNodeConfig {
+  team_id: string;
+  welcome_message: string;
+  instructions?: string;
+  note?: string;
+  handoff_mode: 'queue' | 'round_robin';
+  fallback_message: string;
 }
 
 /**
@@ -194,6 +206,7 @@ export type FlowNodeConfig =
   | { node_type: "condition"; config: ConditionNodeConfig }
   | { node_type: "set_tag"; config: SetTagNodeConfig }
   | { node_type: "handoff"; config: HandoffNodeConfig }
+  | { node_type: "ai_assistant"; config: AiAssistantNodeConfig }
   | { node_type: "end"; config: EndNodeConfig };
 
 export type FlowNodeType = FlowNodeConfig["node_type"];
@@ -242,6 +255,7 @@ export interface FlowRow {
   last_executed_at: string | null;
   created_at: string;
   updated_at: string;
+  last_edited_at: string | null;
 }
 
 export interface FlowNodeRow {

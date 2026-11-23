@@ -86,6 +86,19 @@ beforeEach(() => {
 })
 
 describe('POST /api/ai/config stored key reuse', () => {
+  it('validates and encrypts a Gemini key without requiring a base URL', async () => {
+    const res = await post({ provider: 'gemini', model: 'gemini-3.1-flash-lite', api_key: 'google-key', system_prompt: 'Nosso horário é das 9h às 18h.' });
+    expect(res.status).toBe(200);
+    expect(h.validateCalls).toEqual([{ provider: 'gemini', apiKey: 'google-key', baseUrl: null }]);
+    expect(h.updates[0]).toMatchObject({ provider: 'gemini', api_key: 'enc:google-key', base_url: null, system_prompt: 'Nosso horário é das 9h às 18h.' });
+  })
+
+  it('does not reuse another provider key for Gemini', async () => {
+    const res = await post({ provider: 'gemini', model: 'gemini-3.1-flash-lite' });
+    expect(res.status).toBe(400);
+    expect(h.validateCalls).toEqual([]);
+    expect(h.updates).toEqual([]);
+  })
   it('keeps the stored key when only non-credential fields change', async () => {
     const res = await post({
       provider: 'openai_compatible',

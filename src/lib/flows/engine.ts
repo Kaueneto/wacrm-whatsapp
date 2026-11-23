@@ -51,6 +51,8 @@ import {
   type FlowNodeRow,
   type FlowRow,
   type FlowRunRow,
+  type HandoffNodeConfig,
+  type AiAssistantNodeConfig,
   type ParsedInbound,
   type SendButtonsNodeConfig,
   type SendListNodeConfig,
@@ -62,6 +64,8 @@ import {
   AUTO_ADVANCING_NODE_TYPES,
   MAX_NODES_PER_ADVANCE,
 } from "./types";
+import { handoffFlowAi, type FlowAiContext } from '@/lib/ai/flow-session';
+import { getT } from '@/lib/i18n/translate';
 
 // ============================================================
 // Pure helpers — extracted so engine.test.ts can exercise them
@@ -181,7 +185,7 @@ export function isSuspending(node_type: string): boolean {
 
 /** Nodes that end the run. */
 export function isTerminal(node_type: string): boolean {
-  return node_type === "handoff" || node_type === "end";
+  return node_type === "handoff" || node_type === "ai_assistant" || node_type === "end";
 }
 
 /**
@@ -497,21 +501,44 @@ async function executeHandoff(
   run: FlowRunRow,
   node: FlowNodeRow,
 ): Promise<void> {
-  const cfg = node.config as { assign_to?: string; note?: string };
+  const cfg = node.config as HandoffNodeConfig;
+  let assignedTo = cfg.assign_to || null;
+  if (cfg.mode) {
+    if (!["queue", "round_robin", "specific"].includes(cfg.mode)) {
+      throw new Error("Invalid handoff routing mode");
+    }
+    if (!run.contact_id || !run.conversation_id) {
+      throw new Error("Handoff routing requires a conversation and contact");
+    }
+    const { data, error } = await db.rpc("route_support_conversation", {
+      p_account_id: run.account_id,
+      p_contact_id: run.contact_id,
+      p_team_id: cfg.team_id || null,
+      p_agent_id: cfg.mode === "specific" ? cfg.assign_to || null : null,
+      p_mode: cfg.mode,
+    });
+    if (error) throw new Error(error.message);
+    assignedTo = data;
+  }
   const convUpdate: Record<string, unknown> = {
     status: "pending",
+    ai_autoreply_disabled: true,
     updated_at: new Date().toISOString(),
   };
-  if (cfg.assign_to) convUpdate.assigned_agent_id = cfg.assign_to;
+  if (!cfg.mode && cfg.assign_to) convUpdate.assigned_agent_id = cfg.assign_to;
   if (run.conversation_id) {
-    await db
+    const { error } = await db
       .from("conversations")
       .update(convUpdate)
-      .eq("id", run.conversation_id);
+      .eq("id", run.conversation_id)
+      .eq("account_id", run.account_id);
+    if (error) throw new Error(error.message);
   }
   await logEvent(db, run.id, "handoff", node.node_key, {
-    note: cfg.note ?? null,
-    assigned_to: cfg.assign_to ?? null,
+    note: cfg.note ? interpolateVars(cfg.note, run.vars) : null,
+    assigned_to: assignedTo,
+    team_id: cfg.team_id || null,
+    mode: cfg.mode ?? null,
   });
   await endRun(db, run.id, "handed_off", "handoff_node");
 }
@@ -870,9 +897,52 @@ async function advanceFromNodeKey(
       }
       return { outcome: "advanced" };
     }
+    if (node.node_type === 'ai_assistant') {
+      const cfg = node.config as unknown as AiAssistantNodeConfig;
+      const context: FlowAiContext = {
+        kind: 'flow', flow_run_id: run.id, node_key: node.node_key,
+        instructions: interpolateVars(cfg.instructions || '', run.vars),
+        note: interpolateVars(cfg.note || '', run.vars),
+        handoff_mode: cfg.handoff_mode,
+        fallback_message: interpolateVars(cfg.fallback_message, run.vars),
+      };
+      try {
+        const { data, error } = await db.rpc('start_flow_ai', {
+          p_account_id: run.account_id, p_conversation_id: run.conversation_id,
+          p_team_id: cfg.team_id, p_context: context,
+        });
+        if (error) throw new Error(error.message);
+        if (data === true) {
+          await engineSendText({ accountId: run.account_id, userId: run.user_id,
+            conversationId: run.conversation_id!, contactId: run.contact_id!,
+            text: interpolateVars(cfg.welcome_message, run.vars) });
+        } else {
+          await handoffFlowAi({ db, accountId: run.account_id, conversationId: run.conversation_id!,
+            contactId: run.contact_id!, userId: run.user_id, context, summary: getT('FlowAi')('unavailable') });
+        }
+        await logEvent(db, run.id, 'handoff', node.node_key, { destination: data === true ? 'ai' : 'human', team_id: cfg.team_id, note: context.note });
+        await endRun(db, run.id, 'handed_off', 'ai_assistant_node');
+        return { outcome: 'handed_off' };
+      } catch (error) {
+        await logEvent(db, run.id, 'error', node.node_key, { reason: 'ai_handoff_failed', detail: error instanceof Error ? error.message : String(error) });
+        // If activation succeeded but sending the greeting failed, return to the team.
+        await handoffFlowAi({ db, accountId: run.account_id, conversationId: run.conversation_id!, contactId: run.contact_id!, userId: run.user_id, context, summary: getT('FlowAi')('provider_error') }).catch((handoffError) => console.error('[flow ai] handoff failed:', handoffError));
+        await endRun(db, run.id, 'failed', 'ai_handoff_failed');
+        return { outcome: 'completed' };
+      }
+    }
     if (node.node_type === "handoff") {
-      await executeHandoff(db, run, node);
-      return { outcome: "handed_off" };
+      try {
+        await executeHandoff(db, run, node);
+        return { outcome: "handed_off" };
+      } catch (err) {
+        await logEvent(db, run.id, "error", node.node_key, {
+          reason: "handoff_failed",
+          detail: err instanceof Error ? err.message : String(err),
+        });
+        await endRun(db, run.id, "failed", "handoff_failed");
+        return { outcome: "completed" };
+      }
     }
     if (node.node_type === "end") {
       await logEvent(db, run.id, "completed", node.node_key);

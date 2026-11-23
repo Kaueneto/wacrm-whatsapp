@@ -28,6 +28,7 @@ import {
   Tag,
   UserPlus,
   Workflow,
+  Bot,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -50,6 +51,7 @@ export type NodeType =
   | 'condition'
   | 'set_tag'
   | 'handoff'
+  | 'ai_assistant'
   | 'end';
 
 export interface BuilderNode {
@@ -151,6 +153,7 @@ export const NODE_META: Record<
     color: 'text-amber-400',
     category: 'flow',
   },
+  ai_assistant: { slugSeed: 'Transfer to AI', icon: Bot, color: 'text-violet-400', category: 'flow' },
   end: {
     slugSeed: 'End',
     icon: Flag,
@@ -196,6 +199,7 @@ const NODE_HUE: Record<NodeType, { l: number; c: number; h: number }> = {
   condition: { l: 0.72, c: 0.15, h: 65 }, // amber — a fork in the road
   set_tag: { l: 0.65, c: 0.15, h: 350 }, // pink
   handoff: { l: 0.65, c: 0.17, h: 16 }, // rose — hands off
+  ai_assistant: { l: 0.65, c: 0.17, h: 300 },
   end: { l: 0.55, c: 0.01, h: 260 }, // neutral grey — terminal
 };
 
@@ -410,6 +414,8 @@ export function summarizeNode(
         ? t ? t('tagPicked', { mode, tag: tagId.slice(0, 8) }) : `${mode} tag ${tagId.slice(0, 8)}…`
         : t ? t('tagNone', { mode }) : `${mode} tag (none picked)`;
     }
+    case 'ai_assistant':
+      return typeof cfg.welcome_message === 'string' ? truncate(cfg.welcome_message) : null;
     case 'handoff': {
       const note = typeof cfg.note === 'string' ? cfg.note : '';
       return note.length > 0 ? truncate(note) : null;
