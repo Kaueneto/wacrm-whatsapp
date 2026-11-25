@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Plus, Sparkles, X } from 'lucide-react';
+import { RefreshCw, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,10 @@ import type {
   UauRow,
 } from '@/lib/uau/query-preview';
 import { analyzeUauRows } from '@/lib/uau/query-preview';
+import {
+  mergeQueryParameterValues,
+  type UauQueryParameter,
+} from '@/lib/uau/query-parameters';
 import type { UauDraftAudience } from '@/lib/uau/campaign-draft';
 import type { MessageTemplate } from '@/types';
 import { TemplatePreview } from './template-preview';
@@ -35,12 +40,16 @@ export function UauCampaignPreview({
   initialAudience,
   onSave,
   saving,
+  templateContainer,
+  onNavigate,
 }: {
   template: MessageTemplate | null;
   children: ReactNode;
   initialAudience?: UauDraftAudience;
   onSave: (audience: UauDraftAudience) => void;
   saving: boolean;
+  templateContainer?: HTMLElement | null;
+  onNavigate?: (tab: 'audience' | 'template') => void;
 }) {
   const [id, setId] = useState(
     initialAudience ? String(initialAudience.queryId) : ''
@@ -51,6 +60,16 @@ export function UauCampaignPreview({
   const [parameters, setParameters] = useState<
     { name: string; value: string }[]
   >(initialAudience?.parameters ?? []);
+  const [parameterDefinitions, setParameterDefinitions] = useState<
+    UauQueryParameter[] | null
+  >(null);
+  const [parameterSource, setParameterSource] = useState<string | null>(null);
+  const currentParameterSource = Number(id) + ':' + custom;
+  const parametersDiscovered =
+    parameterSource === currentParameterSource && parameterDefinitions !== null;
+  const parameterValuesComplete = parameters.every(
+    (parameter) => !!parameter.value.trim()
+  );
   const [result, setResult] = useState<
     (UauPreviewResult & { rows: UauRow[] }) | null
   >(null);
@@ -77,10 +96,12 @@ export function UauCampaignPreview({
     ? extractTemplateVariables(template.body_text)
     : [];
 
-  function invalidateQuery() {
+  function invalidateQuery(resetMappings = false) {
     setResult(null);
-    setPhone(initialPhone);
-    setFieldMappings({});
+    if (resetMappings) {
+      setPhone(initialPhone);
+      setFieldMappings({});
+    }
     setConfirmed(false);
     setError('');
   }
@@ -94,17 +115,62 @@ export function UauCampaignPreview({
     invalidateQuery();
   }
 
+  async function discoverParameters() {
+    const response = await fetch('/api/integrations/uau/query-parameters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ id: Number(id), custom }),
+    });
+    const data = await response.json();
+    if (!response.ok)
+      throw new Error(
+        data.error || 'Não foi possível identificar os parâmetros da consulta.'
+      );
+    const definitions = data.parameters as UauQueryParameter[];
+    const values = mergeQueryParameterValues(definitions, parameters);
+    setParameterDefinitions(definitions);
+    setParameterSource(currentParameterSource);
+    setParameters(values);
+    return { definitions, values };
+  }
+  async function reloadParameters() {
+    if (busy) return;
+    setBusy(true);
+    invalidateQuery();
+    setParameterSource(null);
+    try {
+      await discoverParameters();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível identificar os parâmetros.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   async function run(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
+    if (!parametersDiscovered) {
+      setError('Busque os parâmetros antes de executar a consulta.');
+      return;
+    }
     setBusy(true);
     setError('');
     setConfirmed(false);
     try {
+      const values = parameters;
+      if (values.some((parameter) => !parameter.value.trim()))
+        throw new Error(
+          'Preencha o valor de todos os parâmetros antes de executar.'
+        );
       const response = await fetch('/api/integrations/uau/query-preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: Number(id), custom, parameters }),
+        body: JSON.stringify({ id: Number(id), custom, parameters: values }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
@@ -173,8 +239,9 @@ export function UauCampaignPreview({
       validatedTemplate !== template.id ||
       mappedFields.some((field) => !field)
     ) {
+      onNavigate?.(!result && !initialAudience ? 'audience' : 'template');
       toast.error(
-        'Execute a consulta e valide o telefone e os campos do template na aba Cadastrar.'
+        'Confira o público em Cadastrar e valide os campos da mensagem na aba Template.'
       );
       return;
     }
@@ -188,11 +255,151 @@ export function UauCampaignPreview({
     });
   }
 
+  const mappingColumns =
+    result?.columns ??
+    (Number(id) === initialAudience?.queryId &&
+    custom === initialAudience?.personalized
+      ? [...new Set(initialAudience.fields.map((field) => field.column))]
+      : []);
+  const templateSection = (
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-start">
+      <div className="min-w-0 space-y-4">
+        {children}
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+        {!result && (
+          <div className="border-border bg-muted/30 text-muted-foreground rounded-lg border p-3 text-sm">
+            <p>
+              Execute a consulta na aba Cadastrar para escolher quais colunas
+              preenchem os campos da mensagem.
+            </p>
+            <Button
+              type="button"
+              variant="link"
+              className="mt-1 h-auto p-0"
+              onClick={() => onNavigate?.('audience')}
+            >
+              Ir para Cadastrar
+            </Button>
+          </div>
+        )}
+        {variables.length > 0 && template && (
+          <div className="bg-card space-y-2 rounded-xl border p-4">
+            <h3 className="text-sm font-semibold">Campos da mensagem</h3>
+            <p className="text-muted-foreground text-xs">
+              Escolha qual coluna preenche cada variável do template.
+            </p>
+            {variables.map((variable) => {
+              const key = `${template.id}:${variable}`;
+              const field = fieldMappings[key] ?? {
+                variable,
+                column: '',
+                format: 'text',
+              };
+              const replace = (next: PreviewField) => {
+                setFieldMappings({ ...fieldMappings, [key]: next });
+                setConfirmed(false);
+              };
+              return (
+                <div
+                  key={key}
+                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem]"
+                >
+                  <label className="block space-y-1">
+                    <span>
+                      {/^\d+$/.test(variable)
+                        ? `Campo {{${variable}}}`
+                        : variable.replaceAll('_', ' ')}
+                    </span>
+                    <select
+                      className={selectStyle}
+                      disabled={!result}
+                      value={field.column}
+                      onChange={(event) =>
+                        replace({ ...field, column: event.target.value })
+                      }
+                    >
+                      <option value="">Coluna do UAU</option>
+                      {mappingColumns.map((column) => (
+                        <option key={column}>{column}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block space-y-1">
+                    <span>Formato</span>
+                    <select
+                      className={selectStyle}
+                      value={field.format}
+                      onChange={(event) =>
+                        replace({
+                          ...field,
+                          format: event.target.value as PreviewField['format'],
+                        })
+                      }
+                    >
+                      <option value="text">Texto</option>
+                      <option value="money">Valor em reais</option>
+                      <option value="date">Data</option>
+                    </select>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {template && result && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!canValidate}
+            onClick={() => validate(true)}
+          >
+            Validar campos e gerar prévia
+          </Button>
+        )}
+      </div>
+      {template && (
+        <TemplatePreview
+          template={{
+            ...template,
+            sample_values: sample
+              ? {
+                  ...template.sample_values,
+                  body: variables.map((variable) => sample.values[variable]),
+                }
+              : template.sample_values,
+          }}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-5">
-      <form className="space-y-3" onSubmit={(event) => void run(event)}>
+      <form
+        className="bg-card space-y-4 rounded-xl border p-4 sm:p-5"
+        onSubmit={(event) => void run(event)}
+      >
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Consulta do UAU</h2>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Defina a consulta e os valores usados para selecionar os contatos
+              desta campanha.
+            </p>
+          </div>{' '}
+          <Link
+            className="text-primary shrink-0 text-xs hover:underline"
+            href="/settings?tab=integrations"
+          >
+            Configurar conexão UAU
+          </Link>
+        </header>
         <fieldset disabled={!!busy} className="space-y-3">
-          <div className="grid items-end gap-3 sm:grid-cols-[minmax(8rem,11rem)_minmax(11rem,15rem)_auto] sm:justify-start">
+          <div className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(8rem,11rem)_minmax(11rem,15rem)_auto] xl:justify-start">
             <label className="block space-y-1.5">
               <span>Código da consulta</span>
               <Input
@@ -203,7 +410,10 @@ export function UauCampaignPreview({
                 value={id}
                 onChange={(event) => {
                   setId(event.target.value);
-                  invalidateQuery();
+                  setParameterDefinitions(null);
+                  setParameterSource(null);
+                  setParameters([]);
+                  invalidateQuery(true);
                 }}
               />
             </label>
@@ -214,85 +424,122 @@ export function UauCampaignPreview({
                 value={custom}
                 onChange={(event) => {
                   setCustom(event.target.value === '1' ? 1 : 0);
-                  invalidateQuery();
+                  setParameterDefinitions(null);
+                  setParameterSource(null);
+                  setParameters([]);
+                  invalidateQuery(true);
                 }}
               >
                 <option value={1}>Personalizada</option>
                 <option value={0}>Interna do UAU</option>
               </select>
             </label>
-            <Button
-              type="submit"
-              className="h-9 justify-self-start"
-              disabled={!!busy}
-            >
-              {busy ? 'Consultando…' : 'Executar consulta'}
-            </Button>
+            <div className="flex flex-wrap gap-2 sm:col-span-2 xl:col-span-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9"
+                disabled={busy}
+                onClick={() => void reloadParameters()}
+              >
+                <RefreshCw className="size-3.5" /> Buscar parâmetros
+              </Button>
+              <Button
+                type="submit"
+                className="h-9"
+                disabled={
+                  busy || !parametersDiscovered || !parameterValuesComplete
+                }
+              >
+                {busy ? 'Consultando…' : 'Executar consulta'}
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <details className="rounded-lg border p-3">
-              <summary className="cursor-pointer text-sm font-medium">
-                Parâmetros, se a consulta pedir
-              </summary>
-              <div className="mt-3 space-y-2">
-                <p className="text-muted-foreground text-xs">
-                  Use os nomes e os valores aceitos pela consulta no UAU. Deixe
-                  vazio quando ela não exigir parâmetros.
-                </p>
-                {parameters.map((parameter, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Input
-                      aria-label={`Nome do parâmetro ${i + 1}`}
-                      placeholder="Nome no UAU"
-                      value={parameter.name}
-                      onChange={(event) =>
-                        setParameter(i, 'name', event.target.value)
-                      }
-                    />
-                    <Input
-                      aria-label={`Valor do parâmetro ${i + 1}`}
-                      placeholder="Valor"
-                      value={parameter.value}
-                      onChange={(event) =>
-                        setParameter(i, 'value', event.target.value)
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remover parâmetro ${i + 1}`}
-                      onClick={() => {
-                        setParameters(
-                          parameters.filter((_, index) => i !== index)
-                        );
-                        invalidateQuery();
-                      }}
-                    >
-                      <X />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={parameters.length >= 50}
-                  onClick={() => {
-                    setParameters([...parameters, { name: '', value: '' }]);
-                    invalidateQuery();
-                  }}
-                >
-                  <Plus /> Adicionar parâmetro
-                </Button>
-              </div>
-            </details>
-            <Link
-              className="text-primary self-center text-sm underline"
-              href="/settings?tab=integrations"
+          <p role="status" className="text-muted-foreground text-xs">
+            {!parametersDiscovered
+              ? 'Primeiro, busque os parâmetros cadastrados no UAU.'
+              : !parameters.length
+                ? 'Esta consulta não exige parâmetros. Agora você pode executá-la.'
+                : !parameterValuesComplete
+                  ? 'Preencha todos os valores abaixo para liberar a execução.'
+                  : 'Parâmetros preenchidos. A consulta será executada com esses valores.'}
+          </p>
+          <div className="space-y-3">
+            <section
+              className="border-border min-w-0 flex-1 rounded-lg border p-3"
+              aria-label="Parâmetros da consulta"
             >
-              Configurar conexão UAU
-            </Link>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-medium">Parâmetros da consulta</h3>
+              </div>
+              <p className="text-muted-foreground mt-1 text-xs">
+                {parametersDiscovered
+                  ? parameters.length
+                    ? 'Preencha os valores desta campanha. Eles serão salvos e reutilizados em cada execução, inclusive nas campanhas diárias.'
+                    : 'Esta consulta não exige parâmetros.'
+                  : 'Informe o código e o tipo. Vamos identificar automaticamente os parâmetros cadastrados no UAU.'}
+              </p>
+              {!!parameters.length && (
+                <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                  {parameters.map((parameter, i) => {
+                    const definition = parametersDiscovered
+                      ? parameterDefinitions?.find(
+                          (item) => item.name === parameter.name
+                        )
+                      : undefined;
+                    return (
+                      <label
+                        key={parameter.name}
+                        className="block min-w-0 space-y-1.5"
+                      >
+                        <code
+                          className="block truncate font-mono text-[13px] leading-5 font-semibold text-foreground"
+                          title={parameter.name}
+                        >
+                          {parameter.name}
+                        </code>
+                        <span
+                          className="text-muted-foreground block h-5 truncate text-xs leading-5"
+                          title={definition?.description || parameter.name}
+                        >
+                          {definition?.description ||
+                            'Valor usado nesta consulta'}
+                        </span>
+                        <Input
+                          aria-label={parameter.name}
+                          className="font-mono text-[13px] text-foreground"
+                          value={parameter.value}
+                          maxLength={512}
+                          autoComplete="off"
+                          placeholder="Valor para esta campanha"
+                          onChange={(event) =>
+                            setParameter(i, 'value', event.target.value)
+                          }
+                        />
+                        {definition?.multiple && (
+                          <span className="text-muted-foreground block text-[11px]">
+                            Aceita vários valores. Use o separador e o formato
+                            definidos na consulta UAU.
+                          </span>
+                        )}
+                        {definition?.restricted && (
+                          <span className="text-muted-foreground block text-[11px]">
+                            Use um valor permitido pelas restrições desta
+                            consulta no UAU.
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {!!parameters.length && (
+                <p className="text-muted-foreground mt-3 text-[11px]">
+                  Mantenha o formato aceito pela consulta UAU, inclusive aspas
+                  em textos ou datas quando exigidas.
+                </p>
+              )}
+            </section>
           </div>
         </fieldset>
       </form>
@@ -423,98 +670,11 @@ export function UauCampaignPreview({
         assessments={currentAssessments}
       />
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-start">
-        <div className="min-w-0 space-y-4">
-          {children}
-          {result && variables.length > 0 && template && (
-            <div className="bg-card space-y-2 rounded-xl border p-4">
-              <h3 className="text-sm font-semibold">Campos da mensagem</h3>
-              <p className="text-muted-foreground text-xs">
-                Escolha qual coluna preenche cada variável do template.
-              </p>
-              {variables.map((variable) => {
-                const key = `${template.id}:${variable}`;
-                const field = fieldMappings[key] ?? {
-                  variable,
-                  column: '',
-                  format: 'text',
-                };
-                const replace = (next: PreviewField) => {
-                  setFieldMappings({ ...fieldMappings, [key]: next });
-                  setConfirmed(false);
-                };
-                return (
-                  <div
-                    key={key}
-                    className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem]"
-                  >
-                    <label className="block space-y-1">
-                      <span>
-                        {/^\d+$/.test(variable)
-                          ? `Campo {{${variable}}}`
-                          : variable.replaceAll('_', ' ')}
-                      </span>
-                      <select
-                        className={selectStyle}
-                        value={field.column}
-                        onChange={(event) =>
-                          replace({ ...field, column: event.target.value })
-                        }
-                      >
-                        <option value="">Coluna do UAU</option>
-                        {result.columns.map((column) => (
-                          <option key={column}>{column}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block space-y-1">
-                      <span>Formato</span>
-                      <select
-                        className={selectStyle}
-                        value={field.format}
-                        onChange={(event) =>
-                          replace({
-                            ...field,
-                            format: event.target
-                              .value as PreviewField['format'],
-                          })
-                        }
-                      >
-                        <option value="text">Texto</option>
-                        <option value="money">Valor em reais</option>
-                        <option value="date">Data</option>
-                      </select>
-                    </label>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {template && result && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!canValidate}
-              onClick={() => validate(true)}
-            >
-              Validar campos e gerar prévia
-            </Button>
-          )}
-        </div>
-        {template && (
-          <TemplatePreview
-            template={{
-              ...template,
-              sample_values: sample
-                ? {
-                    ...template.sample_values,
-                    body: variables.map((variable) => sample.values[variable]),
-                  }
-                : template.sample_values,
-            }}
-          />
-        )}
-      </div>
+      {templateContainer === undefined
+        ? templateSection
+        : templateContainer
+          ? createPortal(templateSection, templateContainer)
+          : null}
       <form id="uau-campaign-save" onSubmit={save} />
     </div>
   );
