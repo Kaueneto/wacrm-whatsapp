@@ -14,7 +14,10 @@
     "noAccount": "¿No tienes una cuenta?",
     "createAccount": "Crear cuenta",
     "linkExpired": "Ese enlace expiró. Para restablecer la contraseña, usa “¿Olvidaste tu contraseña?” y pide uno nuevo; si estabas confirmando tu correo, regístrate de nuevo.",
-    "linkInvalid": "No se pudo iniciar sesión con ese enlace. Si estabas confirmando tu correo, es posible que ya esté verificado; inicia sesión abajo. Para restablecer la contraseña, pide un enlace nuevo y ábrelo en el mismo navegador desde el que lo solicitaste."
+    "linkInvalid": "No se pudo iniciar sesión con ese enlace. Si estabas confirmando tu correo, es posible que ya esté verificado; inicia sesión abajo. Para restablecer la contraseña, pide un enlace nuevo y ábrelo en el mismo navegador desde el que lo solicitaste.",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "or": "o"
   },
   "TemplatePages": {
     "emptyPreview": "Escribe el mensaje para ver la vista previa aquí.",
@@ -37,7 +40,7 @@
     "automationGroup": "Automatización",
     "templates": "Plantillas",
     "organization": "Usuarios y equipos",
-    "title": "Plantilla de CRM para WhatsApp",
+    "title": "OCTA",
     "primaryNav": "Principal",
     "dashboard": "Panel",
     "inbox": "Bandeja de entrada",
@@ -2493,7 +2496,7 @@
     "titleJoin": "Crear cuenta y unirse",
     "title": "Crear cuenta",
     "descJoin": "Verifica tu correo y luego acepta la invitación para unirte a tu equipo.",
-    "desc": "Empieza a usar la Plantilla de CRM para WhatsApp",
+    "desc": "Empieza a usar OCTA",
     "fullNameLabel": "Nombre completo",
     "fullNamePlaceholder": "Juan Pérez",
     "emailLabel": "Correo electrónico",
@@ -2687,7 +2690,7 @@
     "lastMessage": " Último mensaje del cliente: “{message}”"
   },
   "Metadata": {
-    "description": "Plantilla de CRM para WhatsApp que puedes alojar tú mismo."
+    "description": "OCTA — comunicación, automatización e inteligencia en una plataforma."
   },
   "Currency": {
     "USD": "Dólar estadounidense",
@@ -3235,5 +3238,10 @@
     "limit": "Límite de respuestas alcanzado; derivado al equipo.",
     "provider_error": "Error de IA; derivado al equipo.",
     "human_requested": "Se necesita atención humana; derivado al equipo."
+  },
+  "Brand": {
+    "connect": "Conecta.",
+    "centralize": "Centraliza.",
+    "simplify": "Simplifica."
   }
 }

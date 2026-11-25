@@ -1,0 +1,23 @@
+.shell {
+  /* Public access pages use OCTA green without changing the saved app theme. */
+  --primary: oklch(0.62 0.16 162);
+  --primary-foreground: oklch(0.16 0.02 162);
+  --primary-hover: oklch(0.68 0.15 162);
+  --primary-soft: oklch(0.62 0.16 162 / 0.12);
+  --primary-soft-2: oklch(0.62 0.16 162 / 0.22);
+  --ring: oklch(0.62 0.16 162);
+}
+
+.tentacles {
+  /* Each half of the approved diptych supplies its own light/dark artwork. */
+  background: url('/brand/octa-organic-diptych.webp') left center / 200% 100% no-repeat;
+  mix-blend-mode: multiply;
+  opacity: 0.65;
+}
+
+:global(html[data-mode='dark']) .tentacles {
+  background-position: right center;
+  mix-blend-mode: normal;
+  filter: brightness(0.75) saturate(0.7);
+  opacity: 0.24;
+}

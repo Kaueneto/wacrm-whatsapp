@@ -14,7 +14,10 @@
     "noAccount": "Don't have an account?",
     "createAccount": "Create account",
     "linkExpired": "That link has expired. For a password reset, use “Forgot password?” to request a new one; if you were confirming your email, sign up again.",
-    "linkInvalid": "That link couldn’t be used to sign you in. If you were confirming your email, it may already be verified — just sign in below. For a password reset, request a new link and open it in the same browser you requested it from."
+    "linkInvalid": "That link couldn’t be used to sign you in. If you were confirming your email, it may already be verified — just sign in below. For a password reset, request a new link and open it in the same browser you requested it from.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "or": "or"
   },
   "TemplatePages": {
     "emptyPreview": "Type your message to preview it here.",
@@ -37,7 +40,7 @@
     "automationGroup": "Automation",
     "templates": "Templates",
     "organization": "Users & teams",
-    "title": "CRM Template for WhatsApp",
+    "title": "OCTA",
     "primaryNav": "Primary",
     "dashboard": "Dashboard",
     "inbox": "Inbox",
@@ -2493,7 +2496,7 @@
     "titleJoin": "Create account & join",
     "title": "Create account",
     "descJoin": "Verify your email, then accept the invitation to join your team.",
-    "desc": "Get started with CRM Template for WhatsApp",
+    "desc": "Get started with OCTA",
     "fullNameLabel": "Full name",
     "fullNamePlaceholder": "John Doe",
     "emailLabel": "Email",
@@ -2687,7 +2690,7 @@
     "lastMessage": " Last customer message: “{message}”"
   },
   "Metadata": {
-    "description": "Self-hostable CRM template for WhatsApp."
+    "description": "OCTA — communication, automation and intelligence in one platform."
   },
   "Currency": {
     "USD": "US Dollar",
@@ -3235,5 +3238,10 @@
     "limit": "AI reply limit reached; routed to the team.",
     "provider_error": "AI error; routed to the team.",
     "human_requested": "Human support needed; routed to the team."
+  },
+  "Brand": {
+    "connect": "Connect.",
+    "centralize": "Centralize.",
+    "simplify": "Simplify."
   }
 }

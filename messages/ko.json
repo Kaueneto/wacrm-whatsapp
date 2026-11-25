@@ -14,7 +14,10 @@
     "noAccount": "계정이 없으신가요?",
     "createAccount": "계정 만들기",
     "linkExpired": "링크가 만료되었습니다. 비밀번호를 재설정하려면 “비밀번호를 잊으셨나요?”에서 새 링크를 요청하세요. 이메일 인증 중이었다면 다시 가입해 주세요.",
-    "linkInvalid": "이 링크로는 로그인할 수 없습니다. 이메일 인증 중이었다면 이미 인증이 완료되었을 수 있으니 아래에서 로그인하세요. 비밀번호 재설정은 새 링크를 요청한 뒤 요청한 브라우저에서 열어 주세요."
+    "linkInvalid": "이 링크로는 로그인할 수 없습니다. 이메일 인증 중이었다면 이미 인증이 완료되었을 수 있으니 아래에서 로그인하세요. 비밀번호 재설정은 새 링크를 요청한 뒤 요청한 브라우저에서 열어 주세요.",
+    "showPassword": "비밀번호 표시",
+    "hidePassword": "비밀번호 숨기기",
+    "or": "또는"
   },
   "TemplatePages": {
     "emptyPreview": "메시지를 입력하면 여기에 미리보기가 표시됩니다.",
@@ -37,7 +40,7 @@
     "automationGroup": "자동화",
     "templates": "템플릿",
     "organization": "사용자 및 팀",
-    "title": "WhatsApp용 CRM 템플릿",
+    "title": "OCTA",
     "primaryNav": "기본 메뉴",
     "dashboard": "대시보드",
     "inbox": "인박스",
@@ -2493,7 +2496,7 @@
     "titleJoin": "계정 만들고 참여하기",
     "title": "계정 만들기",
     "descJoin": "이메일을 인증한 뒤 초대를 수락해 팀에 참여하세요.",
-    "desc": "WhatsApp용 CRM Template을 시작하세요",
+    "desc": "OCTA를 시작하세요",
     "fullNameLabel": "이름",
     "fullNamePlaceholder": "홍길동",
     "emailLabel": "이메일",
@@ -2687,7 +2690,7 @@
     "lastMessage": " 고객의 마지막 메시지: “{message}”"
   },
   "Metadata": {
-    "description": "직접 호스팅할 수 있는 WhatsApp용 CRM 템플릿입니다."
+    "description": "OCTA — 커뮤니케이션, 자동화, 인텔리전스를 하나의 플랫폼에서."
   },
   "Currency": {
     "USD": "미국 달러",
@@ -3235,5 +3238,10 @@
     "limit": "AI 응답 한도에 도달하여 팀에 전달했습니다.",
     "provider_error": "AI 오류로 팀에 전달했습니다.",
     "human_requested": "사람의 도움이 필요하여 팀에 전달했습니다."
+  },
+  "Brand": {
+    "connect": "연결하세요.",
+    "centralize": "통합하세요.",
+    "simplify": "간소화하세요."
   }
 }

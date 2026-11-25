@@ -14,7 +14,10 @@
     "noAccount": "Não tem uma conta?",
     "createAccount": "Criar conta",
     "linkExpired": "Esse link expirou. Para redefinir a senha, use “Esqueceu a senha?” para pedir um novo; se estava confirmando seu e-mail, cadastre-se novamente.",
-    "linkInvalid": "Não foi possível entrar com esse link. Se estava confirmando seu e-mail, ele já pode estar verificado — basta entrar abaixo. Para redefinir a senha, peça um novo link e abra-o no mesmo navegador em que o solicitou."
+    "linkInvalid": "Não foi possível entrar com esse link. Se estava confirmando seu e-mail, ele já pode estar verificado — basta entrar abaixo. Para redefinir a senha, peça um novo link e abra-o no mesmo navegador em que o solicitou.",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
+    "or": "ou"
   },
   "TemplatePages": {
     "emptyPreview": "Digite a mensagem para ver a prévia aqui.",
@@ -37,7 +40,7 @@
     "automationGroup": "Automação",
     "templates": "Templates",
     "organization": "Usuários e equipes",
-    "title": "Modelo de CRM para WhatsApp",
+    "title": "OCTA",
     "primaryNav": "Principal",
     "dashboard": "Painel",
     "inbox": "Caixa de entrada",
@@ -2493,7 +2496,7 @@
     "titleJoin": "Criar conta e entrar na equipe",
     "title": "Criar conta",
     "descJoin": "Confirme seu e-mail e depois aceite o convite para entrar na sua equipe.",
-    "desc": "Comece a usar o Modelo de CRM para WhatsApp",
+    "desc": "Comece a usar a OCTA",
     "fullNameLabel": "Nome completo",
     "fullNamePlaceholder": "João Silva",
     "emailLabel": "E-mail",
@@ -2687,7 +2690,7 @@
     "lastMessage": " Última mensagem do cliente: “{message}”"
   },
   "Metadata": {
-    "description": "Modelo de CRM para WhatsApp que você pode hospedar por conta própria."
+    "description": "OCTA — comunicação, automação e inteligência em uma plataforma."
   },
   "Currency": {
     "USD": "Dólar americano",
@@ -3235,5 +3238,10 @@
     "limit": "Limite de respostas da IA atingido; encaminhado à equipe.",
     "provider_error": "Falha da IA; encaminhado à equipe.",
     "human_requested": "Necessário atendimento humano; encaminhado à equipe."
+  },
+  "Brand": {
+    "connect": "Conecte.",
+    "centralize": "Centralize.",
+    "simplify": "Simplifique."
   }
 }
