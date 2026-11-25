@@ -11,7 +11,7 @@ import {
 import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, ListFilter, Tag as TagIcon, X } from "lucide-react";
+import { Search, ChevronDown, ListFilter, Tag as TagIcon, X, UserRound } from "lucide-react";
 import { useCan } from "@/hooks/use-can";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchAccountTags } from "@/lib/settings/account-catalog";
@@ -67,7 +67,27 @@ export function ConversationList({
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
   const canManageTags = useCan("edit-settings");
-  const { accountId } = useAuth();
+  const { accountId, user } = useAuth();
+  const [assignees, setAssignees] = useState<{ accountId: string; names: Record<string, string> } | null>(null);
+  const assigneeNames = assignees?.accountId === accountId ? assignees.names : null;
+
+  useEffect(() => {
+    if (!accountId) return;
+    const controller = new AbortController();
+    void createClient().from("profiles")
+      .select("user_id,full_name")
+      .eq("account_id", accountId)
+      .abortSignal(controller.signal)
+      .then(({ data, error }) => {
+        if (controller.signal.aborted) return;
+        if (error) {
+          console.error("Failed to load conversation assignee names:", error.code);
+          return;
+        }
+        setAssignees({ accountId, names: Object.fromEntries((data ?? []).map((member) => [member.user_id, member.full_name?.trim() ?? ""])) });
+      });
+    return () => controller.abort();
+  }, [accountId, resyncToken]);
 
   const FILTER_OPTIONS: { label: string; value: InboxFilter }[] = useMemo(() => [
     { label: t("filterAll"), value: "all" },
@@ -427,6 +447,8 @@ export function ConversationList({
                   onSelect={handleSelect}
                   tagsExpanded={tagsExpanded}
                   onToggleTags={toggleLabelDisplay}
+                  assigneeName={conv.assigned_agent_id ? assigneeNames?.[conv.assigned_agent_id] : undefined}
+                  assignedToMe={!!user?.id && conv.assigned_agent_id === user.id}
                   t={t}
                 />
               ))}
@@ -444,6 +466,8 @@ interface ConversationItemProps {
   onSelect: (conversation: Conversation) => void;
   tagsExpanded: boolean;
   onToggleTags: () => void;
+  assigneeName?: string;
+  assignedToMe: boolean;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -453,12 +477,19 @@ function ConversationItem({
   onSelect,
   tagsExpanded,
   onToggleTags,
+  assigneeName,
+  assignedToMe,
   t,
 }: ConversationItemProps) {
   const dateLocale = getDateLocale(useLocale());
   const contact = conversation.contact;
   const displayName = contact?.name || contact?.phone || t("unknown");
   const initials = displayName.charAt(0).toUpperCase();
+  const assigneeLabel = conversation.assigned_agent_id
+    ? assigneeName
+      ? t(conversation.status === "closed" ? "assignedTo" : "beingHandledBy", { name: assigneeName })
+      : t("assignedToAgent")
+    : t("noAssignee");
 
   const handleClick = useCallback(() => {
     onSelect(conversation);
@@ -517,6 +548,22 @@ function ConversationItem({
                 title={conversation.status}
               />
             </div>
+          </div>
+          <div className="mt-1.5 flex min-w-0">
+            <span
+              title={assigneeLabel}
+              className={cn(
+                "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                !conversation.assigned_agent_id || conversation.status === "closed"
+                  ? "bg-muted text-muted-foreground"
+                  : assignedToMe
+                    ? "bg-primary/10 text-primary"
+                    : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              )}
+            >
+              <UserRound className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{assigneeLabel}</span>
+            </span>
           </div>
         </div>
       </button>

@@ -491,7 +491,11 @@
       "clearAll": "Limpiar todo",
       "noConversations": "No se encontraron conversaciones",
       "noMessagesYet": "Aún no hay mensajes",
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "beingHandledBy": "{name} está atendiendo",
+      "assignedTo": "Responsable: {name}",
+      "assignedToAgent": "Atención asignada",
+      "noAssignee": "Sin responsable"
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",
