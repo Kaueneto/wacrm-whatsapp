@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useTranslations } from 'next-intl';
 import { SettingsPanelHead } from './settings-panel-head';
 import { BrowserNotificationsCard } from './browser-notifications-card';
+import { UauAttendanceSettings } from './uau-attendance-settings';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ALLOWED_MIME = new Set([
@@ -353,6 +354,7 @@ export function ProfileForm() {
           </Button>
         </div>
       </form>
+      <UauAttendanceSettings />
 
       {/* Device-scoped, so it lives outside the profile form and its
           Save button — flipping the switch applies immediately. */}

@@ -28,6 +28,7 @@ import { contactHandle } from '@/lib/whatsapp/wa-identity';
 import { ContactTimeline } from './contact-timeline';
 import type { UauFinance } from '@/lib/uau/finance-types';
 import { UauFinancePanel } from './uau-finance-panel';
+import { UauAttendanceDialog } from './uau-attendance-dialog';
 
 interface ContactSidebarProps {
   conversationId?: string;
@@ -361,6 +362,31 @@ export function ContactSidebar({
                   </Button>
                 </div>
 
+                {canManageContactTags && (
+                  <UauAttendanceDialog
+                    key={`${contactId}:${conversationId}:${uauFinance?.selectedKey}`}
+                    contactId={contactId}
+                    conversationId={conversationId}
+                    finance={uauFinance}
+                    onSaved={async () => {
+                      const response = await fetch(
+                        `/api/integrations/uau/contacts/${contactId}/finance`,
+                        {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            action: 'refresh',
+                            contractKey: uauFinance?.selectedKey ?? undefined,
+                          }),
+                        }
+                      );
+                      const result = await response.json();
+                      if (!response.ok || !result.linked)
+                        throw new Error('Refresh failed');
+                      setUauFinance(result);
+                    }}
+                  />
+                )}
                 <ContactTimeline
                   notes={notes}
                   attendances={uauFinance?.attendances ?? []}
