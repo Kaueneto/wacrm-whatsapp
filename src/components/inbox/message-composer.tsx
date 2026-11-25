@@ -141,7 +141,6 @@ export function MessageComposer({
 }: MessageComposerProps) {
   const t = useTranslations("Inbox.composer");
   const tGate = useTranslations("GatedButton");
-
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [drafting, setDrafting] = useState(false);
@@ -809,7 +808,8 @@ export function MessageComposer({
             // The placeholder text also surfaces the read-only state.
             title={readOnly ? t("readOnlyTitle") : undefined}
             className={cn(
-              "order-1 min-w-0 flex-1 resize-none rounded-xl border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50 sm:order-2",
+              "order-1 min-w-0 flex-1 resize-none overflow-x-hidden overflow-y-auto rounded-xl border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50 sm:order-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              !text && "overflow-hidden text-ellipsis whitespace-nowrap",
               (sessionExpired || readOnly) && "cursor-not-allowed opacity-50"
             )}
           />
