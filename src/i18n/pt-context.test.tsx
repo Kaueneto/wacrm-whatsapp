@@ -11,6 +11,7 @@ import { buildHandoffSummary } from '@/lib/ai/handoff';
 import { notificationText } from '@/lib/notifications/notification-text';
 import { ModeToggle } from '@/components/layout/mode-toggle';
 import { AppearancePanel } from '@/components/settings/appearance-panel';
+import { DEFAULT_MODE } from '@/lib/themes';
 
 const themeState = vi.hoisted(() => ({ mode: 'dark', theme: 'violet' }));
 vi.mock('@/hooks/use-theme', () => ({
@@ -94,18 +95,16 @@ describe('Portuguese messages in their UI context', () => {
     expect(t('importBtn', { count: 0 })).toBe('Importar 0 contatos');
   });
 
-  it.each([
-    ['dark', 'claro'],
-    ['light', 'escuro'],
-  ])(
-    'describes the destination of the %s mode toggle in Portuguese',
-    (mode, target) => {
+  it.each(['dark', 'light'])(
+    'keeps the server toggle label stable before hydrating the saved %s mode',
+    (mode) => {
       themeState.mode = mode;
       const html = renderToStaticMarkup(
         <NextIntlClientProvider locale="pt" messages={messages} timeZone="UTC">
           <ModeToggle />
         </NextIntlClientProvider>
       );
+      const target = DEFAULT_MODE === 'dark' ? 'claro' : 'escuro';
       expect(html).toContain(`aria-label="Mudar para o modo ${target}"`);
     }
   );
