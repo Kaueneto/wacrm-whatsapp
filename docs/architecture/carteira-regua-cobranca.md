@@ -110,6 +110,41 @@ Promessa não equivale a pagamento nem elimina a faixa financeira; definir pausa
 e retomada de mensagens. Elegibilidade por idade gera alerta/tarefa; encaminhamento
 jurídico efetivo exige decisão autorizada da equipe.
 
+### Automação confirmada pelo responsável
+
+A régua deve operar sozinha: recalcular a etapa de cada contrato conforme o tempo
+de atraso e os dados financeiros confirmados no UAU, sem exigir arrastar cartões
+ou executar campanhas manualmente. Deve avançar, recuar e encaminhar para a coluna
+de pagamentos/regularizados de forma automática quando houver evidência suficiente.
+Essa atualização não significa que o CRM dará baixa financeira no UAU.
+
+Proposta de funcionamento a validar nos casos específicos:
+
+- Recalcular a idade da dívida a cada atualização financeira e na mudança do dia,
+  usando a data de vencimento original. Registrar cada transição sem reescrever o passado.
+- Se a parcela mais antiga for paga e restarem outras vencidas mais recentes,
+  recalcular a faixa e permitir recuo automático, preservando o histórico.
+- Pagamento parcial de uma parcela antiga não reduz automaticamente a sua idade:
+  enquanto houver saldo vencido nessa parcela, ela participa do cálculo do atraso.
+- Se todo o saldo vencido do ciclo for liquidado, regularizar o ciclo sem confundir
+  isso com quitação integral do contrato, que pode ter parcelas futuras.
+- Renegociação, cancelamento e pagamento terão motivos de saída diferentes.
+  Definir se a interface usará colunas separadas ou uma coluna com subtipo visível.
+- Em estorno ou novo atraso, reabrir/criar o ciclo conforme regra definida, sem
+  duplicar o histórico nem repetir mensagens já realizadas indevidamente.
+- Cancelar ações pendentes incompatíveis com a nova situação e reconferir saldo
+  antes de enviar mensagens. Não disparar todas as etapas puladas de uma vez.
+- Avanço da etapa financeira e autorização para uma ação são decisões distintas:
+  acordos, contestação e análise jurídica podem suspender contatos sem esconder atraso.
+- A classificação exibirá sua data de referência. Falha ou atraso na sincronização
+  não significa ausência de pagamento; bloquear ações que exijam confirmação atual
+  e sinalizar a indisponibilidade.
+
+Ainda confirmar com Laércio: gatilhos exatos de cada ação e frequência dos contatos;
+horários/dias permitidos; responsáveis e escalonamento; tratamento de acordos,
+promessas, contestações e estornos; entrada de contratos já antigos; significado
+da coluna Pagos; frequência da integração e gatilho do encaminhamento jurídico.
+
 ## Kanban e trilha
 
 Unidade proposta do card financeiro: **contrato em um ciclo de cobrança**. Um cliente
