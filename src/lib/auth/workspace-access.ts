@@ -39,6 +39,7 @@ export function canAccessWorkspaceApi(
 ): boolean {
   if (canEditSettings(role)) return true;
   if (role === 'viewer') return false; // Legacy role remains readable, never promoted implicitly.
+  if (/^\/api\/integrations\/uau\/contacts\/[0-9a-f-]{36}\/finance$/i.test(path) && ['GET','POST','PUT','DELETE'].includes(method)) return true;
   if (
     method === 'GET' &&
     [

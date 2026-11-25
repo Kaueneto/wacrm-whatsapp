@@ -1,7 +1,12 @@
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { UauError } from '@/lib/uau/client';
-import { runSavedUauQuery } from '@/lib/uau/connection-store';
+import { resolveQueryParameterValues } from '@/lib/uau/query-parameters';
+import { normalizeQueryParameters } from '@/lib/uau/query-parameters-normalize';
+import {
+  withUauReadSession,
+  runSavedUauQuery,
+} from '@/lib/uau/connection-store';
 import {
   analyzeUauRows,
   type PhoneMapping,
@@ -85,10 +90,35 @@ export async function POST(request: Request) {
         400
       );
     }
+    const definitions = await withUauReadSession(accountId, async (read) =>
+      normalizeQueryParameters(
+        await read('RotinasGerais/ConsultarParamConsultaGeral', {
+          Id: input.id,
+          Personalizado: input.custom,
+        })
+      )
+    );
+    let executionParameters;
+    try {
+      executionParameters = resolveQueryParameterValues(
+        definitions,
+        parameters
+      );
+    } catch (error) {
+      throw new UauError(
+        error instanceof Error
+          ? error.message
+          : 'Confira os parâmetros da consulta.',
+        422
+      );
+    }
     const rows = await runSavedUauQuery(accountId, {
       Id: input.id,
       Personalizado: input.custom,
-      Parameters: parameters.flatMap((p) => [p.name.trim(), p.value.trim()]),
+      Parameters: executionParameters.flatMap((p) => [
+        p.name.trim(),
+        p.value.trim(),
+      ]),
     });
     return Response.json(
       { ...analyzeUauRows(rows, phone, fields), rows },

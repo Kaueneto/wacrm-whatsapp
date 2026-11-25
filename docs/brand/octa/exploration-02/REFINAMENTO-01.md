@@ -1,0 +1,11 @@
+# Refinamento do modelo 01
+
+Ferramenta: geração de imagens integrada. Imagem conceitual raster, sem alteração no aplicativo.
+
+Arquivo: `06-comparacao-entrelacados.png`.
+
+A compara quatro laços; B compara seis laços; C explora oito terminações abertas abaixo de um arco central. Laços não equivalem necessariamente a braços: as duas primeiras opções trabalham abstração, enquanto C explicita a anatomia.
+
+## Prompt usado
+
+Use case: logo-brand. Edit the provided OCTA concept into ONE meticulous comparison board with THREE DISTINCT refinements of this SAME interlaced ribbon logo, arranged horizontally on a wide clean warm off-white canvas. Reference is the exact style to preserve: dark forest green medium-bold uniform ribbon, rounded curves, precise over-under gaps, upright central teardrop arch, no eyes, premium minimalist technology brand. Do not introduce a different illustration style. Large enough symbols and plenty of separation. Three columns labeled A, B, C, each with the identical uppercase word OCTA below in restrained geometric sans serif. A: preserve original four-loop architecture (one upright upper core loop, two side loops, one lower loop), improve balance without adding complexity. B: a six-loop architecture (one upright core loop and five interwoven reach loops: two upper sides, two lower sides, one bottom); six clearly separated negative apertures, avoid flower/trefoil and keep an elongated upright silhouette. C: preserve the upright arched core and have EIGHT distinct rounded tentacle ENDS arranged as four mirrored pairs below/to the sides; ends are open hooks rather than eight closed loops; use only two controlled over-under intersections near core to prevent visual clutter. One top core is NOT counted as a tentacle. C should be a compact woven octopus-derived symbol rather than a literal mascot. Do not make a radial eight-petal flower, mandala, nautical ornament, endless knot ornament, swastika, or gear. Maintain similar mark dimensions and stroke thickness in all three for fair comparison. Flat solid-color artwork, no gradients, no lighting effects, no paper texture, no glass, no mockups. Text ONLY A B C and OCTA. The point is to compare 4 loops, 6 loops, and 8 open tentacle ends, retaining elegant interlacing and recognizable silhouette, not assert an anatomical count from a decorative knot.

@@ -2,6 +2,7 @@
 
 import { List, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WhatsAppFormattedText } from '@/lib/whatsapp/formatted-text';
 import type { InteractiveMessagePayload } from "@/lib/whatsapp/interactive";
 
 /**
@@ -51,7 +52,7 @@ export function InteractivePreview({
           </p>
         ) : null}
         <p className="whitespace-pre-wrap break-words text-sm">
-          {payload.body || (
+          {payload.body ? <WhatsAppFormattedText text={payload.body} /> : (
             <span className="text-muted-foreground">{bodyLabel}</span>
           )}
         </p>

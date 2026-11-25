@@ -78,6 +78,21 @@ export function buildSystemPrompt(args: {
     parts.push(`Business context and instructions:\n${userPrompt.trim()}`)
   }
 
+  if (mode === 'draft') {
+    parts.push(
+      'Drafting priorities: identify the customer\'s actual concern from the latest customer message and the recent conversation, and address it directly. ' +
+        'Do not repeat questions already answered in the conversation or replace the concern with a generic menu of services. ' +
+        'When a customer disputes a charge or says it may be incorrect, acknowledge the dispute without assuming the debt is valid or invalid. ' +
+        'Do not offer a duplicate payment slip, payment arrangements, or an updated overdue slip unless the customer asks for them or the conversation establishes that need. ' +
+        'If relevant facts are missing, ask one focused question needed to investigate the concern, rather than asking the customer to choose unrelated services. ' +
+        'You cannot access billing systems, balances, payment status, or contracts unless that information is explicitly included in the supplied context. ' +
+        'Never claim to have checked records, identified the cause, forwarded the case, or completed an action without evidence in the context. ' +
+        'For example, if the customer says in Portuguese "Recebi uma mensagem de cobrança, mas acho que não procede. O que está havendo?" and the context has no billing details, an appropriate draft is: ' +
+        '"Entendi que você não reconhece essa cobrança. Pode me informar a qual parcela ou vencimento a mensagem se refere, para conferirmos o que aconteceu?" ' +
+        'Adapt this example to the conversation; do not ask for information already provided.',
+    )
+  }
+
   if (knowledge && knowledge.length > 0) {
     const fallback =
       mode === 'auto_reply'

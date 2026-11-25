@@ -7,6 +7,15 @@ import {
 import { canSupervise, hasMinRole } from './roles';
 
 describe('support roles', () => {
+  it('allows contact finance reads and confirmed links without opening administrative ERP queries', () => {
+    const path='/api/integrations/uau/contacts/00000000-0000-0000-0000-000000000001/finance';
+    for(const role of ['agent','supervisor'] as const){
+      for(const method of ['GET','POST','PUT','DELETE']) expect(canAccessWorkspaceApi(role,path,method)).toBe(true);
+      expect(canAccessWorkspaceApi(role,'/api/integrations/uau/query-preview','POST')).toBe(false);
+      expect(canAccessWorkspaceApi(role,'/api/integrations/uau','GET')).toBe(false);
+    }
+    expect(canAccessWorkspaceApi('viewer',path,'GET')).toBe(false);
+  });
   it('places supervisor between administrator and attendant', () => {
     expect(hasMinRole('admin', 'supervisor')).toBe(true);
     expect(hasMinRole('supervisor', 'agent')).toBe(true);

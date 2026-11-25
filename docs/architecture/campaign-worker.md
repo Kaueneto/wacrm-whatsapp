@@ -65,3 +65,35 @@ Campanhas e Disparos continuam separados na navegação. Os cartões, funil, fil
 Para interromper a operação, pausar a programação e os disparos e encerrar o worker. Não reaplicar a versão antiga do loop do navegador contra jobs em andamento: ele não conhece as leases da fila. Preservar as tabelas/snapshots para retomar; rollback operacional não deve apagar histórico nem reenviar estados unknown.
 
 Próximos incrementos: editar definições de campanhas já salvas, seleção manual de contatos, etiquetas na importação em lote, escopo explícito do catálogo por WABA (a validação de envio já bloqueia modelos da conta antiga), inbox durável para toda a entrada de webhooks e benchmark/tuning com volume representativo. O aviso de coexistência nas configurações permanece uma correção separada.
+
+## Descoberta de parâmetros UAU — 24/11/2026
+
+O editor consulta primeiro `POST /api/integrations/uau/query-parameters` com código e tipo da consulta. Essa rota exige administrador, aplica limite por conta e consulta somente os metadados de `RotinasGerais/ConsultarParamConsultaGeral`, enviando `{Id, Personalizado}`. Não executa a consulta de público nessa etapa. A operação foi conferida no Swagger instalado e validada em uma consulta já salva: um parâmetro com descrição foi retornado, sem executar SQL nem enviar campanhas.
+
+Quando existem parâmetros, o editor gera os campos com descrição/nome e aguarda o preenchimento antes de executar a prévia. Sem parâmetros, a interface informa a ausência e libera o botão Executar consulta, sem executar automaticamente. Reconsultar metadados preserva valores dos nomes ainda existentes, retira parâmetros removidos e cria campos vazios para novos nomes; trocar código ou tipo limpa os parâmetros e mapeamentos anteriores. Alterar apenas valores invalida a prévia, preservando o mapeamento de telefone e variáveis para revalidação.
+
+Metadados JSON, JSON serializado e DataSets compatíveis são normalizados; linhas técnicas de tipos CLR são ignoradas. Campos estruturados desconhecidos não fazem desaparecer uma linha real. São aceitos até 50 parâmetros com nomes únicos compatíveis com a execução existente. Restrições e multisseleção conhecidas são indicadas; códigos de tipo não documentados não são interpretados como regras de SQL. A plataforma não adiciona aspas, inventa valores padrão nem analisa SQL arbitrário: o formato depende da consulta cadastrada no UAU.
+
+A gravação existente de campanha continua salvando código, tipo, mapeamentos e pares nome/valor cifrados em parametersEncrypted. Não exige migration. O worker reconstrói esses valores em cada ocorrência, incluindo campanhas diárias, e consulta novamente o público. Campanhas distintas podem usar a mesma consulta com valores diferentes. A prévia deve ser revalidada antes de salvar valores alterados.
+
+Validação: 73 testes direcionados aprovados, lint sem erros e build final com TypeScript aprovado. A suíte geral teve 2.015 testes aprovados e uma falha no contexto do seletor de tema claro/escuro (ModeToggle, arquivo com alterações anteriores fora deste escopo); a falha não envolve consultas ou campanhas UAU.
+
+## Separação entre público e template — 24/11/2026
+
+O editor passa a ter as abas Cadastrar, Template, Agendamento e Exceções. Cadastrar contém título à esquerda e origem dos dados/canal de envio à direita em telas amplas; a descrição ocupa toda a largura da linha seguinte, cresce automaticamente até 128px e depois usa rolagem interna, seguida da configuração do público (CRM/arquivo ou consulta UAU com parâmetros e validação do telefone). A conexão UAU fica no cabeçalho da consulta, sem ocupar uma coluna lateral junto aos parâmetros.
+
+Template reúne catálogo, mapeamento das variáveis e prévia. Campos do CRM aceitam valor fixo, campo do contato ou campo personalizado; campos da mensagem UAU são mapeados às colunas retornadas. Etiquetas continuam sendo filtros/exceções de público, não fontes de conteúdo das variáveis. Campos são apresentados ao selecionar um template; para escolher colunas UAU é necessário executar a consulta do público.
+
+As abas permanecem montadas. O estado da consulta UAU continua no mesmo componente e seus controles de template são apresentados na aba dedicada por portal, preservando parâmetros, resultados, telefone e mapeamentos ao navegar. O formulário de salvar continua disponível a partir do rodapé. Erros de template, variáveis e mídia direcionam à aba Template; erros de público direcionam a Cadastrar. Não houve alteração de contrato da API, persistência ou worker nesta reorganização.
+
+Verificações: testes direcionados de parâmetros, rascunho UAU e preparação de campanhas aprovados (11 testes), lint dos componentes sem erros e build/TypeScript aprovados.
+
+Nos campos de parâmetros, identificadores e valores usam fonte monoespaçada azul (azul escuro no tema claro e sky no escuro). A descrição permanece em uma linha truncada com texto completo no título do elemento, mantendo os inputs alinhados independentemente do tamanho do texto retornado pelo UAU.
+
+## Ordem obrigatória na prévia da consulta — 25/11/2026
+
+Buscar parâmetros e Executar consulta são ações separadas. Executar fica desabilitado até a descoberta concluir e todos os valores estarem preenchidos. Atualizar a descoberta invalida a liberação até uma nova resposta bem-sucedida; consultas sem parâmetros também aguardam um clique explícito em Executar. O envio usa exatamente os valores atuais dos campos.
+
+A API de prévia reconfere os metadados do UAU antes de executar: nomes ausentes ou desatualizados são recusados, sem ignorar filtros silenciosamente. Os nomes são enviados na grafia atual do cadastro e os valores mantêm seu conteúdo/formatação, removendo apenas espaços externos. Falha na leitura dos metadados impede a execução. Essa validação adicional se aplica à prévia do editor; o worker continua usando a definição cifrada da campanha.
+
+Validação: 17 testes direcionados aprovados, lint sem erros e build/TypeScript aprovados.

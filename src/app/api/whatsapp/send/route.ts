@@ -13,6 +13,7 @@ import {
 } from '@/lib/whatsapp/send-message'
 import { isUniqueViolation } from '@/lib/contacts/dedupe'
 import { getT } from '@/lib/i18n/translate'
+import { withAgentSignature } from '@/lib/whatsapp/agent-signature'
 
 const t = getT('Api')
 
@@ -77,13 +78,33 @@ export async function POST(request: Request) {
     // Validate the message shape up front — before the contact_id path
     // finds-or-creates a conversation — so an invalid payload 400s
     // without leaving an orphan empty conversation behind.
+    let outgoingText = content_text
+    let outgoingInteractive = interactive_payload
+    if (['text', 'image', 'video', 'document', 'interactive'].includes(message_type)) {
+      const { data: sender, error: senderError } = await supabase
+        .from('profiles')
+        .select('full_name,message_signature_enabled,message_signature_name')
+        .eq('user_id', userId)
+        .eq('account_id', accountId)
+        .single()
+      if (senderError) throw senderError
+      const signatureName = sender?.message_signature_name?.trim() || sender?.full_name
+      if (sender?.message_signature_enabled && signatureName) {
+        if (typeof outgoingText === 'string') {
+          outgoingText = withAgentSignature(outgoingText, signatureName)
+        }
+        if (message_type === 'interactive' && typeof outgoingInteractive?.body === 'string') {
+          outgoingInteractive = { ...outgoingInteractive, body: withAgentSignature(outgoingInteractive.body, signatureName) }
+        }
+      }
+    }
     try {
       validateSendMessageParams({
         messageType: message_type,
-        contentText: content_text,
+        contentText: outgoingText,
         mediaUrl: media_url,
         templateName: template_name,
-        interactivePayload: interactive_payload,
+        interactivePayload: outgoingInteractive,
       })
     } catch (err) {
       if (err instanceof SendMessageError) {
@@ -160,14 +181,14 @@ export async function POST(request: Request) {
       const result = await sendMessageToConversation(supabase, accountId, {
         conversationId,
         messageType: message_type,
-        contentText: content_text,
+        contentText: outgoingText,
         mediaUrl: media_url,
         filename,
         templateName: template_name,
         templateLanguage: template_language,
         templateParams: template_params,
         templateMessageParams: template_message_params,
-        interactivePayload: interactive_payload,
+        interactivePayload: outgoingInteractive,
         replyToMessageId: reply_to_message_id,
         senderId: userId,
       })

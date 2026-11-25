@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { canSupervise } from "@/lib/auth/roles";
 import { TeamRoutingDialog } from './team-routing-dialog';
+import { withAgentSignature } from '@/lib/whatsapp/agent-signature';
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceDot } from "@/components/presence/presence-dot";
 import { presenceLabel } from "@/lib/presence";
@@ -192,7 +193,11 @@ export function MessageThread({
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
-  const { user, accountRole } = useAuth();
+  const { user, accountRole, profile } = useAuth();
+  const signOutgoingText = useCallback((text: string) =>
+    profile?.message_signature_enabled && profile.full_name
+      ? withAgentSignature(text, profile.message_signature_name?.trim() || profile.full_name) : text,
+  [profile?.message_signature_enabled, profile?.message_signature_name, profile?.full_name]);
   const { getPresence, getRow, now } = usePresence();
   const [loadedConversationId, setLoadedConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -591,7 +596,7 @@ export function MessageThread({
         conversation_id: conversation.id,
         sender_type: "agent",
         content_type: "text",
-        content_text: text,
+        content_text: signOutgoingText(text),
         status: "sending",
         created_at: new Date().toISOString(),
         reply_to_message_id: replyToId,
@@ -633,7 +638,7 @@ export function MessageThread({
         onUpdateMessage(tempId, { status: "failed" });
       }
     },
-    [conversation, onNewMessage, onUpdateMessage, t]
+    [conversation, onNewMessage, onUpdateMessage, t, signOutgoingText]
   );
 
   const handleSendMedia = useCallback(
@@ -654,7 +659,7 @@ export function MessageThread({
         conversation_id: conversation.id,
         sender_type: "agent",
         content_type: payload.kind,
-        content_text: contentText,
+        content_text: payload.kind !== 'audio' && contentText ? signOutgoingText(contentText) : contentText,
         media_url: payload.mediaUrl,
         status: "sending",
         created_at: new Date().toISOString(),
@@ -699,7 +704,7 @@ export function MessageThread({
         void deleteAccountMedia(CHAT_MEDIA_BUCKET, payload.path).catch(() => {});
       }
     },
-    [conversation, onNewMessage, onUpdateMessage, t],
+    [conversation, onNewMessage, onUpdateMessage, t, signOutgoingText],
   );
 
   const handleSendInteractive = useCallback(
@@ -714,8 +719,8 @@ export function MessageThread({
         conversation_id: conversation.id,
         sender_type: "agent",
         content_type: "interactive",
-        content_text: payload.body,
-        interactive_payload: payload,
+        content_text: signOutgoingText(payload.body),
+        interactive_payload: { ...payload, body: signOutgoingText(payload.body) },
         status: "sending",
         created_at: new Date().toISOString(),
         reply_to_message_id: replyToId,
@@ -752,7 +757,7 @@ export function MessageThread({
         onUpdateMessage(tempId, { status: "failed" });
       }
     },
-    [conversation, onNewMessage, onUpdateMessage, t],
+    [conversation, onNewMessage, onUpdateMessage, t, signOutgoingText],
   );
 
   const handleStatusChange = useCallback(
@@ -1122,70 +1127,81 @@ export function MessageThread({
               onChanged={(agentId) => { onAssignChange(conversation.id, agentId); onRefresh?.(); }}
             />
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              disabled={!accountRole || !canSupervise(accountRole) || !!conversation.team_id}
-              className={cn(
-                "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
-                assignedAgentId ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              <UserPlus className="h-3 w-3" />
-              <span className="hidden sm:inline">{assignLabel}</span>
-              <ChevronDown className="h-3 w-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="border-border bg-popover"
-            >
-              {profiles.length === 0 ? (
-                <DropdownMenuItem disabled className="text-sm text-muted-foreground">
-                  {t("noTeammates")}
-                </DropdownMenuItem>
-              ) : (
-                profiles.map((p) => {
-                  const isSelected = p.user_id === assignedAgentId;
-                  const presence = getPresence(p.user_id);
-                  return (
-                    <DropdownMenuItem
-                      key={p.id}
-                      onClick={() => handleAssignChange(p.user_id)}
-                      className={cn(
-                        "text-sm",
-                        isSelected ? "text-primary" : "text-popover-foreground"
-                      )}
-                    >
-                      <PresenceDot
-                        status={presence}
-                        label={presenceLabel(
-                          presence,
-                          getRow(p.user_id)?.last_seen_at ?? null,
-                          now
-                        )}
-                        className="mr-2"
-                      />
-                      <span className="flex-1">
-                        {p.full_name}
-                        {p.user_id === user?.id ? t("me") : ""}
-                      </span>
-                      {isSelected && <Check className="ml-2 h-3 w-3" />}
-                    </DropdownMenuItem>
-                  );
-                })
-              )}
-              {assignedAgentId && (
-                <>
-                  <DropdownMenuSeparator className="bg-border" />
-                  <DropdownMenuItem
-                    onClick={() => handleAssignChange(null)}
-                    className="text-sm text-muted-foreground"
-                  >
-                    {t("unassign")}
+          {conversation.team_id && accountRole && canSupervise(accountRole) ? (
+            <TeamRoutingDialog
+              key={`${conversation.id}-assignee`}
+              conversationId={conversation.id}
+              currentTeamId={conversation.team_id}
+              currentAgentId={conversation.assigned_agent_id}
+              assigneeLabel={assignLabel}
+              onChanged={(agentId) => { onAssignChange(conversation.id, agentId); onRefresh?.(); }}
+            />
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                disabled={!accountRole || !canSupervise(accountRole)}
+                className={cn(
+                  "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                  assignedAgentId ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <UserPlus className="h-3 w-3" />
+                <span className="hidden sm:inline">{assignLabel}</span>
+                <ChevronDown className="h-3 w-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="border-border bg-popover"
+              >
+                {profiles.length === 0 ? (
+                  <DropdownMenuItem disabled className="text-sm text-muted-foreground">
+                    {t("noTeammates")}
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                ) : (
+                  profiles.map((p) => {
+                    const isSelected = p.user_id === assignedAgentId;
+                    const presence = getPresence(p.user_id);
+                    return (
+                      <DropdownMenuItem
+                        key={p.id}
+                        onClick={() => handleAssignChange(p.user_id)}
+                        className={cn(
+                          "text-sm",
+                          isSelected ? "text-primary" : "text-popover-foreground"
+                        )}
+                      >
+                        <PresenceDot
+                          status={presence}
+                          label={presenceLabel(
+                            presence,
+                            getRow(p.user_id)?.last_seen_at ?? null,
+                            now
+                          )}
+                          className="mr-2"
+                        />
+                        <span className="flex-1">
+                          {p.full_name}
+                          {p.user_id === user?.id ? t("me") : ""}
+                        </span>
+                        {isSelected && <Check className="ml-2 h-3 w-3" />}
+                      </DropdownMenuItem>
+                    );
+                  })
+                )}
+                {assignedAgentId && (
+                  <>
+                    <DropdownMenuSeparator className="bg-border" />
+                    <DropdownMenuItem
+                      onClick={() => handleAssignChange(null)}
+                      className="text-sm text-muted-foreground"
+                    >
+                      {t("unassign")}
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 

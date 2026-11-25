@@ -19,6 +19,7 @@ import {
   type OverviewRange,
 } from '@/lib/dashboard/overview'
 import { derivePresence } from '@/lib/presence'
+import { SHOW_PIPELINES } from '@/lib/feature-visibility'
 
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { AttentionRow } from '@/components/dashboard/attention-row'
@@ -167,22 +168,25 @@ function DashboardPageInner() {
       ) : (
         <>
           <AttentionRow data={data} now={now} onlineCount={onlineCount} />
-          <KpiRow data={data} currency={defaultCurrency} />
+          <KpiRow data={data} />
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
             <MessageVolumeCard data={data} />
             <ReplyQueueCard data={data} now={now} />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            <PipelineCard data={data} currency={defaultCurrency} />
+          <div className={`grid grid-cols-1 gap-4 lg:grid-cols-2${SHOW_PIPELINES ? ' 2xl:grid-cols-3' : ''}`}>
+            {SHOW_PIPELINES && <PipelineCard data={data} currency={defaultCurrency} />}
             <TeamCard data={data} now={now} />
-            <div className="lg:col-span-2 2xl:col-span-1">
+            <div className={SHOW_PIPELINES ? 'lg:col-span-2 2xl:col-span-1' : undefined}>
               <CampaignsCard data={data} />
             </div>
           </div>
 
-          <ActivityFeed items={activity} loading={activityLoading} />
+          <ActivityFeed
+            items={activity?.filter((item) => SHOW_PIPELINES || item.kind !== 'deal') ?? null}
+            loading={activityLoading}
+          />
         </>
       )}
     </div>

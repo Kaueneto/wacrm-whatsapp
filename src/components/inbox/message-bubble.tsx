@@ -188,7 +188,7 @@ function MessageContent({
     case "text":
       return (
         <p className="whitespace-pre-wrap break-words text-sm">
-          <LinkifyText text={message.content_text ?? ""} isAgent={isAgent} />
+          <WhatsAppFormattedText text={message.content_text ?? ""} isAgent={isAgent} />
         </p>
       );
 
@@ -202,7 +202,7 @@ function MessageContent({
           )}
           {message.content_text && (
             <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              <LinkifyText text={message.content_text} isAgent={isAgent} />
+              <WhatsAppFormattedText text={message.content_text} isAgent={isAgent} />
             </p>
           )}
         </div>
@@ -218,7 +218,7 @@ function MessageContent({
           )}
           {message.content_text && (
             <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              <LinkifyText text={message.content_text} isAgent={isAgent} />
+              <WhatsAppFormattedText text={message.content_text} isAgent={isAgent} />
             </p>
           )}
         </div>
@@ -268,7 +268,7 @@ function MessageContent({
           )}
           {message.content_text ? (
             <p className="mt-1 whitespace-pre-wrap break-words text-sm">
-              {templatePreview ? <WhatsAppFormattedText text={message.content_text} /> : <LinkifyText text={message.content_text} isAgent={isAgent} />}
+              {templatePreview ? <WhatsAppFormattedText text={message.content_text} /> : <WhatsAppFormattedText text={message.content_text} isAgent={isAgent} />}
             </p>
           ) : (
             message.template_name && (

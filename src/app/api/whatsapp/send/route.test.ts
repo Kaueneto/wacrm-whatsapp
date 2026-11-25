@@ -17,6 +17,8 @@ let contactRow: Record<string, unknown> | null = null
 // The caller's role, as `requireRole` reads it off the profile. Sending
 // requires 'agent'; 'viewer' must be refused before anything reaches Meta.
 let callerRole: string = 'admin'
+let signatureEnabled = false
+let signatureName: string | null = null
 // A conversation created during the request becomes retrievable by id —
 // the shared send core re-loads the conversation (with its contact) from
 // just the id, so the mock must model insert-then-select-by-id.
@@ -40,7 +42,7 @@ function makeSupabaseMock() {
       switch (table) {
         case 'profiles':
           return {
-            data: { account_id: 'acct-1', account_role: callerRole },
+            data: { account_id: 'acct-1', account_role: callerRole, full_name: 'Ana Carolina', message_signature_enabled: signatureEnabled, message_signature_name: signatureName },
             error: null,
           }
         case 'accounts':
@@ -163,12 +165,13 @@ vi.mock('@/lib/whatsapp/encryption', () => ({
   isLegacyFormat: vi.fn(() => false),
 }))
 
-const { sendTemplateMessage } = vi.hoisted(() => ({
+const { sendTemplateMessage, sendTextMessage } = vi.hoisted(() => ({
   sendTemplateMessage: vi.fn(async () => ({ messageId: 'wamid-1' })),
+  sendTextMessage: vi.fn(async () => ({ messageId: 'wamid-text' })),
 }))
 vi.mock('@/lib/whatsapp/meta-api', () => ({
   sendTemplateMessage,
-  sendTextMessage: vi.fn(),
+  sendTextMessage,
   sendMediaMessage: vi.fn(),
 }))
 
@@ -311,6 +314,8 @@ describe('POST /api/whatsapp/send — role enforcement', () => {
     createdConversation = null
     contactRow = CONTACT
     callerRole = 'admin'
+    signatureEnabled = false
+    signatureName = null
     supabaseMock = makeSupabaseMock()
     sendTemplateMessage.mockClear()
   })
@@ -341,5 +346,41 @@ describe('POST /api/whatsapp/send — role enforcement', () => {
 
     expect(res.status).toBe(200)
     expect(sendTemplateMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([true, false])('uses the authenticated sender signature preference: %s', async (enabled) => {
+    signatureEnabled = enabled
+    callerRole = 'agent'
+    const response = await POST(new Request('http://localhost/api/whatsapp/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: 'conv-existing', message_type: 'text', content_text: 'Olá!', full_name: 'Forged name' }),
+    }))
+    expect(response.status).toBe(200)
+    const expected = enabled ? '*Ana Carolina*\n\nOlá!' : 'Olá!'
+    expect(sendTextMessage).toHaveBeenCalledWith(expect.objectContaining({ text: expected }))
+    expect(messageInserts[0]).toMatchObject({ content_text: expected, sender_id: 'user-1' })
+  })
+
+  it('validates caption limits after adding the signature, before delivering anything', async () => {
+    signatureEnabled = true
+    const response = await POST(new Request('http://localhost/api/whatsapp/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: 'conv-existing', message_type: 'image', media_url: 'https://example.com/photo.png', content_text: 'a'.repeat(1024) }),
+    }))
+    expect(response.status).toBe(400)
+    expect(messageInserts).toHaveLength(0)
+    expect(sendTextMessage).not.toHaveBeenCalled()
+  })
+
+  it('uses the signature name saved in the profile instead of changing the account name', async () => {
+    signatureEnabled = true
+    signatureName = 'Ana · Atendimento'
+    const response = await POST(new Request('http://localhost/api/whatsapp/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: 'conv-existing', message_type: 'text', content_text: 'Olá!' }),
+    }))
+    expect(response.status).toBe(200)
+    expect(sendTextMessage).toHaveBeenCalledWith(expect.objectContaining({ text: '*Ana · Atendimento*\n\nOlá!' }))
+    expect(messageInserts[0]).toMatchObject({ content_text: '*Ana · Atendimento*\n\nOlá!' })
   })
 })

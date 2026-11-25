@@ -20,6 +20,7 @@ import { UauCampaignPreview } from '@/components/campaigns/uau-campaign-preview'
 import { Button } from '@/components/ui/button';
 import { PageNavigation } from '@/components/ui/page-navigation';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { validateDefinition } from '@/lib/campaigns/definition';
 import { validateSchedule } from '@/lib/campaigns/schedule';
@@ -40,6 +41,8 @@ export function CampaignEditor({
   const crmDraft = draft && 'source' in draft ? draft : undefined;
   const uauDraft = draft && !('source' in draft) ? draft : undefined;
   const [tab, setTab] = useState<string>(initialTab);
+  const [templateContainer, setTemplateContainer] =
+    useState<HTMLElement | null>(null);
   const [exclusionsContainer, setExclusionsContainer] =
     useState<HTMLElement | null>(null);
   const [name, setName] = useState(draft?.name ?? '');
@@ -88,10 +91,12 @@ export function CampaignEditor({
   const selectedTemplateAvailable = catalog.templates.some(
     ({ id }) => id === template?.id
   );
-  const [audience, setAudience] = useState<AudienceConfig>(crmDraft?.definition.audience ?? {
-    type: 'all',
-    excludeTagIds: uauDraft?.audience.excludeTagIds,
-  });
+  const [audience, setAudience] = useState<AudienceConfig>(
+    crmDraft?.definition.audience ?? {
+      type: 'all',
+      excludeTagIds: uauDraft?.audience.excludeTagIds,
+    }
+  );
   const [audienceSource, setAudienceSource] = useState<'crm' | 'uau'>(
     uauDraft ? 'uau' : 'crm'
   );
@@ -116,11 +121,12 @@ export function CampaignEditor({
   async function saveUauCampaign(uauAudience: UauDraftAudience) {
     if (busy) return;
     if (!name.trim() || !template) {
+      setTab(!name.trim() ? 'audience' : 'template');
       toast.error('Informe o título e escolha o template.');
       return;
     }
     if (template.id !== uauDraft?.template?.id && !selectedTemplateAvailable) {
-      setTab('audience');
+      setTab('template');
       toast.error(
         'Escolha um template aprovado disponível para o canal conectado.'
       );
@@ -170,11 +176,15 @@ export function CampaignEditor({
     if (audienceSource === 'uau') return;
     const templateId = template?.id ?? crmDraft?.definition.templateId;
     if (!name.trim() || !templateId) {
+      setTab(!name.trim() ? 'audience' : 'template');
       toast.error('Informe o título e escolha o template.');
       return;
     }
-    if (templateId !== crmDraft?.definition.templateId && !selectedTemplateAvailable) {
-      setTab('audience');
+    if (
+      templateId !== crmDraft?.definition.templateId &&
+      !selectedTemplateAvailable
+    ) {
+      setTab('template');
       toast.error(
         'Escolha um template aprovado disponível para o canal conectado.'
       );
@@ -199,7 +209,7 @@ export function CampaignEditor({
         !variables[placeholder.replace(/^\{\{|\}\}$/g, '')]?.value.trim()
     );
     if (missing.length) {
-      setTab('audience');
+      setTab('template');
       toast.error('Preencha as variáveis: ' + missing.join(', '));
       return;
     }
@@ -208,7 +218,7 @@ export function CampaignEditor({
         const url = new URL(media);
         if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
       } catch {
-        setTab('audience');
+        setTab('template');
         toast.error('Informe uma URL válida para a mídia do template.');
         return;
       }
@@ -224,23 +234,26 @@ export function CampaignEditor({
     }
     setBusy(true);
     try {
-      const r = await fetch(crmDraft ? `/api/campaigns/${crmDraft.id}` : '/api/campaigns', {
-        method: crmDraft ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description,
-          departmentId,
-          active: scheduleEnabled && active,
-          schedule: scheduleEnabled ? schedule : null,
-          definition: {
-            templateId,
-            audience,
-            variables,
-            headerMediaUrl: media,
-          },
-        }),
-      });
+      const r = await fetch(
+        crmDraft ? `/api/campaigns/${crmDraft.id}` : '/api/campaigns',
+        {
+          method: crmDraft ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            description,
+            departmentId,
+            active: scheduleEnabled && active,
+            schedule: scheduleEnabled ? schedule : null,
+            definition: {
+              templateId,
+              audience,
+              variables,
+              headerMediaUrl: media,
+            },
+          }),
+        }
+      );
       const b = await r.json();
       if (!r.ok) throw new Error(b.error);
       if (crmDraft) {
@@ -285,14 +298,21 @@ export function CampaignEditor({
         backDisabled={busy}
         items={[
           { label: 'Campanhas', href: '/campaigns' },
-          ...(draft ? [{ label: draft.name, href: `/campaigns/${draft.id}` }] : []),
+          ...(draft
+            ? [{ label: draft.name, href: `/campaigns/${draft.id}` }]
+            : []),
           { label: draft ? 'Editar campanha' : 'Nova campanha' },
         ]}
       />
       <h1 className="text-2xl font-bold">
         {draft ? 'Editar campanha' : 'Cadastrar nova campanha'}
       </h1>
-      {draft && <p className="text-muted-foreground text-sm">As alterações valem para os próximos disparos. O histórico mantém os dados de cada envio.</p>}
+      {draft && (
+        <p className="text-muted-foreground text-sm">
+          As alterações valem para os próximos disparos. O histórico mantém os
+          dados de cada envio.
+        </p>
+      )}
 
       <Tabs
         value={tab}
@@ -308,6 +328,9 @@ export function CampaignEditor({
             <TabsTrigger value="audience" className="px-3">
               Cadastrar
             </TabsTrigger>
+            <TabsTrigger value="template" className="px-3">
+              Template
+            </TabsTrigger>
             <TabsTrigger value="schedule" className="px-3">
               Agendamento
             </TabsTrigger>
@@ -320,43 +343,50 @@ export function CampaignEditor({
           <div className="space-y-5 pt-5">
             <section
               aria-label="Identificação da campanha"
-              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_minmax(10rem,1fr)_minmax(12rem,1.6fr)_minmax(7rem,.55fr)]"
+              className="bg-card grid gap-5 rounded-xl border p-4 sm:p-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)]"
             >
-              <label className="block min-w-0 space-y-1.5">
-                <span>Origem da integração</span>
-                <select
-                  className="border-border bg-background block h-9 w-full rounded-lg border px-3"
-                  value={audienceSource}
-                  disabled={!!draft}
-                  onChange={(event) =>
-                    setAudienceSource(
-                      event.target.value === 'uau' ? 'uau' : 'crm'
-                    )
-                  }
-                >
-                  <option value="crm">Contatos do CRM ou arquivo (CSV ou Excel)</option>
-                  <option value="uau">Consulta do UAU</option>
-                </select>
-              </label>
-              <label className="block min-w-0 space-y-1.5">
-                <span>Título</span>
-                <Input
-                  className="h-9"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Cobrança — Empreendimento A"
-                />
-              </label>
-              <label className="block min-w-0 space-y-1.5">
-                <span>Descrição e objetivo</span>
-                <textarea
+              <div className="min-w-0 space-y-4">
+                <label className="block min-w-0 space-y-1.5">
+                  <span className="text-sm font-medium">Título</span>
+                  <Input
+                    className="h-9"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Cobrança — Empreendimento A"
+                  />
+                </label>
+              </div>
+              <div className="grid min-w-0 content-start gap-4 sm:grid-cols-2">
+                <label className="block min-w-0 space-y-1.5">
+                  <span className="text-sm font-medium">Origem dos dados</span>
+                  <select
+                    className="border-border bg-background block h-9 w-full rounded-lg border px-3 text-sm"
+                    value={audienceSource}
+                    disabled={!!draft}
+                    onChange={(event) =>
+                      setAudienceSource(
+                        event.target.value === 'uau' ? 'uau' : 'crm'
+                      )
+                    }
+                  >
+                    <option value="crm">CRM, CSV ou Excel</option>
+                    <option value="uau">Consulta do UAU</option>
+                  </select>
+                </label>
+                <CampaignSenderField />
+              </div>
+              <label className="block min-w-0 space-y-1.5 lg:col-span-2">
+                <span className="text-sm font-medium">
+                  Descrição e objetivo
+                </span>
+                <Textarea
                   rows={1}
-                  className="border-border bg-background min-h-9 w-full rounded-lg border px-3 py-2 text-sm"
+                  className="border-border bg-background max-h-32 min-h-9 w-full resize-none overflow-y-auto px-3 py-2 text-sm"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Descreva o objetivo desta campanha"
                 />
               </label>
-              <CampaignSenderField />
             </section>
             <div hidden={audienceSource !== 'uau'}>
               <UauCampaignPreview
@@ -364,6 +394,8 @@ export function CampaignEditor({
                 initialAudience={uauDraft?.audience}
                 onSave={(value) => void saveUauCampaign(value)}
                 saving={busy}
+                templateContainer={templateContainer}
+                onNavigate={setTab}
               >
                 {audienceSource === 'uau' && templatePicker}
               </UauCampaignPreview>
@@ -381,24 +413,48 @@ export function CampaignEditor({
                     exclusionsContainer={exclusionsContainer}
                   />
                 </section>
-                {audienceSource === 'crm' && templatePicker}
-                {template && (
-                  <section
-                    aria-label="Personalização da mensagem"
-                    className="bg-card min-w-0 rounded-xl border p-4 sm:p-5"
-                  >
-                    <Step3Personalize
-                      key={template.id}
-                      template={template}
-                      variables={variables}
-                      onUpdate={setVariables}
-                      headerMediaUrl={media}
-                      onHeaderMediaUrlChange={setMedia}
-                      showNavigation={false}
-                    />
-                  </section>
-                )}
               </div>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTab('template')}
+              >
+                Continuar para Template
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+        <TabsContent value="template" keepMounted className="min-w-0">
+          <div className="space-y-5 pt-5">
+            <header>
+              <h2 className="text-lg font-semibold">Template e variáveis</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Escolha a mensagem e defina como preencher os campos, como{' '}
+                {'{{1}}'}. As etiquetas filtram o público; os campos
+                personalizam o conteúdo.
+              </p>
+            </header>
+            <div hidden={audienceSource !== 'uau'} ref={setTemplateContainer} />
+            <div hidden={audienceSource !== 'crm'} className="space-y-5">
+              {audienceSource === 'crm' && templatePicker}
+              {audienceSource === 'crm' && template && (
+                <section
+                  aria-label="Personalização da mensagem"
+                  className="bg-card min-w-0 rounded-xl border p-4 sm:p-5"
+                >
+                  <Step3Personalize
+                    key={template.id}
+                    template={template}
+                    variables={variables}
+                    onUpdate={setVariables}
+                    headerMediaUrl={media}
+                    onHeaderMediaUrlChange={setMedia}
+                    showNavigation={false}
+                  />
+                </section>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -464,7 +520,10 @@ export function CampaignEditor({
         >
           <div className="space-y-1 text-sm wrap-anywhere">
             <p>
-              Template <strong>{template?.display_name ?? template?.name ?? 'Não selecionado'}</strong>
+              Template{' '}
+              <strong>
+                {template?.display_name ?? template?.name ?? 'Não selecionado'}
+              </strong>
             </p>
             <p>
               Público{' '}

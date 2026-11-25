@@ -1,6 +1,7 @@
 'use client';
 
 import Link, { useLinkStatus } from 'next/link';
+import { OctaLogo } from '@/components/brand/octa-logo';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react';
 import type { AccountRole } from '@/lib/auth/roles';
 import { canAccessWorkspacePage } from '@/lib/auth/workspace-access';
+import { SHOW_PIPELINES } from '@/lib/feature-visibility';
 
 import {
   DropdownMenu,
@@ -241,7 +243,10 @@ function SidebarNavigation({
   const t = useTranslations('Sidebar');
 
   const visibleItems = (items: NavItem[]) =>
-    items.filter((item) => accountRole && canAccessWorkspacePage(accountRole, item.href));
+    items.filter((item) =>
+      (SHOW_PIPELINES || item.href !== '/pipelines') &&
+      accountRole && canAccessWorkspacePage(accountRole, item.href)
+    );
 
   function isActive(item: NavItem) {
     if (item.href === '/campaigns' && (pathname === '/campaigns/templates' || pathname.startsWith('/campaigns/templates/'))) return false;
@@ -449,10 +454,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             close button is hidden since the sidebar is always-visible. */}
         <div className={cn('border-border flex h-14 shrink-0 items-center gap-2 border-b', compact ? 'justify-center' : 'justify-between px-4')}>
           <Link href="/dashboard" aria-label={t('title')} className="flex min-w-0 items-center gap-2">
-            <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
-              <MessageSquare className="h-4 w-4" />
-            </div>
-            {!compact && <span className="text-foreground text-sm font-semibold">{t('title')}</span>}
+            <OctaLogo compact={compact} className="text-foreground" markClassName="h-9" wordmarkClassName="text-base" />
           </Link>
           <button
             type="button"

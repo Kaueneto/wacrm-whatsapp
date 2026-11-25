@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { decrypt, encrypt } from '@/lib/whatsapp/encryption';
-import { runSavedUauQuery, saveUauConnection } from './connection-store';
-import { normalizeUauBase } from './client';
+import { runSavedUauQuery, saveUauConnection, withUauReadSession, writeUauAttendance } from './connection-store';
+import { executeUauRead, normalizeUauBase } from './client';
+import { Readable } from 'node:stream';
 
 const mocks = vi.hoisted(() => ({ request: vi.fn(), read: vi.fn(), update: vi.fn(), upsert: vi.fn() }));
 
@@ -43,6 +44,42 @@ beforeEach(() => {
 });
 
 describe('UAU connection', () => {
+  it('consumes an HTTP rejection and preserves its business reason without directly destroying the stream', async () => {
+    const body = Readable.from([Buffer.from(JSON.stringify({ Mensagem: 'Categoria sem workflow' }))]);
+    const destroy = vi.spyOn(body, 'destroy');
+    mocks.request.mockResolvedValueOnce({ statusCode: 400, body });
+    await expect(writeUauAttendance('account-1', 'revision-1', { codpes_atd: 7 }))
+      .rejects.toMatchObject({ status: 400, upstreamStatus: 400, message: 'O UAU recusou a requisição (HTTP 400). Categoria sem workflow' });
+    expect(body.readableEnded).toBe(true);
+    // Node may auto-destroy a fully consumed stream; it must not be aborted with unread data.
+    for (const [error] of destroy.mock.calls) expect(error).toBeUndefined();
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
+  it('never refreshes and replays an attendance creation after an upstream rejection', async () => {
+    mocks.request.mockResolvedValueOnce(response(401));
+    await expect(writeUauAttendance('account-1', 'revision-1', { codpes_atd: 7 })).rejects.toMatchObject({ status: 401 });
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request.mock.calls[0][0]).toContain('/Atendimento/GravarAtendimento');
+    expect(JSON.parse(mocks.request.mock.calls[0][1].body)).toEqual({ atendimento: { codpes_atd: 7 } });
+  });
+  it('pins financial consultations to one saved revision and uses documented payloads', async () => {
+    mocks.request.mockResolvedValueOnce(response(200, [])).mockResolvedValueOnce(response(200, []));
+    await withUauReadSession('account-1', async (read, revision) => {
+      expect(revision).toBe('revision-1');
+      await read('Pessoas/ConsultarPessoasPorCPFCNPJ', {cpf_cnpj:'52998224725',status:2});
+      await read('Pessoas/ConsultarTelefones', {Numero:7});
+    });
+    expect(mocks.read).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(mocks.request.mock.calls[1][1].body)).toEqual({Numero:7});
+  });
+  it('renews a rejected session for a read and never permits financial write operations', async () => {
+    mocks.request.mockResolvedValueOnce(response(401)).mockResolvedValueOnce(response(200, renewedToken)).mockResolvedValueOnce(response(200, []));
+    await withUauReadSession('account-1', read => read('Venda/BuscarParcelasRecebidas',{empresa:1,obra:'ABC',num_ven:12}));
+    expect(mocks.request.mock.calls[2][1].headers.Authorization).toBe(renewedToken);
+    mocks.request.mockClear();
+    expect(()=>executeUauRead(connection,cachedToken,'Venda/ProcessarRecebimentoParcelas' as never,{} as never)).toThrow('não permitida');
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
   it('accepts public HTTP and HTTPS bases and rejects credentials, internal destinations and operation paths', () => {
     expect(normalizeUauBase(connection.baseUrl + '/')).toBe(connection.baseUrl);
     expect(normalizeUauBase('https://uau.example.com/UAUApi_Integracao/')).toBe('https://uau.example.com/UAUApi_Integracao');
