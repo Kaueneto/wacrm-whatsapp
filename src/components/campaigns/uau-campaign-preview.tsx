@@ -493,7 +493,7 @@ export function UauCampaignPreview({
                         className="block min-w-0 space-y-1.5"
                       >
                         <code
-                          className="block truncate font-mono text-[13px] leading-5 font-semibold text-foreground"
+                          className="block truncate font-mono text-[13px] leading-5 font-semibold text-blue-700 dark:text-sky-300"
                           title={parameter.name}
                         >
                           {parameter.name}
