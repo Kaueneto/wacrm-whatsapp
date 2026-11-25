@@ -1,6 +1,7 @@
 import { lookup } from 'node:dns';
 import { Agent, request } from 'undici';
 import { isPrivateOrReservedIp } from '@/lib/webhooks/ssrf';
+import { uauErrorDetail } from './error-detail';
 
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 25_000;
@@ -48,7 +49,9 @@ export interface UauConnection {
 export class UauError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    readonly upstreamStatus?: number,
+    readonly rejected = false
   ) {
     super(message);
   }
@@ -141,6 +144,7 @@ async function post(
   if (token)
     headers[connection.sessionHeader] =
       connection.bearer && !/^Bearer /i.test(token) ? `Bearer ${token}` : token;
+  let rejectedStatus: number | undefined;
   try {
     const response = await request(
       `${connection.baseUrl}/api/v${connection.version}/${path}`,
@@ -152,19 +156,17 @@ async function post(
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       }
     );
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      response.body.destroy();
-      throw new UauError(
-        `O UAU recusou a requisição (HTTP ${response.statusCode}).`,
-        response.statusCode
-      );
-    }
+    const rejected = response.statusCode < 200 || response.statusCode >= 300;
+    if (rejected) rejectedStatus = response.statusCode;
+    // A bounded/aborted stream can emit an error after iterator cleanup. Handle it
+    // without allowing a secondary UND_ERR_ABORTED to become uncaughtException.
+    response.body.on?.('error', () => {});
     const chunks: Buffer[] = [];
     let bytes = 0;
     for await (const chunk of response.body) {
       bytes += chunk.length;
-      if (bytes > MAX_RESPONSE_BYTES) {
-        response.body.destroy();
+      if (bytes > (rejected ? 64 * 1024 : MAX_RESPONSE_BYTES)) {
+        if (rejected) break;
         throw new UauError(
           'A consulta retornou dados demais. Restrinja o público no UAU e tente novamente.',
           422
@@ -173,13 +175,25 @@ async function post(
       chunks.push(chunk);
     }
     const text = Buffer.concat(chunks).toString('utf8').trim();
+    let result: unknown;
     try {
-      return JSON.parse(text);
+      result = JSON.parse(text);
     } catch {
-      return text;
+      result = text;
     }
+    if (rejected) {
+      const detail = uauErrorDetail(result, [connection.password, connection.integrationKey, token ?? '']);
+      throw new UauError(
+        `O UAU recusou a requisição (HTTP ${response.statusCode}).${detail ? ` ${detail}` : ''}`,
+        response.statusCode,
+        response.statusCode
+      );
+    }
+    return result;
   } catch (error) {
     if (error instanceof UauError) throw error;
+    if (rejectedStatus !== undefined)
+      throw new UauError(`O UAU recusou a requisição (HTTP ${rejectedStatus}), mas a resposta foi interrompida antes de informar o motivo.`, rejectedStatus, rejectedStatus);
     throw new UauError(
       'Não foi possível acessar o UAU. Confira a URL, a porta e a disponibilidade do Web Service.',
       502
@@ -222,6 +236,34 @@ export interface UauQuery {
   Id: number;
   Personalizado: 0 | 1;
   Parameters: string[];
+}
+
+/** Read-only operations verified against the installation's 1.0/swagger. */
+export interface UauReadRequests {
+  'Atendimento/ConsultarCategoriaAtendimentoWeb': { tipo_atend: string };
+  'Atendimento/ConsultarConfiguracaoAtendimentoUAUWEB': Record<string, never>;
+  'Atendimento/ConsultarCategDeComentAtivas': Record<string, never>;
+  'RotinasGerais/ConsultarParamConsultaGeral': { Id: number; Personalizado: 0 | 1 };
+  'Pessoas/ConsultarPessoasPorCPFCNPJ': { cpf_cnpj: string; status: 0 | 1 | 2 };
+  'Pessoas/ConsultarTelefones': { Numero: number };
+  'Venda/ConsultarUnidadesCompradasPorCPFCNPJ': { CpfCnpj: string };
+  'Recebiveis/ParcelasECobrancasDoCliente': { Cpf: string; ValorReajustado: boolean; PesquisaPorNaoTitulares: boolean };
+  'Venda/BuscarParcelasAReceber': { empresa: number; obra: string; num_ven: number; data_calculo: string; valor_presente: boolean };
+  'Venda/BuscarParcelasRecebidas': { empresa: number; obra: string; num_ven: number };
+  'Atendimento/ConsultarAtendimentoPorPessoa': { codigo_pessoa: number };
+}
+
+export type UauRead = <K extends keyof UauReadRequests>(operation: K, payload: UauReadRequests[K]) => Promise<unknown>;
+
+export function executeUauRead<K extends keyof UauReadRequests>(connection: UauConnection, token: string, operation: K, payload: UauReadRequests[K]) {
+  const allowed: readonly string[] = ['RotinasGerais/ConsultarParamConsultaGeral', 'Pessoas/ConsultarPessoasPorCPFCNPJ', 'Pessoas/ConsultarTelefones', 'Venda/ConsultarUnidadesCompradasPorCPFCNPJ', 'Recebiveis/ParcelasECobrancasDoCliente', 'Venda/BuscarParcelasRecebidas', 'Venda/BuscarParcelasAReceber', 'Atendimento/ConsultarAtendimentoPorPessoa'];
+  if (!allowed.includes(operation) && !['Atendimento/ConsultarCategDeComentAtivas', 'Atendimento/ConsultarCategoriaAtendimentoWeb', 'Atendimento/ConsultarConfiguracaoAtendimentoUAUWEB'].includes(operation)) throw new UauError('Consulta UAU não permitida.', 400);
+  return post(connection, operation, payload, token);
+}
+
+/** Creation is deliberately separate from the read allow-list. Never retry it. */
+export async function createUauAttendance(connection: UauConnection, token: string, atendimento: object) {
+  return post(connection, 'Atendimento/GravarAtendimento', { atendimento }, token);
 }
 
 export async function executeUauQuery(

@@ -78,6 +78,7 @@ function InboxPageInner() {
    */
   const [resyncToken, setResyncToken] = useState(0);
 
+  const [focusedContactId, setFocusedContactId] = useState<string | null>(null);
   const [contactPanelOpen, setContactPanelOpen] = useState(false);
   const [contactPanelWidth, setContactPanelWidth] = useState(280);
   const [mobileContactPanelOpen, setMobileContactPanelOpen] = useState(false);
@@ -485,6 +486,7 @@ function InboxPageInner() {
       if (activeConversation?.id === conv.id) return;
       setActiveConversation(conv);
       setActiveContact(conv.contact ?? null);
+      setFocusedContactId(current => current ? conv.contact?.id ?? null : null);
       setMessages([]);
       // Optimistically clear the unread badge for this conv. The
       // server-side reset is fired by the unread-reset effect inside
@@ -630,6 +632,7 @@ function InboxPageInner() {
           />
         </div>
 
+        <div className="relative flex h-full min-w-0 flex-1 overflow-hidden">
         {/* Center panel: Message thread.
             Hidden on mobile when no conversation is selected so the
             list can occupy the full width. Always visible on lg+
@@ -642,9 +645,12 @@ function InboxPageInner() {
             on the right. Issue #165. */}
         <div
           className={cn(
-            "flex h-full min-w-0 flex-1 lg:flex",
+            "flex h-full min-w-0 flex-1 overflow-hidden lg:flex motion-safe:transition-opacity motion-safe:duration-200",
             hasActiveConv ? "flex" : "hidden lg:flex",
+            activeContact && focusedContactId === activeContact.id && "pointer-events-none opacity-0",
           )}
+          inert={!!activeContact && focusedContactId === activeContact.id}
+          aria-hidden={!!activeContact && focusedContactId === activeContact.id}
         >
           <MessageThread
             conversation={activeConversation}
@@ -664,16 +670,17 @@ function InboxPageInner() {
           />
         </div>
 
-        {contactPanelOpen && panelFits && activeContact && (
-          <ResizableContactPanel width={contactPanelWidth} onWidthChange={setContactPanelWidth}>
-            <ContactSidebar key={activeContact.id} contact={activeContact} onContactTagChange={handleContactTagChange} />
+        {activeContact && ((contactPanelOpen && panelFits) || focusedContactId === activeContact.id) && (
+          <ResizableContactPanel expanded={focusedContactId === activeContact.id} width={contactPanelWidth} onWidthChange={setContactPanelWidth}>
+            <ContactSidebar key={activeContact.id} contact={activeContact} conversationId={activeConversation?.id} onContactTagChange={handleContactTagChange} expanded={focusedContactId === activeContact.id} onToggleExpanded={() => { if (focusedContactId === activeContact.id) { setFocusedContactId(null); if (!panelFits) setMobileContactPanelOpen(true); } else setFocusedContactId(activeContact.id); }} />
           </ResizableContactPanel>
         )}
-        {!panelFits && activeContact && (
+        </div>
+        {!panelFits && activeContact && focusedContactId !== activeContact.id && (
           <Sheet open={mobileContactPanelOpen} onOpenChange={setMobileContactPanelOpen}>
             <SheetContent className="gap-0">
               <SheetTitle className="sr-only">{tSidebar("contactInfo")}</SheetTitle>
-              <ContactSidebar key={activeContact.id} contact={activeContact} onContactTagChange={handleContactTagChange} className="border-l-0" />
+              <ContactSidebar key={activeContact.id} contact={activeContact} conversationId={activeConversation?.id} onContactTagChange={handleContactTagChange} onToggleExpanded={() => { setMobileContactPanelOpen(false); setFocusedContactId(activeContact.id); }} className="border-l-0" />
             </SheetContent>
           </Sheet>
         )}

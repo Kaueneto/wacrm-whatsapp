@@ -4,6 +4,9 @@ import { encrypt, decrypt } from '@/lib/whatsapp/encryption';
 import {
   authenticateUau,
   executeUauQuery,
+  executeUauRead,
+  createUauAttendance,
+  type UauRead,
   UauError,
   UAU_SESSION_MS,
   type UauConnection,
@@ -105,6 +108,31 @@ async function loadConnection(accountId: string) {
 
 const refreshes = new Map<string, Promise<string>>();
 
+/** Obtain a session before dispatch; a failed creation must never be replayed automatically. */
+export async function writeUauAttendance(accountId: string, expectedRevision: string, attendance: object) {
+  const { row, connection } = await loadConnection(accountId);
+  if (row.revision !== expectedRevision) throw new UauError('A conexão UAU mudou. Confira o vínculo novamente.', 409);
+  const token = row.session_encrypted && row.session_expires_at && Date.parse(row.session_expires_at) > Date.now()
+    ? decrypt(row.session_encrypted) : await refreshSession(accountId, row, connection);
+  return createUauAttendance(connection, token, attendance);
+}
+
+/** Keep all calls in a finance request on the same connection revision. */
+export async function withUauReadSession<T>(accountId: string, callback: (read: UauRead, revision: string) => Promise<T>): Promise<T> {
+  const { row, connection } = await loadConnection(accountId);
+  let token = row.session_encrypted && row.session_expires_at && Date.parse(row.session_expires_at) > Date.now()
+    ? decrypt(row.session_encrypted) : await refreshSession(accountId, row, connection);
+  const read: UauRead = async (operation, payload) => {
+    try { return await executeUauRead(connection, token, operation, payload); }
+    catch (error) {
+      if (!(error instanceof UauError) || error.status !== 401) throw error;
+      token = await refreshSession(accountId, row, connection);
+      return executeUauRead(connection, token, operation, payload);
+    }
+  };
+  return callback(read, row.revision);
+}
+
 async function refreshSession(
   accountId: string,
   row: ConnectionRow,
@@ -159,4 +187,11 @@ export async function runSavedUauQuery(accountId: string, query: UauQuery) {
       query
     );
   }
+}
+
+/** Revision-only lookup does not authenticate or call the ERP. */
+export async function getUauConnectionRevision(accountId: string): Promise<string | null> {
+ const {data,error}=await connectionTable().select('revision').eq('account_id',accountId).maybeSingle();
+ if(error) throw error;
+ return data?.revision ?? null;
 }
