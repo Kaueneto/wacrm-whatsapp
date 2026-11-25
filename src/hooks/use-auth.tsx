@@ -354,14 +354,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
-        if (currentUser.id !== lastFetchedUserIdRef.current) {
-          fetchProfile(currentUser.id);
+        if (currentUser.id !== lastFetchedUserIdRef.current || event === "USER_UPDATED") {
+          // Run outside the auth callback's lock, including confirmed email changes.
+          setTimeout(() => { if (mounted) void fetchProfile(currentUser.id); }, 0);
         }
       } else {
         lastFetchedUserIdRef.current = null;

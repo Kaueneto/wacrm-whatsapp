@@ -44,14 +44,20 @@ export function ProfileForm() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [emailChangePending, setEmailChangePending] = useState(false);
+  const [emailChangePending, setEmailChangePending] = useState<{ oldEmail: string; newEmail: string } | null>(null);
 
   // Seed form state once the profile loads.
   useEffect(() => {
     if (!profile) return;
     setFullName(profile.full_name ?? '');
-    setEmail(profile.email ?? '');
-  }, [profile]);
+    setEmail(emailChangePending?.newEmail ?? user?.email ?? profile.email ?? '');
+  }, [profile, user?.email, emailChangePending]);
+
+  useEffect(() => {
+    if (emailChangePending && user?.email?.toLowerCase() === emailChangePending.newEmail.toLowerCase()) {
+      setEmailChangePending(null);
+    }
+  }, [user?.email, emailChangePending]);
 
   // Cleanup object URLs to avoid leaks.
   useEffect(() => {
@@ -154,11 +160,10 @@ export function ProfileForm() {
 
       // Email change goes through Supabase Auth, which emails a
       // confirmation to both the old and new addresses. We don't
-      // touch profiles.email — Supabase will push the change there
-      // after the user clicks the link (handled by the handle_new_user
-      // trigger pattern in production deployments).
+      // touch profiles.email — migration 100 syncs the confirmed Auth email.
       let emailSent = false;
-      if (trimmedEmail.toLowerCase() !== profile.email.toLowerCase()) {
+      const currentEmail = user.email ?? profile.email;
+      if (trimmedEmail.toLowerCase() !== currentEmail.toLowerCase()) {
         const { error: emailError } = await supabase.auth.updateUser({
           email: trimmedEmail,
         });
@@ -173,7 +178,7 @@ export function ProfileForm() {
         emailSent = true;
       }
 
-      setEmailChangePending(emailSent);
+      setEmailChangePending(emailSent ? { oldEmail: currentEmail, newEmail: trimmedEmail } : null);
       setPendingAvatar(null);
       setPreviewUrl(null);
       setRemoveAvatar(false);
@@ -195,7 +200,7 @@ export function ProfileForm() {
   const dirty =
     !!profile &&
     (fullName.trim() !== (profile.full_name ?? '') ||
-      email.trim().toLowerCase() !== (profile.email ?? '').toLowerCase() ||
+      email.trim().toLowerCase() !== (user?.email ?? profile.email ?? '').toLowerCase() ||
       pendingAvatar !== null ||
       removeAvatar);
 
@@ -296,8 +301,8 @@ export function ProfileForm() {
                 <Mail className="mt-0.5 size-3.5 shrink-0" />
                 <span>
                   {t.rich('emailChangeHint', { 
-                    oldEmail: profile?.email || '', 
-                    newEmail: email,
+                    oldEmail: emailChangePending.oldEmail,
+                    newEmail: emailChangePending.newEmail,
                     bold: (chunks: React.ReactNode) => <strong>{chunks}</strong>
                   })}
                 </span>
