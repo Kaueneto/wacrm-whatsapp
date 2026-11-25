@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import type { AccountRole } from '@/lib/auth/roles';
 import { canAccessWorkspacePage } from '@/lib/auth/workspace-access';
+import { SHOW_PIPELINES } from '@/lib/feature-visibility';
 
 import {
   DropdownMenu,
@@ -241,7 +242,10 @@ function SidebarNavigation({
   const t = useTranslations('Sidebar');
 
   const visibleItems = (items: NavItem[]) =>
-    items.filter((item) => accountRole && canAccessWorkspacePage(accountRole, item.href));
+    items.filter((item) =>
+      (SHOW_PIPELINES || item.href !== '/pipelines') &&
+      accountRole && canAccessWorkspacePage(accountRole, item.href)
+    );
 
   function isActive(item: NavItem) {
     if (item.href === '/campaigns' && (pathname === '/campaigns/templates' || pathname.startsWith('/campaigns/templates/'))) return false;

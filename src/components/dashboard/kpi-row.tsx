@@ -2,7 +2,6 @@
 
 import { useFormatter, useTranslations } from 'next-intl'
 
-import { formatCurrency } from '@/lib/currency'
 import {
   compare,
   ratio,
@@ -15,11 +14,9 @@ import { useFormatDuration } from './use-format-duration'
 
 export function KpiRow({
   data,
-  currency,
   supervisor = false,
 }: {
   data: OperationalOverview | null
-  currency?: string
   supervisor?: boolean
 }) {
   const t = useTranslations('Dashboard.overview.kpi')
@@ -28,8 +25,8 @@ export function KpiRow({
 
   if (!data) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <KpiTileSkeleton key={i} />
         ))}
       </div>
@@ -45,7 +42,7 @@ export function KpiRow({
   const percent = (v: number) => format.number(v, { style: 'percent', maximumFractionDigits: 0 })
 
   return (
-    <div className={supervisor ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-4" : "grid gap-3 sm:grid-cols-2 xl:grid-cols-5"}>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <KpiTile
         title={t('newConversations')}
         info={t('newConversationsInfo')}
@@ -70,15 +67,6 @@ export function KpiRow({
         comparisonLabel={comparisonLabel}
         footer={<Sparkline values={seriesValues(volume.series, 'resolved')} />}
       />
-      {!supervisor && <KpiTile
-        title={t('dealsWon')}
-        info={t('dealsWonInfo')}
-        value={format.number(kpis.dealsWon)}
-        unit={formatCurrency(kpis.dealsWonValue, currency)}
-        change={compare(kpis.dealsWon, kpis.dealsWonPrevious)}
-        comparisonLabel={comparisonLabel}
-        footer={<Sparkline values={seriesValues(volume.series, 'dealsWon')} />}
-      />}
       <KpiTile
         title={t('readRate')}
         info={t('readRateInfo')}

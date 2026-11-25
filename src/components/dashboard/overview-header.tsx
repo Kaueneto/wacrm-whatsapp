@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { Briefcase, ChevronDown, Plus, Radio, UserPlus, Zap } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { SHOW_PIPELINES } from '@/lib/feature-visibility'
 
 import { buttonVariants } from '@/components/ui/button'
 import motion from '@/components/ui/surface-motion.module.css'
@@ -99,7 +100,7 @@ export function OverviewHeader({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            {NEW_ITEMS.map(({ key, href, icon: Icon }) => (
+            {NEW_ITEMS.filter((item) => SHOW_PIPELINES || item.href !== '/pipelines').map(({ key, href, icon: Icon }) => (
               <DropdownMenuItem key={key} onClick={() => router.push(href)}>
                 <Icon aria-hidden />
                 {t(key)}
