@@ -2255,7 +2255,14 @@
       "signOutEverywhere": "Sair de todos os lugares",
       "signOutFailed": "Falha ao sair: {message}",
       "avatarAlt": "Avatar",
-      "fullNamePlaceholder": "Maria Souza"
+      "fullNamePlaceholder": "Maria Souza",
+      "signatureTitle": "Sempre assinar mensagens",
+      "signatureDescription": "Assinar automaticamente as mensagens com o nome abaixo.",
+      "signatureName": "Nome na assinatura",
+      "signaturePreview": "Prévia da assinatura",
+      "signatureExample": "Olá! Como posso ajudar?",
+      "signatureScope": "Aplica-se aos textos, legendas e mensagens interativas enviados por você. Áudios e modelos aprovados não recebem assinatura.",
+      "signatureNameRequired": "Informe um nome válido para a assinatura."
     },
     "appearance": {
       "title": "Aparência",

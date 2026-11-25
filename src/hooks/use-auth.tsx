@@ -25,6 +25,8 @@ interface Profile {
   id: string;
   full_name: string | null;
   email: string;
+  message_signature_enabled?: boolean;
+  message_signature_name?: string | null;
   avatar_url: string | null;
   role: string | null;
   /**
@@ -147,6 +149,8 @@ interface ProfileRow {
   id: string;
   full_name: string | null;
   email: string;
+  message_signature_enabled?: boolean;
+  message_signature_name?: string | null;
   avatar_url: string | null;
   role: string | null;
   beta_features: string[] | null;
@@ -192,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = await supabase
           .from("profiles")
           .select(
-            "id, full_name, email, avatar_url, role, beta_features, account_id, account_role",
+            "id, full_name, email, avatar_url, role, beta_features, account_id, account_role, message_signature_enabled, message_signature_name",
           )
           .eq("user_id", userId)
           .maybeSingle();
@@ -271,6 +275,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.id,
           full_name: data.full_name,
           email: data.email,
+          message_signature_enabled: data.message_signature_enabled ?? false,
+          message_signature_name: data.message_signature_name ?? null,
           avatar_url: data.avatar_url,
           role: data.role,
           // `beta_features` is `NOT NULL DEFAULT ARRAY[]` in the DB, but

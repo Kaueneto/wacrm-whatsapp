@@ -2255,7 +2255,14 @@
       "signOutEverywhere": "모든 곳에서 로그아웃",
       "signOutFailed": "로그아웃 실패: {message}",
       "avatarAlt": "아바타",
-      "fullNamePlaceholder": "김민지"
+      "fullNamePlaceholder": "김민지",
+      "signatureTitle": "항상 메시지에 서명",
+      "signatureDescription": "아래 이름으로 메시지에 자동으로 서명합니다.",
+      "signatureName": "서명 이름",
+      "signaturePreview": "서명 미리보기",
+      "signatureExample": "안녕하세요! 무엇을 도와드릴까요?",
+      "signatureScope": "보내는 텍스트, 설명 및 대화형 메시지에 적용됩니다. 오디오와 승인된 템플릿에는 서명하지 않습니다.",
+      "signatureNameRequired": "유효한 서명 이름을 입력하세요."
     },
     "appearance": {
       "title": "화면 설정",

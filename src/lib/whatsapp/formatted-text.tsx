@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { LinkifyText } from '@/lib/inbox/linkify-text';
 
 /** Render the supported WhatsApp inline markers as React nodes, never as HTML. */
-export function WhatsAppFormattedText({ text }: { text: string }) {
+export function WhatsAppFormattedText({ text, isAgent = false }: { text: string; isAgent?: boolean }) {
   function render(value: string, depth = 0): ReactNode {
     if (depth >= 8) return value;
     const pattern =
@@ -14,7 +14,7 @@ export function WhatsAppFormattedText({ text }: { text: string }) {
         nodes.push(
           <LinkifyText
             key={`text-${offset}`}
-            isAgent={false}
+            isAgent={isAgent}
             text={value.slice(offset, match.index)}
           />
         );
@@ -34,7 +34,7 @@ export function WhatsAppFormattedText({ text }: { text: string }) {
     }
     if (offset < value.length)
       nodes.push(
-        <LinkifyText key={`text-${offset}`} text={value.slice(offset)} isAgent={false} />
+        <LinkifyText key={`text-${offset}`} text={value.slice(offset)} isAgent={isAgent} />
       );
     return nodes;
   }

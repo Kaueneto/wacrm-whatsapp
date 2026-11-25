@@ -8,6 +8,9 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { agentSignatureName, withAgentSignature } from '@/lib/whatsapp/agent-signature';
+import { MessageBubble } from '@/components/inbox/message-bubble';
 import { Label } from '@/components/ui/label';
 import {
   Avatar,
@@ -40,6 +43,8 @@ export function ProfileForm() {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [signatureEnabled, setSignatureEnabled] = useState(false);
+  const [signatureName, setSignatureName] = useState('');
   const [pendingAvatar, setPendingAvatar] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
@@ -50,6 +55,8 @@ export function ProfileForm() {
   useEffect(() => {
     if (!profile) return;
     setFullName(profile.full_name ?? '');
+    setSignatureEnabled(profile.message_signature_enabled ?? false);
+    setSignatureName(profile.message_signature_name ?? profile.full_name ?? '');
     setEmail(emailChangePending?.newEmail ?? user?.email ?? profile.email ?? '');
   }, [profile, user?.email, emailChangePending]);
 
@@ -118,6 +125,10 @@ export function ProfileForm() {
       toast.error(t('invalidEmail'));
       return;
     }
+    if (signatureEnabled && !agentSignatureName(signatureName)) {
+      toast.error(t('signatureNameRequired'));
+      return;
+    }
 
     setSaving(true);
     try {
@@ -152,6 +163,8 @@ export function ProfileForm() {
         .update({
           full_name: trimmedName,
           avatar_url: nextAvatarUrl,
+          message_signature_enabled: signatureEnabled,
+          message_signature_name: agentSignatureName(signatureName) || null,
         })
         .eq('user_id', user.id);
       if (updateError) {
@@ -201,6 +214,8 @@ export function ProfileForm() {
     !!profile &&
     (fullName.trim() !== (profile.full_name ?? '') ||
       email.trim().toLowerCase() !== (user?.email ?? profile.email ?? '').toLowerCase() ||
+      signatureEnabled !== (profile.message_signature_enabled ?? false) ||
+      signatureName.trim() !== (profile.message_signature_name ?? profile.full_name ?? '').trim() ||
       pendingAvatar !== null ||
       removeAvatar);
 
@@ -213,7 +228,7 @@ export function ProfileForm() {
     : '—';
 
   return (
-    <section className="max-w-2xl animate-in fade-in-50 duration-200">
+    <section className="max-w-4xl animate-in fade-in-50 duration-200">
       <SettingsPanelHead
         title={t('title')}
         description={t('description')}
@@ -268,6 +283,8 @@ export function ProfileForm() {
           </div>
 
           {/* Name */}
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+          <div className="min-w-0 space-y-6">
           <div className="space-y-2">
             <Label htmlFor="profile-full-name" className="text-foreground">
               {t('displayName')}
@@ -308,6 +325,36 @@ export function ProfileForm() {
                 </span>
               </p>
             )}
+          </div>
+
+          <section className="space-y-4 rounded-lg border border-border p-4" aria-labelledby="signature-heading">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <Label id="signature-heading" htmlFor="profile-signature-enabled">{t('signatureTitle')}</Label>
+                <p className="text-xs text-muted-foreground">{t('signatureDescription')}</p>
+              </div>
+              <Switch id="profile-signature-enabled" checked={signatureEnabled} onCheckedChange={setSignatureEnabled} disabled={saving} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-signature-name">{t('signatureName')}</Label>
+              <Input id="profile-signature-name" value={signatureName} onChange={(event) => setSignatureName(event.target.value)} maxLength={120} disabled={saving || !signatureEnabled} required={signatureEnabled} />
+            </div>
+            <p className="text-xs text-muted-foreground">{t('signatureScope')}</p>
+          </section>
+          </div>
+          <aside className="min-w-0 self-start overflow-hidden rounded-xl border border-border lg:sticky lg:top-6" aria-label={t('signaturePreview')}>
+            <h3 className="border-b border-border bg-muted/50 px-4 py-3 text-sm font-medium">{t('signaturePreview')}</h3>
+            <div className="relative isolate min-h-64 bg-[#efeae2] px-4 py-6 scheme-light [--chat-outgoing:#d9fdd3] [--chat-outgoing-foreground:#111b21] [--chat-outgoing-meta:#667781] [--chat-outgoing-read:#53bdeb] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[url('/inbox-doodle.svg')] before:bg-repeat before:opacity-40 [&_a]:text-sky-800" aria-live="polite" aria-atomic="true">
+              <MessageBubble message={{
+                id: 'signature-preview', conversation_id: 'signature-preview',
+                sender_type: 'agent', content_type: 'text', status: 'read',
+                created_at: '2000-01-01T09:41:00',
+                content_text: signatureEnabled
+                  ? withAgentSignature(t('signatureExample'), signatureName)
+                  : t('signatureExample'),
+              }} />
+            </div>
+          </aside>
           </div>
 
           {/* Read-only block */}

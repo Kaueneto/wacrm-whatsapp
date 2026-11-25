@@ -2255,7 +2255,14 @@
       "signOutEverywhere": "Cerrar sesión en todas partes",
       "signOutFailed": "Error al cerrar sesión: {message}",
       "avatarAlt": "Avatar",
-      "fullNamePlaceholder": "María García"
+      "fullNamePlaceholder": "María García",
+      "signatureTitle": "Firmar siempre los mensajes",
+      "signatureDescription": "Firmar automáticamente los mensajes con el nombre de abajo.",
+      "signatureName": "Nombre en la firma",
+      "signaturePreview": "Vista previa de la firma",
+      "signatureExample": "¡Hola! ¿Cómo puedo ayudar?",
+      "signatureScope": "Se aplica a los textos, leyendas y mensajes interactivos que envías. Audios y plantillas aprobadas no llevan firma.",
+      "signatureNameRequired": "Introduce un nombre válido para la firma."
     },
     "appearance": {
       "title": "Apariencia",

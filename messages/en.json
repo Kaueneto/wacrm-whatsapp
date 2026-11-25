@@ -2255,7 +2255,14 @@
       "signOutEverywhere": "Sign out everywhere",
       "signOutFailed": "Sign-out failed: {message}",
       "avatarAlt": "Avatar",
-      "fullNamePlaceholder": "Ada Lovelace"
+      "fullNamePlaceholder": "Ada Lovelace",
+      "signatureTitle": "Always sign messages",
+      "signatureDescription": "Automatically sign messages with the name below.",
+      "signatureName": "Signature name",
+      "signaturePreview": "Signature preview",
+      "signatureExample": "Hello! How can I help?",
+      "signatureScope": "Applies to text, captions and interactive messages you send. Audio and approved templates are not signed.",
+      "signatureNameRequired": "Enter a valid signature name."
     },
     "appearance": {
       "title": "Appearance",
