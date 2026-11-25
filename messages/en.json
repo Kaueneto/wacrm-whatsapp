@@ -2588,7 +2588,9 @@
     "retry": "Retry",
     "emptyTitle": "No notifications yet",
     "emptyDesc": "You'll see an alert here when someone assigns you a conversation.",
-    "unread": "Unread"
+    "unread": "Unread",
+    "automaticAssignedTitle": "Conversation assigned automatically",
+    "automaticAssignedBody": "The automatic support workflow assigned the conversation with {contact} to you."
   },
   "Agents": {
     "title": "AI Agents",

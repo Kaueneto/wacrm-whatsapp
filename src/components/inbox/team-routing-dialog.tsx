@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { UsersRound } from 'lucide-react';
+import { ChevronDown, UserPlus, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,11 +37,13 @@ export function TeamRoutingDialog({
   currentTeamId,
   currentAgentId,
   onChanged,
+  assigneeLabel,
 }: {
   conversationId: string;
   currentTeamId?: string | null;
   currentAgentId?: string | null;
   onChanged: (agentId: string | null) => void;
+  assigneeLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -117,9 +119,30 @@ export function TeamRoutingDialog({
   );
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => void show()}>
-        <UsersRound className="size-4" />
-        Equipe
+      <Button
+        variant={assigneeLabel ? 'ghost' : 'outline'}
+        size="sm"
+        title={assigneeLabel ? 'Transferir atendimento' : undefined}
+        className={
+          assigneeLabel
+            ? 'text-primary h-7 min-w-0 gap-1 px-2 text-xs'
+            : undefined
+        }
+        onClick={() => void show()}
+      >
+        {assigneeLabel ? (
+          <UserPlus className="size-3 shrink-0" />
+        ) : (
+          <UsersRound className="size-4" />
+        )}
+        {assigneeLabel ? (
+          <>
+            <span className="truncate">{assigneeLabel}</span>
+            <ChevronDown className="size-3 shrink-0" />
+          </>
+        ) : (
+          'Equipe'
+        )}
       </Button>
       <Dialog
         open={open}

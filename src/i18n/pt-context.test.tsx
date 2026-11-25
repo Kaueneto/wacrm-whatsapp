@@ -171,6 +171,7 @@ describe('Portuguese messages in their UI context', () => {
     const notification = {
       type: 'conversation_assigned' as const,
       title: 'New conversation assigned',
+      actor_user_id: 'manual-actor',
       body: 'Original English body',
     };
     const t = translator('Notifications');

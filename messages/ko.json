@@ -2588,7 +2588,9 @@
     "retry": "다시 시도",
     "emptyTitle": "아직 알림이 없습니다",
     "emptyDesc": "누군가 대화를 배정하면 여기에 알림이 표시됩니다.",
-    "unread": "읽지 않음"
+    "unread": "읽지 않음",
+    "automaticAssignedTitle": "자동 흐름이 대화를 배정했습니다",
+    "automaticAssignedBody": "자동 상담 흐름이 {contact}님과의 대화를 회원님에게 배정했습니다."
   },
   "Agents": {
     "title": "AI 에이전트",

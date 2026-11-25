@@ -74,6 +74,7 @@ describe('Spanish messages in their UI context', () => {
       type: 'conversation_assigned' as const,
       title: 'New conversation assigned',
       body: 'Original English body',
+      actor_user_id: 'manual-actor',
     };
     const t = translator('Notifications');
     expect(
