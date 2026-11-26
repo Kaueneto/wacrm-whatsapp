@@ -1,7 +1,7 @@
 # Extracoes candidatas da carteira
 
 Rascunhos de leitura preparados em 25/11/2026 com os campos encontrados nas
-consultas 20, 21, 23, 29 e 44 fornecidas pelo responsavel. Nao foram executados, homologados
+consultas 20, 21, 23, 29, 44 e 125 fornecidas pelo responsavel. Nao foram executados, homologados
 ou cadastrados no UAU. Nao estao ligados a campanhas, rotas ou workers.
 
 - `carteira-parcelas-abertas.sql`: posicao das parcelas em ContasReceber, incluindo
@@ -10,11 +10,15 @@ ou cadastrados no UAU. Nao estao ligados a campanhas, rotas ou workers.
   tipo, identificadores da parcela e componentes monetarios sem agregacao.
 - `carteira-manutencoes.sql`: eventos de VendaHist no periodo, com numero nativo
   do historico, data e tipo. Nao substitui a fonte do estado vigente do contrato.
+- `carteira-vendas.sql`: fontes Vendas/VendasRecebidas, pessoa e data de cancelamento,
+  sem esconder vendas por ausencia de parcelas. Preserva a origem das linhas.
+- `carteira-distratos.sql`: datas, aprovacao e referencia do processo em VendaDistrato,
+  sem filtro de periodo/aprovacao que retire bloqueios antigos.
 
 Os parametros e o mapeamento de implantacao serao configurados pela organizacao,
-sem regras fixas da Castel. Esses arquivos extraem fatos financeiros; nao retornam
-um estado vigente e homologado do contrato. A coleta de contratos/status e uma
-dependencia obrigatoria antes de qualquer cobranca automatica. Vendas distratadas
+sem regras fixas da Castel. Esses arquivos extraem fatos e evidencias do contrato;
+a classificacao de estado vigente ainda nao foi homologada. A reconciliacao de
+contratos/status e uma dependencia obrigatoria antes de cobranca automatica. Vendas distratadas
 nao podem receber cobranca, mesmo quando importadas para consulta e historico.
 
 Os marcadores `<...>` seguem a consulta geral UAU e precisam ser cadastrados como
@@ -64,8 +68,34 @@ Ja a 29 omite NumReceb_Rpd no seu join, embora esse campo apareca na 23. Se houv
 uso dessas divisoes, conferir todas as chaves incluindo empresa e recebimento;
 nao somar valores ou contar parcelas apos joins potencialmente multiplicadores.
 
-Pendentes: estado atual/cancelamento/distrato efetivo das vendas e seus codigos;
+Pendentes: homologacao do estado atual/cancelamento/distrato efetivo e codigos;
 semantica financeira dos recebimentos e finalidade do banco 1001. O historico
 filtrado por periodo nao prova ausencia de cancelamento anterior ao periodo nem
 reativacao. Validar carga inicial e revisao de eventos retroativos. DataMnt nao
 e necessariamente um marcador de ultima alteracao tecnica.
+
+## Conferencia de vendas e distratos (consulta 125)
+
+A consulta 125 confirmou as colunas DataCancel_Ven/DataCancel_VRec e
+VendaDistrato.StatusAprov_vdd, DataCad_vdd e DataAprov_vdd. O CASE fornecido rotula
+0 como nao aprovado e 1 como aprovado; confirmar com registros reais na instalacao.
+
+- Conferir formatos de ausencia de cancelamento: NULL, eventual data sentinela e
+  conflitos entre fontes. Nao considerar qualquer data nao nula como cancelamento
+  sem essa verificacao. Nao concluir que ausencia de registro significa venda ativa
+  se a extracao estiver incompleta ou o escopo for diferente.
+- Venda com cancelamento vigente confirmado fica bloqueada. Distrato aprovado
+  sem cancelamento compativel e caso de bloqueio preventivo/reconciliacao, nao uma
+  venda automaticamente liberada. Nao aprovado/simulacao nao equivale a efetivado;
+  definir tratamento da pendencia antes de permitir contatos automaticos.
+- Se a mesma venda ocorrer em ambas as fontes, preservar e comparar as evidencias;
+  nao escolher silenciosamente uma origem nem duplicar o contrato/saldo.
+- Confirmar multiplicidade e identidade de registros VendaDistrato. Datas ou
+  ROW_NUMBER nao devem ser inventados como identificador global permanente.
+- Conferir ao menos venda ativa sem distrato, simulacao/pendencia, distrato
+  aprovado/cancelado e possivel reativacao ou conflito, incluindo saldo residual.
+- Publicar a classificacao somente apos reconciliar lotes compativeis e completos.
+  A exclusao de envios deve ser reavaliada antes do disparo, inclusive para a fila.
+
+Esses rascunhos permitem iniciar a homologacao sem outro relatorio completo.
+Precisam ser cadastrados em novos codigos de consulta para consumo pela API.

@@ -256,3 +256,46 @@ explícitos. O evento é identificado pelo conjunto candidato empresa/obra/venda
 número do histórico; inclui tipos desconhecidos para revisão. Ainda falta homologar
 o retorno e confirmar a fonte de **estado vigente** do contrato/distrato efetivo.
 Nenhuma dessas consultas autoriza cobrança só porque uma parcela ainda está aberta.
+
+## Consulta 125 — evidências de distrato e cancelamento
+
+SQL completo recebido em 25/11/2026. Traz os campos que permitem preparar a
+reconciliação com a situação da venda:
+
+| Campo | Origem confirmada pelo SQL |
+| --- | --- |
+| DataCadastroDistrato | VendaDistrato.DataCad_vdd |
+| DataAprovacaoDistrato | VendaDistrato.DataAprov_vdd |
+| StatusDistrato | StatusAprov_vdd; CASE fornecido: 0 não aprovado, 1 aprovado |
+| DataCancelamento | Vendas.DataCancel_Ven ou VendasRecebidas.DataCancel_VRec |
+| Empresa/obra/venda | Identidade do contrato do distrato |
+| Processo do distrato | EmpresaProc_vdd, ObraProc_vdd, NumProc_vdd |
+
+Esses campos são evidências diferentes: existência de registro, aprovação do
+distrato e cancelamento não devem ser tratados como equivalentes sem homologação.
+Também não equivalem à simulação do histórico TipoMnt = 3 da consulta 20.
+
+A consulta é um relatório detalhado por venda, não a fonte mínima para bloqueio:
+
+- Parte de VendaDistrato, portanto não comprova situação dos contratos sem registro.
+- Filtra uma venda. Para coleta, escopo por empresa/obra e identificação completa,
+  incluindo distratos antigos, sem exigir que a data esteja no período do painel.
+- O INNER JOIN às fontes de venda pode esconder distratos sem correspondência atual.
+  A extração mínima deve preservar VendaDistrato sem esse join obrigatório.
+- UNION ALL de Vendas/VendasRecebidas, itens, documentos e dependentes pode multiplicar
+  a venda e repetir valores agregados. Não somar os totais desse relatório por linha.
+- A consulta reconhece que o filtro de dependente para cônjuge ainda não está definido.
+  Esses dados pessoais não são necessários para decidir elegibilidade da cobrança.
+- StatusUnidade se refere à unidade, que pode ter outro histórico de negociação;
+  não substitui o estado do contrato original nem sua data de cancelamento.
+- ReceitaDistrato e DiferencaDistrato são fórmulas do relatório; não adotar como
+  receita recuperada ou resultado financeiro sem definir sua semântica com a equipe.
+
+Preparados `carteira-vendas.sql` e `carteira-distratos.sql` com campos explícitos,
+sem joins de unidade/pessoa e sem exclusões fixas por aprovação. Não normalizam
+automaticamente datas sentinela, conflitos, reativações ou tipos desconhecidos.
+
+A próxima etapa passa a ser homologação dos rascunhos em casos reais, sem precisar
+pedir outro relatório completo: conferir venda ativa, simulação/pendência e distrato
+aprovado/cancelado, além de pagamento parcial, integral e renegociação. Ainda não há
+retornos validados, novas consultas cadastradas ou execução desses SQLs no ERP.
