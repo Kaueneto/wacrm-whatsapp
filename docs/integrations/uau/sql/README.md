@@ -1,5 +1,31 @@
 # Extracoes candidatas da carteira
 
+## Teste direto no SQL Server
+
+Executar `diagnostico-carteira-sqlserver.sql` inteiro no SSMS conectado ao banco
+UAU. E um unico arquivo com varios resultados, nao uma consulta geral pronta para API.
+No inicio, configurar empresa, obra, periodo dos eventos e quantidade da amostra.
+Os valores 900/00001 sao exemplos do empreendimento de teste ja citado pelo
+responsavel; conferir antes de executar. NULL em empresa e obra abrange toda a base;
+NULL so em obra abrange todas as obras da empresa informada.
+
+O script le as tabelas do ERP e materializa resultados apenas em tabelas temporarias
+da sessao. Devolve escopo efetivo, contagens por conjunto, contratos distintos,
+resumo do valor base aberto/vencido, possiveis duplicidades, estados de aprovacao
+dos distratos, amostras e duracao total. Nao altera dados persistentes nem cobra.
+Pode consumir recursos/aguardar outras operacoes: comecar pelo escopo piloto.
+
+Recebimentos e manutencoes usam o periodo configurado. Vendas, abertas e distratos
+nao sao limitados por periodo. Valor base bruto nao e valor atualizado nem saldo
+aprovado para cobranca: o resumo inclui registros pendentes de validar o contrato.
+Leituras separadas nao garantem uma fotografia atomica. Registrar erros e nao
+interpretar retorno incompleto como ausencia de divida/pagamento/distrato.
+
+Sem execucao real nesta preparacao. As contagens medem registros; tamanho de
+resposta API e desempenho de producao precisam de medicao posterior.
+
+## Rascunhos para consultas cadastradas
+
 Rascunhos de leitura preparados em 25/11/2026 com os campos encontrados nas
 consultas 20, 21, 23, 29, 44 e 125 fornecidas pelo responsavel. Nao foram executados, homologados
 ou cadastrados no UAU. Nao estao ligados a campanhas, rotas ou workers.
