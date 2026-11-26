@@ -257,6 +257,32 @@ número do histórico; inclui tipos desconhecidos para revisão. Ainda falta hom
 o retorno e confirmar a fonte de **estado vigente** do contrato/distrato efetivo.
 Nenhuma dessas consultas autoriza cobrança só porque uma parcela ainda está aberta.
 
+## Teste de baixa relatado em 26/11/2026
+
+O responsável executou a baixa da parcela empresa 900/obra 00001/venda 1/tipo E/
+número 1/número geral 1. Depois, a consulta detalhada de vencidas retornou vazia.
+O registro fornecido de Recebidas possui os mesmos identificadores e vencimento
+18/11/2026, NumReceb_Rec = 6 e Data_Rec = 26/11/2026.
+
+Valores fornecidos: Valor_Rec = 0, ValorConf_Rec = 660, VlMultaConf_Rec = 13,20,
+VlJurosConf_Rec = 1,74. Esses componentes somam 674,94 e coincidem com o cálculo
+anterior apresentado. Logo, ler somente Valor_Rec perderia o principal deste caso.
+Status_Rec = 1 e ParcType_Rec = E são campos de Recebidas com domínio próprio;
+não aplicar a legenda de Status_Prc a eles. A descrição nativa de ContasReceber
+foi fornecida pelo responsável: Status_Prc 0 = Normal, 1 = Recebimento.
+
+O resultado é compatível com a baixa relatada e comprova a necessidade de guardar
+a trilha fora da consulta de inadimplentes. Ainda conferir ausência de saldo residual
+da mesma chave e saldo vencido total do contrato; consulta vazia não prova, sozinha,
+quitação nem que todos os eventos financeiros já foram reconciliados. Se a única
+parcela vencida foi integralmente recebida e restam futuras, regularizar o ciclo
+sem classificar o contrato inteiro como quitado. Esses resultados não homologam
+pagamento parcial, renegociação, estorno ou exclusão de distratos.
+
+Preparado `teste-baixa-parcela-900-00001.sql`: aberta por chave, recebimentos sem
+agregação, resumo do contrato e metadados dos domínios de Recebidas. Nenhuma nova
+baixa ou execução no banco UAU foi realizada pelo assistente.
+
 ## Consulta 125 — evidências de distrato e cancelamento
 
 SQL completo recebido em 25/11/2026. Traz os campos que permitem preparar a
