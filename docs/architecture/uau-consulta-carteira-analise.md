@@ -4,6 +4,10 @@ Consulta fornecida pelo responsável em 25/11/2026, intitulada **Inadimplência 
 Empresa e Obra (Inadimplência da Venda)**. Análise estática do SQL anexado; não foi
 executado no ERP e não há amostra de retorno validada nesta etapa.
 
+O catálogo fornecido posteriormente identifica essa consulta como **código 44**,
+origem **1 — Personalizado**, status ativo. Esses dados permitem selecionar a
+consulta existente na integração; os parâmetros e a execução ainda precisam de validação.
+
 ## Conclusão
 
 Boa base para descobrir contratos inadimplentes e carregar parcelas vencidas.
@@ -104,7 +108,7 @@ da API antes de preencher esses campos. Não deduzir IDs a partir de quadra/lote
 
 ## Próximo passo
 
-1. Obter código/tipo da consulta cadastrada e parâmetros efetivos da execução.
+1. Usar o código 44, personalizado, e confirmar parâmetros efetivos da execução.
 2. Validar retorno em empresa/obra piloto, incluindo possível multiplicidade de
    pessoas, parcelas, ocorrências, itens e datas de cálculo.
 3. Usar esta extração como descoberta de inadimplentes, com escopo sem cortes
@@ -117,3 +121,47 @@ da API antes de preencher esses campos. Não deduzir IDs a partir de quadra/lote
    pagamentos parciais/integrais, renegociação e estorno antes de automatizar ações.
 
 Nenhuma SQL alterada foi cadastrada ou executada no UAU nesta análise.
+
+## Consultas complementares identificadas no catálogo
+
+O catálogo contém descrições e trechos truncados de SQL; estes não substituem a
+avaliação dos SQLs completos nem comprovam a cobertura das consultas.
+
+| Código | Descrição | Motivo da avaliação |
+| --- | --- | --- |
+| 21 | BUSCA PARCELAS RECEBIDAS E A RECEBER | Primeira prioridade: ligação entre obrigação aberta, parcela e recebimento |
+| 23 | CONTAS RECEBIDAS POR PERIODO | Primeira prioridade: datas, valores e chaves para reconciliação e gráficos |
+| 20 | BUSCA INFORMAÇÕES DE QUANDO HOUVE A MANUTENÇÃO | Distinguir manutenção, cancelamento e transformação da dívida |
+| 29 | Busca as vendas renegociadas | Conferir histórico e vínculos após renegociação |
+| 56 | Gerenciamento de atendimento | Mapear atendimentos, responsáveis e categorias para a visão operacional |
+| 99 | Execução do PROUAU | O trecho projeta datas de ContasReceberCalc; avaliar referência do cálculo sem tomar isso como prova de completude |
+| 125 | Dados completos da venda e do distrato | Complementar encerramentos, devoluções e distratos |
+| 63 | Inadimplência por Parcela com filtro por ocorrência | Comparar granularidade e filtro com a consulta 44, se necessário |
+
+A consulta 73, intitulada carteira a receber a partir do mês atual, pode auxiliar
+em previsões; o recorte sugerido pelo título não deve ser presumido como cobertura
+de todas as parcelas antigas vencidas. As consultas de recebidas específicas de
+empresas/empreendimentos não devem virar uma fonte geral sem revisão de filtros.
+
+## Consulta própria e validação proposta
+
+O responsável concorda em preparar uma SQL específica da plataforma e comparar o
+retorno com o esperado. A primeira análise será dos SQLs completos 21 e 23;
+20/29 complementam os casos de renegociação e alteração da venda.
+
+Preparar consultas de leitura com escopo explícito por empresa/obra e data de
+referência. Validar primeiro uma amostra controlada: dívida aberta, recebimento
+integral/parcial, promessa, renegociação, estorno e distrato. Conferir unicidade das
+chaves, total por contrato, referências de cálculo e recebimentos sem duplicação.
+
+Manter contratos, parcelas e eventos de recebimento em granularidades distintas;
+não forçar todos os dados em um join que multiplique valores. Uma extração única
+só será adotada se preservar essa granularidade e permitir reconciliação confiável.
+
+A integração atual executa consultas gerais cadastradas pelo identificador e seus
+parâmetros; ela não é um console de SQL arbitrário. Uma SQL nova precisa ser testada
+na ferramenta autorizada do UAU/SQL Server e cadastrada com novo código antes de
+ser consumida pela API. Preservar a consulta 44 e as demais integrações existentes.
+
+Nenhuma nova SQL foi preparada com campos presumidos, executada ou cadastrada nesta
+etapa; falta receber os modelos completos das consultas complementares.
