@@ -191,6 +191,36 @@ a carteira não autoriza repetir cobranças. Continuar reconferindo saldo antes 
 **Acordo, renegociação e contestação:** o responsável ainda não definiu o tratamento.
 Continuam pendentes as condições de pausa, retomada, aprovação e encerramento.
 
+### Promessa e prazo de baixa — refinamento operacional
+
+O responsável confirmou com a equipe de cobrança que acordos são descritos em um
+atendimento UAU, após preparar o documento e o boleto. Podem copiar um trecho do
+acordo na descrição; não foi identificada categoria própria de promessa e não se
+deve exigir abrir outro atendimento só para registrar esse compromisso.
+
+Proposta: compromisso próprio do CRM, associado ao contrato e às parcelas, com data
+prometida, valor quando conhecido, responsável, origem e histórico. O vínculo com
+um atendimento UAU existente será opcional e explícito. Não escolher automaticamente
+um atendimento aberto de outra categoria nem presumir gravação no ERP ao salvar no CRM.
+
+DataPror futura pode sugerir promessa, mas permanece uma inferência até validar a
+semântica da instalação. Identificar origem como detectada no UAU, registrada no CRM
+ou confirmada pelo atendente. Persistir o compromisso para não perdê-lo quando a data
+de prorrogação voltar ao dia corrente. Evidência adicional é necessária para extrair
+um compromisso de texto de atendimento; não tratar texto gerado por IA como confirmação.
+
+Antes de retomar a cobrança por promessa vencida, aplicar tolerância configurável
+para processamento de retorno bancário/baixa financeira. Um dia é uma hipótese a
+validar, não regra já aprovada; definir dias úteis ou corridos, fuso e horário de corte.
+Após o prazo, sincronizar/reconferir a situação e só então avaliar a retomada. Se houver
+comprovante aguardando conferência ou falha de sincronização, manter a suspensão
+aplicável e sinalizar a pendência. Consulta recente não garante que a baixa bancária
+já tenha sido processada; alinhar a janela ao procedimento financeiro da organização.
+
+Estados sugeridos: ativa, aguardando baixa, cumprida, parcialmente cumprida, não
+cumprida, cancelada/substituída. Definir o comportamento de contatos automáticos em
+cada estado. Não apagar o atraso financeiro enquanto houver saldo vencido.
+
 ## Kanban e trilha
 
 Unidade proposta do card financeiro: **contrato em um ciclo de cobrança**. Um cliente
@@ -231,6 +261,9 @@ Não apresentar renegociação como receita recuperada ou pontuação preditiva 
 sem modelo validado. Informar cobertura histórica e situação da sincronização.
 
 ### Produtividade, SLA e avaliação
+
+Referências visuais e definições dos gráficos estão detalhadas em
+[painel de cobrança e indicadores](painel-cobranca-indicadores.md).
 
 Confirmados os relatórios de produtividade e inadimplência, com gráficos e filtros.
 A avaliação dos atendimentos também deverá ser detalhada. São conceitos distintos:

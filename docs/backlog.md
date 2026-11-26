@@ -71,3 +71,14 @@ Proposta técnica e jurídica revisável com escopo inicial, limitações das ev
 - Definir horário útil, pausas, início/fim dos relógios e tratamento de transferências; preservar autoria e responsabilidade histórica.
 - Relatórios de inadimplência associados à BL-003: saldo vencido, faixas de atraso, evolução, pagamentos confirmados, promessas e casos jurídicos, com cobertura e data de sincronização visíveis.
 - **Detalhamento:** [carteira, régua e indicadores](architecture/carteira-regua-cobranca.md).
+- **Referência visual e métricas:** [painel de cobrança](architecture/painel-cobranca-indicadores.md), a partir das capturas fornecidas, com posição da carteira, recuperação, promessas, fila, produtividade e definições das taxas.
+
+## BL-007 — Consultar e emitir boletos pela plataforma
+
+- **Registrado em:** 25/11/2026.
+- **Status:** documentação conferida; implementação e homologação operacional pendentes.
+- Separar consulta/reimpressão de boleto existente, nova emissão, reaproveitamento e envio ao cliente.
+- Endpoint de venda conferido: `Venda/GerarBoletoBancario`. O pedido e as parcelas não contêm campo de usuário emissor; a operação usa usuário autenticado, com permissão `VEBOLETOAVULSO`.
+- A conexão atual usa sessão técnica compartilhada. Login UAU salvo no perfil não troca essa sessão. Avaliar autenticação nominal e confirmar a auditoria ERP antes de prometer identificação por atendente.
+- Manter autoria local do CRM e identidade técnica separadas, com contrato/parcelas e resultado; prever limites, duplicidade e resultado incerto antes de executar efeitos externos.
+- **Conferência:** [emissão de boletos UAU](architecture/uau-emissao-boletos.md). Nenhum boleto foi emitido nesta análise.
