@@ -163,5 +163,46 @@ parâmetros; ela não é um console de SQL arbitrário. Uma SQL nova precisa ser
 na ferramenta autorizada do UAU/SQL Server e cadastrada com novo código antes de
 ser consumida pela API. Preservar a consulta 44 e as demais integrações existentes.
 
-Nenhuma nova SQL foi preparada com campos presumidos, executada ou cadastrada nesta
-etapa; falta receber os modelos completos das consultas complementares.
+Atualização: recebidos os SQLs completos 21 e 23. Foram preparados
+[rascunhos de extração para homologação](../integrations/uau/sql/README.md), sem
+cadastro ou execução no ERP. Os pontos abaixo registram a análise desses modelos.
+
+## Consultas 21 e 23 — SQLs completos recebidos
+
+A consulta 21 confirma o uso de ContasReceber e Recebidas e seus identificadores
+de empresa, obra, venda, número/tipo/número geral da parcela. Entretanto:
+
+- É filtrada por NumVenda, não uma extração coletiva pronta.
+- A coluna Valor representa Valor_prc em abertas, mas uma composição de principal,
+  encargos e descontos nas recebidas. Não agregar como a mesma grandeza.
+- O UNION elimina linhas iguais nos campos projetados. Como NumReceb_Rec não é
+  retornado, recebimentos distintos com os mesmos demais campos podem se fundir.
+- TotalParcelas é uma contagem derivada de uma projeção que omite NumParcGer;
+  não usar como chave nem assumir que represente todas as obrigações distintas.
+- Não retorna prorrogação das abertas nem discrimina todos os componentes recebidos.
+
+A consulta 23 revela NumReceb_Rec e ParcType_Rec como componentes candidatos da
+identidade do recebimento. O modelo confirma a necessidade de chave composta e
+de registro por evento. Exige revisão antes de virar fonte geral:
+
+- Usa apenas componentes monetários com sufixo Conf na expressão Valor, diferente
+  da consulta 21. A semântica financeira desses campos ainda deve ser validada.
+- ItensRecebidas é ligada pela venda, não por uma alocação monetária do recebimento
+  a cada unidade; vendas com vários itens podem multiplicar a mesma linha financeira.
+- RecebePgtoDiv não inclui empresa no ON apresentado. Verificar o escopo e a
+  unicidade dessas chaves na instalação, sem inventar um campo de empresa ainda
+  não demonstrado. Pagamentos/divisões também podem introduzir multiplicidade.
+- Há INNER JOIN de pagamento, depósito, itens e unidade: recebimentos sem esses
+  vínculos desaparecem. A ligação de UnidadePer também precisa conferir obra.
+- Exclui Depositos.Banco_Dep = 1001. Confirmar o significado desse banco; não
+  transformar a exclusão desse relatório em regra geral fixa da plataforma.
+- qtdParcelas é ROW_NUMBER sobre o resultado, não uma quantidade por parcela
+  nem identificador estável. Não resolve duplicidades introduzidas pelos joins.
+- BETWEEN sobre Data_Rec exige conferir horários do limite final. Os rascunhos
+  usam início inclusivo e fim exclusivo para explicitar essa fronteira.
+
+Os rascunhos separam abertas e recebidas, preservam componentes e não usam joins
+de unidades/depósitos para definir os fatos financeiros. Isso ainda não comprova
+pagamento efetivo, integridade do snapshot ou estado ativo da venda. Faltam a
+validação real, semântica dos tipos, cobertura de alterações retroativas e dados
+de manutenção/renegociação/estado vigente, incluindo bloqueio de distratadas.

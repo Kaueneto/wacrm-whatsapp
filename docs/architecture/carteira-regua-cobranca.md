@@ -87,6 +87,42 @@ não inventar etapas passadas a partir da primeira fotografia.
 
 ## Políticas por empresa e obra
 
+### Configuração da consulta e bloqueio de vendas distratadas
+
+Definição do responsável: parâmetros de implantação personalizáveis pelo usuário
+autorizado da organização, sem empresas, obras, bancos, faixas ou categorias da
+Castel fixados no código. Reutilizar o catálogo de parâmetros da consulta cadastrada
+e oferecer configuração por organização, com conferência do resultado antes de ativar.
+Não expor SQL arbitrário nem permitir ultrapassar o escopo autorizado da conexão.
+
+Separar o escopo de importação/visualização da elegibilidade para cobrança:
+
+- Pode ser necessário importar vendas distratadas/canceladas e seus eventos para
+  histórico e reconciliação. Incluir esses registros na consulta não autoriza cobrança.
+- Venda distratada **não pode ser cobrada** pela régua. Configuração de filtro não
+  pode remover essa proteção. Aplicar também aos cancelamentos conforme estado validado.
+- A decisão é por contrato/obrigação, não por pessoa. Um cliente pode ter uma venda
+  distratada e outra ativa; nunca misturar os saldos ou cobrar a venda distratada.
+- Não usar somente ausência na lista, existência histórica em VendaDistrato ou campo
+  de texto para inferir o estado atual. Validar identificador, status e efeito vigente
+  do distrato/cancelamento na fonte oficial da instalação.
+- Se o estado não puder ser verificado ou estiver desatualizado/conflitante, manter
+  o caso pendente de validação e fora de novos envios automáticos até reconciliação.
+- Revalidar antes de enfileirar e imediatamente antes de enviar. Ao detectar distrato,
+  cancelar cobranças pendentes do contrato e registrar motivo/origem/data. Preservar
+  pagamentos, devoluções e ações passadas; não classificar distrato como pagamento.
+
+Configurações propostas: consulta cadastrada/código/tipo, parâmetros e mapeamento
+dos campos; escopo empresa/obra; políticas de tipos de parcela/custas e situações
+operacionais; agendas, horários, tolerância de baixa e ações da régua. Campos usados
+para identificação, isolamento e decisão de cobrança terão validação obrigatória.
+Versionar mudanças, registrar autoria e oferecer prévia dos incluídos/excluídos
+com motivos antes da ativação. Parâmetro novo/desconhecido exige revisão do mapeamento.
+
+Filtros flexíveis não dispensam regras obrigatórias de integridade: escopo da
+organização, vínculo do contrato, saldo e situação vigente. A segurança de envio
+deve existir na aplicação, não depender apenas do WHERE configurado no SQL.
+
 Proposta: regra padrão da organização, substituição por empresa e exceção por
 empresa/obra. Um contrato deve ter uma regra aplicável sem ambiguidade, com
 prioridade e vigência explícitas. Validar conflitos ao salvar.

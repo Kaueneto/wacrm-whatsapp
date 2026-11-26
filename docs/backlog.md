@@ -32,6 +32,7 @@ Proposta técnica e jurídica revisável com escopo inicial, limitações das ev
 - **Registrado em:** 23/11/2026.
 - **Status:** planejamento retomado após a reunião com Laércio relatada em 25/11/2026; sincronização coletiva e automações ainda não implementadas.
 - **Detalhamento:** [carteira, régua, trilha e Kanban](architecture/carteira-regua-cobranca.md), com os pontos recuperados da reunião, limites da integração atual e sequência proposta de entregas.
+- **Configuração e proteção:** parâmetros de implantação por organização, sem filtros fixos da Castel; vendas distratadas não podem receber cobrança automática, independentemente de serem importadas para histórico. Revalidar contrato/saldo antes do envio e cancelar ações pendentes quando houver distrato confirmado.
 - **Objetivo:** apresentar contratos por cliente, empresa, empreendimento/obra e venda, com situação financeira, dias em atraso e histórico das etapas de cobrança.
 - **Origem dos dados:** avaliar consulta geral cadastrada no UAU e executada pela API já integrada, ou endpoints nativos que atendam à descoberta e atualização da carteira. Validar parâmetros, retornos, paginação e permissões na versão instalada.
 - **Sincronização:** carga inicial e atualização diária em lotes, identificando contratos pela conexão UAU + empresa + obra + venda. Preservar histórico local e indicar a última atualização. A ausência em uma consulta de inadimplentes não comprova pagamento; reconciliar pagamentos, cancelamentos e consultas incompletas antes de alterar a situação.
