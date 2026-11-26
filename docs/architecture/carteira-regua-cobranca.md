@@ -140,10 +140,56 @@ Proposta de funcionamento a validar nos casos específicos:
   não significa ausência de pagamento; bloquear ações que exijam confirmação atual
   e sinalizar a indisponibilidade.
 
-Ainda confirmar com Laércio: gatilhos exatos de cada ação e frequência dos contatos;
-horários/dias permitidos; responsáveis e escalonamento; tratamento de acordos,
-promessas, contestações e estornos; entrada de contratos já antigos; significado
-da coluna Pagos; frequência da integração e gatilho do encaminhamento jurídico.
+Ainda confirmar com Laércio: gatilhos e frequência dos contatos; horários/dias de
+envio; condições de pausa por promessa; tratamento de acordos, contestações e
+estornos; significado da coluna Pagos e gatilho operacional do jurídico.
+
+### Esclarecimentos complementares do responsável
+
+**Prorrogação e promessa:** segundo o comportamento operacional relatado, a data
+de prorrogação pode ser atualizada para a data do dia e participar do cálculo da
+parcela. Quando há promessa para uma data futura, a equipe também usa esse campo
+no UAU (exemplo: parcela original em 18/11 e promessa para 30/11).
+
+Preservar o vencimento original como referência de atraso e guardar a prorrogação
+separadamente. Não recalcular encargos no CRM nem desconsiderar a data de cálculo
+do ERP. Uma prorrogação diferente do vencimento original, isoladamente, não comprova
+promessa: ela também pode refletir o comportamento normal do sistema.
+
+Validar com casos reais: parcela vencida sem promessa em dias diferentes; alteração
+explícita para data futura; chegada da data prometida sem pagamento; nova alteração;
+pagamento parcial e integral. Conferir se existe origem/histórico de alteração no
+retorno, se a data é persistida ou derivada e qual é o momento efetivo da mudança.
+Definir como importar a promessa com evidência, sua validade e a regra de retomada,
+sem transformar qualquer atualização de DataPror em acordo com o cliente.
+
+Proposta: guardar o compromisso com origem, data, responsável e parcelas abrangidas.
+Se as leituras disponíveis não distinguirem promessa de ajuste automático, manter
+a prorrogação como dado financeiro e exigir registro explícito do compromisso no
+CRM ou uma fonte adicional confirmada. Não limpar uma promessa registrada apenas
+porque uma consulta retornou a data do dia. Escrita da prorrogação no UAU exige
+endpoint e autorização específicos, ainda não definidos neste planejamento.
+
+**Jurídico:** representa mudança para um departamento distinto, responsável pela
+análise do caso e da continuidade do contrato/lote. O mesmo atendente pode acompanhar
+etapas iniciais, mas a responsabilidade pode mudar entre cobrança, negociação e
+jurídico. Registrar origem, destino, responsável, data e motivo da transferência,
+preservando o histórico e as permissões de acesso. A idade da dívida não comprova
+que o departamento já assumiu o caso. Não implementar cancelamento automático de
+venda: a hipótese de cláusula contratual foi mencionada, sem regra aprovada.
+
+**Carga inicial:** confirmado colocar contratos antigos diretamente na faixa atual,
+sem executar todas as etapas anteriores.
+
+**Sincronização:** o administrador da organização cliente poderá configurar horários
+de atualização, com fuso e histórico das execuções; haverá atualização manual para
+usuários autorizados. Definir quantidade de horários/intervalos e limites compatíveis
+com a integração. Evitar execuções concorrentes ou repetir efeitos ao clicar mais de
+uma vez. Distinguir agenda de atualização financeira da agenda de mensagens: atualizar
+a carteira não autoriza repetir cobranças. Continuar reconferindo saldo antes do envio.
+
+**Acordo, renegociação e contestação:** o responsável ainda não definiu o tratamento.
+Continuam pendentes as condições de pausa, retomada, aprovação e encerramento.
 
 ## Kanban e trilha
 
@@ -184,6 +230,24 @@ encaminhados; pontualidade, reincidência e duração dos atrasos observados.
 Não apresentar renegociação como receita recuperada ou pontuação preditiva de risco
 sem modelo validado. Informar cobertura histórica e situação da sincronização.
 
+### Produtividade, SLA e avaliação
+
+Confirmados os relatórios de produtividade e inadimplência, com gráficos e filtros.
+A avaliação dos atendimentos também deverá ser detalhada. São conceitos distintos:
+
+- Produtividade: volume de atendimentos/tarefas, concluídos, pendentes, carteira por
+  responsável/equipe e resultados financeiros associados sem presumir causalidade.
+- SLA: metas e tempos de primeira resposta, retorno e resolução, por etapa/equipe.
+  Definir horário útil, pausas, início/fim da contagem e o que muda numa transferência.
+- Avaliação: pode ser satisfação dada pelo cliente ou revisão interna pelo supervisor;
+  confirmar qual modalidade será usada, ou se ambas. Não tratar a nota como SLA.
+- Inadimplência: evolução do saldo e contratos vencidos, faixas de atraso, empresa/obra,
+  pagamentos confirmados, promessas e encaminhamentos ao jurídico.
+
+Guardar eventos e atribuição ao longo do tempo para que uma transferência não impute
+todo o trabalho e os atrasos anteriores ao responsável atual. Os gráficos precisam
+de série histórica real; a posição de hoje não reconstrói sozinha o passado.
+
 ## Entregas e confirmações pendentes
 
 1. Validar SQL/retornos com atraso, pagamento integral, pagamento parcial,
@@ -197,6 +261,7 @@ sem modelo validado. Informar cobertura histórica e situação da sincronizaç�
    pausas. A carga inicial não dispara em cascata todas as etapas antigas.
 
 Confirmar: SQL e código da consulta existente; cadastro chamado de ocorrência;
-regras efetivas por empreendimento; frequência da sincronização; tratamento de
-acordos/contestações e encaminhamento jurídico; histórico recuperável.
+regras efetivas por empreendimento; evidência da promessa e comportamento de DataPror;
+intervalos/limites da sincronização configurável; acordos/contestações, gatilho do
+jurídico e histórico recuperável; modalidade da avaliação e metas de SLA.
 Exemplos deste documento não são regras aprovadas.

@@ -61,3 +61,13 @@ Proposta técnica e jurídica revisável com escopo inicial, limitações das ev
 - **Ambiguidade:** se não houver evidência suficiente ou opção compatível confirmada, destacar o campo para escolha do usuário; manter o tipo sem informar quando apropriado. Não apresentar uma escolha incerta como configuração validada.
 - **Revisão e envio:** abrir o formulário editável com as sugestões preenchidas. Gerar/preparar o atendimento não o grava no ERP; o lançamento ocorre somente após o usuário conferir e clicar para enviar, reaproveitando a validação, a proteção contra duplicidade e a confirmação já existentes.
 - **Critério de aceite:** o usuário consegue solicitar a preparação, receber descrição e classificação sugeridas com base no contexto e nas opções reais do UAU, corrigir o necessário e confirmar o lançamento em uma única revisão.
+
+## BL-006 — Produtividade, SLA e avaliação dos atendimentos
+
+- **Registrado em:** 25/11/2026, após relato da reunião com Laércio.
+- **Status:** planejamento; métricas, metas e modalidade de avaliação a confirmar.
+- Relatórios e gráficos por período, empresa/obra, departamento/equipe e responsável, com volume, tarefas, pendências e conclusões.
+- Separar SLA (primeira resposta, retorno, resolução e cumprimento de metas) de avaliação de qualidade/satisfação. Confirmar se a avaliação será dada pelo cliente, pelo supervisor ou por ambos.
+- Definir horário útil, pausas, início/fim dos relógios e tratamento de transferências; preservar autoria e responsabilidade histórica.
+- Relatórios de inadimplência associados à BL-003: saldo vencido, faixas de atraso, evolução, pagamentos confirmados, promessas e casos jurídicos, com cobertura e data de sincronização visíveis.
+- **Detalhamento:** [carteira, régua e indicadores](architecture/carteira-regua-cobranca.md).
