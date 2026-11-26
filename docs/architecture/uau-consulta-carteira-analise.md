@@ -190,8 +190,8 @@ de registro por evento. Exige revisão antes de virar fonte geral:
 - ItensRecebidas é ligada pela venda, não por uma alocação monetária do recebimento
   a cada unidade; vendas com vários itens podem multiplicar a mesma linha financeira.
 - RecebePgtoDiv não inclui empresa no ON apresentado. Verificar o escopo e a
-  unicidade dessas chaves na instalação, sem inventar um campo de empresa ainda
-  não demonstrado. Pagamentos/divisões também podem introduzir multiplicidade.
+  unicidade dessas chaves na instalação. O SQL 29 recebido depois confirma
+  RecebePgtoDiv.Empresa_Rpd. Pagamentos/divisões também podem introduzir multiplicidade.
 - Há INNER JOIN de pagamento, depósito, itens e unidade: recebimentos sem esses
   vínculos desaparecem. A ligação de UnidadePer também precisa conferir obra.
 - Exclui Depositos.Banco_Dep = 1001. Confirmar o significado desse banco; não
@@ -206,3 +206,53 @@ de unidades/depósitos para definir os fatos financeiros. Isso ainda não compro
 pagamento efetivo, integridade do snapshot ou estado ativo da venda. Faltam a
 validação real, semântica dos tipos, cobertura de alterações retroativas e dados
 de manutenção/renegociação/estado vigente, incluindo bloqueio de distratadas.
+
+## Consultas 20 e 29 — SQLs completos recebidos
+
+### Consulta 20
+
+Consulta VendaHist por empresa/obra, venda e tipos de manutenção. A coluna
+TipoMnt_VHist classifica ações históricas; não é automaticamente o status atual.
+O CASE fornecido termina em 9 e não tem ELSE: tipos posteriores/desconhecidos não
+devem ser descartados nem considerados seguros para cobrança por falta de rótulo.
+
+- 0: cancelar venda; validar o efeito vigente e eventuais eventos posteriores.
+- 1: renegociar contrato.
+- 2: cessão de direito; não assumir que o mesmo comprador continua responsável.
+- 3: simulação de distrato, diferente de distrato efetivado.
+- 7/8/9: pendências de renegociação/cessão, não equivalem a eventos concluídos.
+
+QtdeParcelasPagas conta linhas de Recebidas apenas para tipos 2/8, sem recorte pela
+data da manutenção, contagem distinta da obrigação ou comprovação de classificação
+financeira. Não é uma medida geral de parcelas quitadas no momento do evento.
+
+### Consulta 29
+
+O SQL revela VendaHist.Num_vhist e DataMnt_vhist e a relação de ContasReceberHist
+com o evento por NumVhist_prc = Num_vhist, além de empresa/obra/venda. Isso permite
+investigar snapshots de parcelas em uma manutenção. A extração deve conservar esse
+identificador nativo e validar sua unicidade/estabilidade.
+
+O relatório exige ajustes para ser usado como fonte de sincronização:
+
+- codManut é ROW_NUMBER gerado sobre linhas enriquecidas; não é ID persistente.
+- Filtra TipoMnt = 1, portanto não cobre sozinho as pendências e outros eventos
+  necessários para interromper/reavaliar a cobrança.
+- Faz joins de itens/unidades/pessoa atuais ou recebidos; pode multiplicar eventos
+  ou omitir histórico cujo contrato não apareça nessas origens. Enriquecer separado.
+- Confirma Empresa_Rpd no join de RecebePgtoDiv, mas omite NumReceb_Rpd, conhecido
+  pela consulta 23. Sem a identidade completa do recebimento/divisão, pode associar
+  várias linhas da mesma parcela e repetir valores.
+- SUM(PercentValor_Rpd) precisa de validação do significado/unidade desse campo.
+  COUNT(*) após divisões não equivale necessariamente ao número de parcelas.
+- vlrTotRecebido consulta recebimentos cuja Data_Rec é anterior/igual à manutenção;
+  não é o valor recuperado por essa renegociação. vlrTotReceber usa snapshot
+  histórico e não pode ser apresentado como saldo aberto de hoje.
+- A ligação de UnidadePer precisa considerar também a obra, além dos demais IDs.
+- BETWEEN precisa de limites com horário conferidos; os rascunhos usam fim exclusivo.
+
+Preparado `carteira-manutencoes.sql`, sem joins multiplicadores e com campos
+explícitos. O evento é identificado pelo conjunto candidato empresa/obra/venda/
+número do histórico; inclui tipos desconhecidos para revisão. Ainda falta homologar
+o retorno e confirmar a fonte de **estado vigente** do contrato/distrato efetivo.
+Nenhuma dessas consultas autoriza cobrança só porque uma parcela ainda está aberta.
