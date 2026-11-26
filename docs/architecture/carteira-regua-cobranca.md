@@ -36,6 +36,12 @@ auditoria e execução próprios, independentes da existência de uma campanha.
 Inspecionar o SQL existente de carteira antes de decidir se deve ser adaptado ou
 substituído. Não há endpoint novo confirmado por este planejamento.
 
+Atualização de 25/11/2026: recebida a consulta **Inadimplência por Empresa e Obra
+(Inadimplência da Venda)**. A [análise do SQL](uau-consulta-carteira-analise.md) mapeia
+as chaves e os valores disponíveis, os filtros, a multiplicidade de participantes
+e as lacunas para confirmar pagamentos. Pode orientar a descoberta de inadimplentes;
+não substitui a extração de recebimentos nem uma carteira completa.
+
 Contrato mínimo proposto para a extração:
 
 | Informação | Finalidade |
