@@ -2,6 +2,28 @@
 
 ## Teste direto no SQL Server
 
+### Consulta unica detalhada do piloto
+
+`teste-carteira-detalhada-900-00001.sql` retorna uma tabela de parcelas vencidas,
+pronta para empresa 900/obra 00001. Inclui pessoa/CPF/email, contatos e participantes,
+unidades/produto/personalizacao, atraso original, prorrogacao, valor base, componentes
+calculados disponiveis e evidencias de distrato/cancelamento. Requer SQL Server
+2016+ por usar FOR JSON PATH nas colecoes. Nao foi executada no ERP nesta preparacao.
+
+Telefones, participantes e unidades ficam em colunas JSON para preservar uma linha
+por parcela. Totais por contrato repetem nas parcelas: nao soma-los linha a linha.
+Consulta de coleta/mapeamento, nao liberacao de cobranca: EnvioAutomaticoAutorizadoNesteTeste
+fica falso. MostrarBloqueadas = 1 exibe inclusive registros para conferir bloqueios;
+zero aplica o filtro conservador. Nenhum envio ou baixa e executado.
+
+Valores calculados sao expostos apenas quando existe um registro de calculo; data
+e multiplicidade ficam visiveis. Referencia diferente da data atual exige revisao.
+Nao adicionar os componentes novamente ao total. Ausencia de calculo nao elimina
+a parcela. Dados de recebimento/historico nao sao misturados ao saldo atual nesta
+consulta; continuam nas extracoes especificas para reconciliar as saidas.
+
+### Diagnostico dos conjuntos separados
+
 Executar `diagnostico-carteira-sqlserver.sql` inteiro no SSMS conectado ao banco
 UAU. E um unico arquivo com varios resultados, nao uma consulta geral pronta para API.
 No inicio, configurar empresa, obra, periodo dos eventos e quantidade da amostra.
