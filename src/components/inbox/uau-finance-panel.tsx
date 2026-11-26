@@ -408,7 +408,12 @@ export function UauFinancePanel({
                     className={`inline-flex max-w-full items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs break-all ${semanticChip.info}`}
                   >
                     <Phone className="mt-0.5 size-3 shrink-0" />
-                    {phone.number}
+                    <span className="min-w-0">
+                      <span className="block">{phone.number}</span>
+                      {phone.complement && (
+                        <span className="block text-[11px] text-muted-foreground">{phone.complement}</span>
+                      )}
+                    </span>
                     {phone.primary && (
                       <span className="bg-background/70 rounded-full px-1.5 py-0.5 text-[9px] font-semibold">
                         {t('primaryPhone')}

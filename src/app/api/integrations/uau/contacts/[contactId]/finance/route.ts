@@ -76,7 +76,7 @@ async function readSaved(
     .update(link.document_encrypted)
     .digest('hex');
   const cacheScope = JSON.stringify([
-    'original-due-date-v6',
+    'phone-complement-v7',
     auth.accountId,
     auth.userId,
     auth.contactId,

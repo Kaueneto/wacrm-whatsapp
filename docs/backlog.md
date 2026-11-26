@@ -83,3 +83,13 @@ Proposta técnica e jurídica revisável com escopo inicial, limitações das ev
 - A conexão atual usa sessão técnica compartilhada. Login UAU salvo no perfil não troca essa sessão. Avaliar autenticação nominal e confirmar a auditoria ERP antes de prometer identificação por atendente.
 - Manter autoria local do CRM e identidade técnica separadas, com contrato/parcelas e resultado; prever limites, duplicidade e resultado incerto antes de executar efeitos externos.
 - **Conferência:** [emissão de boletos UAU](architecture/uau-emissao-boletos.md). Nenhum boleto foi emitido nesta análise.
+
+## BL-009 — Exibir a descrição dos telefones cadastrados no UAU
+
+- **Registrado em:** 26/11/2026.
+- **Status:** verificação antecipada em 26/11/2026 por solicitação do responsável. A API retornou `Complemento`; o normalizador foi ajustado para preservá-lo e a tela para exibi-lo junto ao número. No cliente de teste o campo veio vazio; confirmar em um exemplo preenchido se corresponde à descrição operacional desejada.
+- **Contexto:** a equipe cadastra na descrição do telefone nomes ou vínculos como pai, mãe, irmão e fiador, para identificar quem utiliza cada número relacionado ao titular do contrato.
+- **Investigar:** conferir no retorno real de `Pessoas/ConsultarTelefones`, endpoint já usado no financeiro do contato, se há descrição/observação ou nome do contato. Confirmar o campo e sua semântica na instalação; não inferir o vínculo pelo código numérico de tipo de telefone.
+- **Implementação prevista:** preservar o texto no normalizador e no modelo do telefone e exibi-lo junto ao número nas informações do contato. Manter separados descrição, tipo de telefone e indicação de principal. Se a API não fornecer a informação, avaliar uma fonte documentada ou consulta específica antes de ampliar a integração.
+- **Integridade:** não perder descrições distintas ao normalizar números iguais; não assumir que telefone relacionado pertence ao titular nem selecioná-lo automaticamente para cobranças por causa do parentesco/descrição.
+- **Critério de aceite:** o usuário identifica a descrição cadastrada ao lado de cada telefone quando disponível, sem rótulos inventados quando o campo estiver vazio; conferir exemplos com familiar, fiador, titular e múltiplos números.

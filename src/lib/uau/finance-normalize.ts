@@ -171,9 +171,11 @@ export function phones(input: unknown): UauPhone[] {
   return uauRows(input).map((row) => {
     const phone = text(field(row, 'Telefone'));
     const ddd = text(field(row, 'DDD'));
+    const complement = text(field(row, 'Complemento'));
     if (!phone) throw badResponse();
     return {
       number: ddd ? `(${ddd}) ${phone}` : phone,
+      complement: complement && complement.toLowerCase() !== 'null' ? complement : null,
       type: integer(field(row, 'Tipo')),
       primary: integer(field(row, 'Principal')) === 1,
     };

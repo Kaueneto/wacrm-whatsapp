@@ -180,6 +180,21 @@ describe('UAU finance normalization', () => {
   });
 });
 
+it('preserves phone complements separately from type and primary, including repeated numbers', () => {
+  const entries = phones([{ MyTable: [
+    { DDD: '62', Telefone: '99999-0000', Complemento: ' Mãe — Maria ', Tipo: 2, Principal: 0 },
+    { DDD: '62', Telefone: '99999-0000', Complemento: 'Fiador', Tipo: 1, Principal: 1 },
+  ] }]);
+  expect(entries).toEqual([
+    { number: '(62) 99999-0000', complement: 'Mãe — Maria', type: 2, primary: false },
+    { number: '(62) 99999-0000', complement: 'Fiador', type: 1, primary: true },
+  ]);
+});
+
+it.each([undefined, null, '', '   ', 'null'])('keeps missing phone complement empty: %s', (Complemento) => {
+  expect(phones([{ Telefone: '99999-0000', Complemento }])[0].complement).toBeNull();
+});
+
 it('reads the installed UAU Email_pes field without exposing other person fields', () => {
   expect(
     customers(

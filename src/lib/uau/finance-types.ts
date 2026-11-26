@@ -5,6 +5,7 @@ export interface UauCustomer {
 }
 export interface UauPhone {
   number: string;
+  complement?: string | null;
   type: number | null;
   primary: boolean;
 }
