@@ -349,6 +349,32 @@ O vencimento originalmente observado de 18/11 permanece no histórico; a linha n
 tem seu próprio vencimento atual de 28/11. Uma legenda genérica de Data_Prc como
 'Data de Recebimento' não substitui a validação de seu uso real nas abertas.
 
+### Estorno do recebimento parcial — evidência da interface
+
+O responsável estornou o recebimento parcial e forneceu a exportação da grade UAU.
+A ordem exibida acompanha os vencimentos: E/1/geral 1 em 18/11 com principal 314,43
+(reajustado 321,55), depois E/51/geral 55 em 28/11 com principal 345,57, depois as
+parcelas futuras anteriores. O estorno não recompôs visualmente uma única parcela
+de principal 660: manteve a parcela desdobrada e reabriu a parte antes recebida.
+
+A exportação tem 55 linhas e a soma dos principais é 168.485,68, igual à posição
+base original do teste. Não confundir a coluna Parc. com número geral; não usar a
+ordem da grade como identidade financeira. Parte das linhas termina com menos
+colunas opcionais vazias no texto exportado, sem afetar os campos acima conferidos.
+
+Evidência confirma retorno da parte de principal 314,43 às abertas, mas não mostra
+o estado atual de Recebidas; confirmar retirada/alteração do recebimento 7 com a
+consulta já preparada antes de encerrar a validação do estorno. Nos indicadores,
+o recebido anterior deve ser revertido conforme evidência, sem apagar eventos passados.
+
+Desdobramento por baixa parcial não deve ser automaticamente rotulado como uma
+renegociação formal da venda. Parcelamento negociado depende de condições aceitas,
+das manutenções reais do UAU e da relação entre obrigações novas e anteriores.
+Boleto/Pix emitido de valor parcial não comprova pagamento ou acordo concluído.
+O próximo teste de renegociação deve ser feito pelo responsável que conhece o
+procedimento UAU no ambiente de teste, comparando abertas, recebidas e VendaHist
+antes/depois. Não orientar manutenção financeira por uma sequência presumida da UI.
+
 ## Consulta 125 — evidências de distrato e cancelamento
 
 SQL completo recebido em 25/11/2026. Traz os campos que permitem preparar a
