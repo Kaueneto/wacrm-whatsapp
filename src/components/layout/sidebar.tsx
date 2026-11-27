@@ -74,9 +74,25 @@ const groups: NavGroup[] = [
     icon: Users,
     items: [
       { href: '/contacts', labelKey: 'contacts', icon: Users },
-      { href: '/collections', labelKey: 'collections', icon: Wallet },
       { href: '/pipelines', labelKey: 'pipelines', icon: GitBranch },
       { href: '/tags', labelKey: 'tags', icon: Tags },
+    ],
+  },
+  {
+    labelKey: 'collections',
+    icon: Wallet,
+    items: [
+      { href: '/collections', labelKey: 'collectionPortfolio', icon: Wallet },
+      {
+        href: '/collections/sync',
+        labelKey: 'collectionSync',
+        icon: CalendarClock,
+      },
+      {
+        href: '/collections/rules',
+        labelKey: 'collectionRules',
+        icon: GitBranch,
+      },
     ],
   },
   {
@@ -104,9 +120,15 @@ const groups: NavGroup[] = [
 ];
 
 const organizationItem: NavItem = {
-  href: '/organization', labelKey: 'organization', icon: UsersRound,
+  href: '/organization',
+  labelKey: 'organization',
+  icon: UsersRound,
 };
-const settingsItem: NavItem = { href: '/settings', labelKey: 'settings', icon: Settings };
+const settingsItem: NavItem = {
+  href: '/settings',
+  labelKey: 'settings',
+  icon: Settings,
+};
 
 const desktopQuery = '(min-width: 64rem)';
 const collapsePreference = 'wacrm.sidebar.collapsed';
@@ -127,7 +149,7 @@ function readCollapsePreference() {
 
 const navRowClass = cn(
   motion.sidebarRow,
-  'group/nav relative flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground focus-visible:bg-muted/80 focus-visible:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-safe:transition-[background-color,color,box-shadow] motion-safe:duration-150 lg:min-h-9',
+  'group/nav relative flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground focus-visible:bg-muted/80 focus-visible:text-foreground focus-visible:outline-2 focus-visible:outline-ring motion-safe:transition-[background-color,color,box-shadow] motion-safe:duration-150 lg:min-h-9'
 );
 
 const navLabelClass =
@@ -144,7 +166,7 @@ function NavigationPending({ compact }: { compact: boolean }) {
       className={cn(
         'size-3.5 shrink-0',
         compact && 'absolute bottom-0.5 left-0.5 size-2.5',
-        pending ? 'opacity-100 motion-safe:animate-spin' : 'opacity-0',
+        pending ? 'opacity-100 motion-safe:animate-spin' : 'opacity-0'
       )}
     />
   );
@@ -179,17 +201,29 @@ function SidebarGroup({
       <li>
         <DropdownMenu>
           <Tooltip>
-            <TooltipTrigger render={
-              <DropdownMenuTrigger
-                aria-label={label}
-                className={cn(navRowClass, 'justify-center px-0', active && activeRowClass)}
-              />
-            }>
+            <TooltipTrigger
+              render={
+                <DropdownMenuTrigger
+                  aria-label={label}
+                  className={cn(
+                    navRowClass,
+                    'justify-center px-0',
+                    active && activeRowClass
+                  )}
+                />
+              }
+            >
               <Icon className="size-4 shrink-0" aria-hidden="true" />
             </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={12}>{label}</TooltipContent>
+            <TooltipContent side="right" sideOffset={12}>
+              {label}
+            </TooltipContent>
           </Tooltip>
-          <DropdownMenuContent side="right" sideOffset={12} className="min-w-44 p-1.5">
+          <DropdownMenuContent
+            side="right"
+            sideOffset={12}
+            className="min-w-44 p-1.5"
+          >
             {compactItems}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -247,13 +281,21 @@ function SidebarNavigation({
   const t = useTranslations('Sidebar');
 
   const visibleItems = (items: NavItem[]) =>
-    items.filter((item) =>
-      (SHOW_PIPELINES || item.href !== '/pipelines') &&
-      accountRole && canAccessWorkspacePage(accountRole, item.href)
+    items.filter(
+      (item) =>
+        (SHOW_PIPELINES || item.href !== '/pipelines') &&
+        accountRole &&
+        canAccessWorkspacePage(accountRole, item.href)
     );
 
   function isActive(item: NavItem) {
-    if (item.href === '/campaigns' && (pathname === '/campaigns/templates' || pathname.startsWith('/campaigns/templates/'))) return false;
+    if (item.href === '/collections') return pathname === '/collections';
+    if (
+      item.href === '/campaigns' &&
+      (pathname === '/campaigns/templates' ||
+        pathname.startsWith('/campaigns/templates/'))
+    )
+      return false;
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
   }
 
@@ -261,7 +303,8 @@ function SidebarNavigation({
     const active = isActive(item);
     const label = t(item.labelKey);
     const hasUnreadInbox = item.href === '/inbox' && totalUnread > 0 && !active;
-    const hasUnreadNotifications = item.href === '/notifications' && unreadNotifications > 0;
+    const hasUnreadNotifications =
+      item.href === '/notifications' && unreadNotifications > 0;
     const unreadLabel = hasUnreadInbox
       ? t('unreadConversations', { count: totalUnread })
       : hasUnreadNotifications
@@ -275,7 +318,11 @@ function SidebarNavigation({
         aria-label={compact ? label : undefined}
         aria-description={unreadLabel}
         aria-current={active ? 'page' : undefined}
-        className={cn(navRowClass, compact && 'justify-center px-0', active && activeRowClass)}
+        className={cn(
+          navRowClass,
+          compact && 'justify-center px-0',
+          active && activeRowClass
+        )}
       >
         <item.icon className="size-4 shrink-0" aria-hidden="true" />
         {!compact && <span className={navLabelClass}>{label}</span>}
@@ -283,7 +330,10 @@ function SidebarNavigation({
         {hasUnreadInbox && (
           <span
             aria-hidden="true"
-            className={cn('flex size-2 shrink-0', compact ? 'absolute right-1 top-1' : 'relative')}
+            className={cn(
+              'flex size-2 shrink-0',
+              compact ? 'absolute top-1 right-1' : 'relative'
+            )}
           >
             <span className="bg-primary absolute inline-flex size-full rounded-full opacity-75 motion-safe:animate-ping" />
             <span className="bg-primary relative inline-flex size-2 rounded-full" />
@@ -294,7 +344,9 @@ function SidebarNavigation({
             aria-hidden="true"
             className={cn(
               'bg-primary text-primary-foreground flex items-center justify-center rounded-full font-semibold',
-              compact ? 'absolute -right-0.5 -top-0.5 h-4 min-w-4 px-0.5 text-[9px]' : 'h-5 min-w-5 px-1 text-[10px]',
+              compact
+                ? 'absolute -top-0.5 -right-0.5 h-4 min-w-4 px-0.5 text-[9px]'
+                : 'h-5 min-w-5 px-1 text-[10px]'
             )}
           >
             {unreadNotifications > 9 ? '9+' : unreadNotifications}
@@ -304,12 +356,12 @@ function SidebarNavigation({
     );
     return (
       <li key={item.href}>
-        {compact ? (
-          <Tooltip>
-            <TooltipTrigger render={link} />
-            <TooltipContent side="right" sideOffset={12}>{label}</TooltipContent>
-          </Tooltip>
-        ) : link}
+        <Tooltip>
+          <TooltipTrigger render={link} />
+          <TooltipContent side="right" sideOffset={12}>
+            {label}
+          </TooltipContent>
+        </Tooltip>
       </li>
     );
   }
@@ -322,7 +374,10 @@ function SidebarNavigation({
   return (
     <nav
       id="sidebar-navigation"
-      className={cn('flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4', compact ? 'px-2' : 'px-3')}
+      className={cn(
+        'flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4',
+        compact ? 'px-2' : 'px-3'
+      )}
     >
       <ul className="space-y-1">
         {visibleItems(primaryItems).map(renderItem)}
@@ -336,16 +391,31 @@ function SidebarNavigation({
               icon={group.icon}
               active={group.items.some(isActive)}
               compact={compact}
-              compactItems={compact ? group.items.map((item) => (
-                <DropdownMenuItem
-                  key={item.href}
-                  render={<Link href={item.href} aria-current={isActive(item) ? 'page' : undefined} />}
-                  className={cn(navRowClass, 'gap-2 px-2 py-1.5', isActive(item) && activeRowClass)}
-                >
-                  <item.icon aria-hidden="true" />
-                  <span className={navLabelClass}>{t(item.labelKey)}</span>
-                </DropdownMenuItem>
-              )) : null}
+              compactItems={
+                compact
+                  ? group.items.map((item) => (
+                      <DropdownMenuItem
+                        key={item.href}
+                        render={
+                          <Link
+                            href={item.href}
+                            aria-current={isActive(item) ? 'page' : undefined}
+                          />
+                        }
+                        className={cn(
+                          navRowClass,
+                          'gap-2 px-2 py-1.5',
+                          isActive(item) && activeRowClass
+                        )}
+                      >
+                        <item.icon aria-hidden="true" />
+                        <span className={navLabelClass}>
+                          {t(item.labelKey)}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  : null
+              }
             >
               {!compact && group.items.map(renderItem)}
             </SidebarGroup>
@@ -375,7 +445,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const isDesktop = useSyncExternalStore(
     subscribeToDesktop,
     () => window.matchMedia(desktopQuery).matches,
-    () => false,
+    () => false
   );
   const compact = isDesktop && collapsed;
   const toggleLabel = t(compact ? 'expandSidebar' : 'collapseSidebar');
@@ -456,9 +526,23 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       >
         {/* Logo row. On mobile we put a close button here; on desktop the
             close button is hidden since the sidebar is always-visible. */}
-        <div className={cn('border-border flex h-14 shrink-0 items-center gap-2 border-b', compact ? 'justify-center' : 'justify-between px-4')}>
-          <Link href="/dashboard" aria-label={t('title')} className="flex min-w-0 items-center gap-2">
-            <OctaLogo compact={compact} className="text-foreground" markClassName="h-9" wordmarkClassName="text-base" />
+        <div
+          className={cn(
+            'border-border flex h-14 shrink-0 items-center gap-2 border-b',
+            compact ? 'justify-center' : 'justify-between px-4'
+          )}
+        >
+          <Link
+            href="/dashboard"
+            aria-label={t('title')}
+            className="flex min-w-0 items-center gap-2"
+          >
+            <OctaLogo
+              compact={compact}
+              className="text-foreground"
+              markClassName="h-9"
+              wordmarkClassName="text-base"
+            />
           </Link>
           <button
             type="button"
@@ -472,7 +556,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
         <TooltipProvider delay={250}>
           <SidebarNavigation {...navigationProps} />
-          <div className={cn('border-border hidden shrink-0 border-t py-3 lg:block', compact ? 'px-2' : 'px-3')}>
+          <div
+            className={cn(
+              'border-border hidden shrink-0 border-t py-3 lg:block',
+              compact ? 'px-2' : 'px-3'
+            )}
+          >
             <Tooltip>
               <TooltipTrigger
                 type="button"
@@ -483,9 +572,15 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 className={cn(navRowClass, compact && 'justify-center px-0')}
               >
                 <ToggleIcon className="size-4 shrink-0" aria-hidden="true" />
-                {!compact && <span className={navLabelClass}>{toggleLabel}</span>}
+                {!compact && (
+                  <span className={navLabelClass}>{toggleLabel}</span>
+                )}
               </TooltipTrigger>
-              {compact && <TooltipContent side="right" sideOffset={12}>{toggleLabel}</TooltipContent>}
+              {compact && (
+                <TooltipContent side="right" sideOffset={12}>
+                  {toggleLabel}
+                </TooltipContent>
+              )}
             </Tooltip>
           </div>
         </TooltipProvider>
