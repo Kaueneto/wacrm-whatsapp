@@ -29,7 +29,8 @@ import {
   ArrowLeft,
   RefreshCw,
 } from "lucide-react";
-import { format, isToday, isYesterday, differenceInHours } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
+import { customerServiceWindow } from '@/lib/whatsapp/customer-service-window';
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -296,30 +297,30 @@ export function MessageThread({
 
   // 24-hour session timer
   const sessionInfo = useMemo(() => {
-    if (!messages.length) return { expired: false, remaining: "" };
+    // The conversation timestamp also covers inbound messages outside the
+    // loaded page. Ignore messages from the previous thread while switching.
+    const lastInboundAt = messages.reduce<string | null>((latest, message) => {
+      if (message.conversation_id !== conversation?.id || message.sender_type !== 'customer') return latest;
+      return !latest || Date.parse(message.created_at) > Date.parse(latest)
+        ? message.created_at : latest;
+    }, conversation?.last_inbound_at ?? null);
 
-    // Find last customer message
-    const lastCustomerMsg = [...messages]
-      .reverse()
-      .find((m) => m.sender_type === "customer");
+    if (!lastInboundAt) return { expired: true, remaining: tTimer("noCustomerMessages") };
 
-    if (!lastCustomerMsg) return { expired: true, remaining: tTimer("noCustomerMessages") };
-
-    const hoursSince = differenceInHours(new Date(), new Date(lastCustomerMsg.created_at));
-    const expired = hoursSince >= 24;
+    const { expired, remainingMs } = customerServiceWindow(lastInboundAt, now);
 
     if (expired) {
       return { expired: true, remaining: tTimer("expired") };
     }
 
-    const hoursLeft = 24 - hoursSince;
+    const hoursLeft = remainingMs / 3_600_000;
     const remaining =
       hoursLeft >= 1
         ? tTimer("xhRemaining", { hours: Math.floor(hoursLeft) })
-        : tTimer("xmRemaining", { minutes: Math.floor(hoursLeft * 60) });
+        : tTimer("xmRemaining", { minutes: Math.ceil(hoursLeft * 60) });
 
     return { expired, remaining };
-  }, [messages, tTimer]);
+  }, [messages, conversation?.id, conversation?.last_inbound_at, now, tTimer]);
 
   // Store latest callback in a ref so fetchMessages doesn't need to
   // depend on `onMessagesLoaded` — otherwise parent re-renders cause

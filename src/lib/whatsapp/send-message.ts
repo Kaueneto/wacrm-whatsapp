@@ -42,6 +42,8 @@ import {
 } from '@/lib/whatsapp/phone-utils';
 import { resolveContactSendTarget } from '@/lib/whatsapp/wa-identity';
 import { applyPendingMessageStatuses } from '@/lib/whatsapp/message-status-sync';
+import { customerServiceWindow } from '@/lib/whatsapp/customer-service-window';
+import { getT } from '@/lib/i18n/translate';
 import type { MessageTemplate } from '@/types';
 import {
   resolveTemplateRow,
@@ -263,6 +265,14 @@ export async function sendMessageToConversation(
   const sendTarget = resolvedTarget.target;
   const hasValidPhone = resolvedTarget.isPhone;
   const sanitizedPhone = hasValidPhone ? sendTarget : '';
+
+  if (messageType !== 'template' && customerServiceWindow(conversation.last_inbound_at).expired) {
+    throw new SendMessageError(
+      'session_expired',
+      getT('Inbox.composer')('sessionExpiredHint'),
+      409,
+    );
+  }
 
   // WhatsApp config, account-scoped.
   const { data: config, error: configError } = await db

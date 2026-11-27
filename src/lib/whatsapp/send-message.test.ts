@@ -218,6 +218,7 @@ function sendPathDb(
   const conversation = {
     id: 'cv-1',
     contact,
+    last_inbound_at: new Date(Date.now() - 60_000).toISOString(),
     ...conversationPatch,
   };
   const config = {
@@ -273,6 +274,44 @@ const TEMPLATE_ROW = {
   body_text: 'Your order {{1}} ships on {{2}}',
   created_at: '2026-01-01T00:00:00Z',
 };
+
+describe('customer service window enforcement', () => {
+  it.each([null, 'invalid', new Date(Date.now() - 25 * 3_600_000).toISOString()])(
+    'rejects free-form sends before calling Meta or persisting when last inbound is %s',
+    async (lastInboundAt) => {
+      const api = await import('@/lib/whatsapp/meta-api');
+      const senders = [api.sendTextMessage, api.sendMediaMessage, api.sendInteractiveButtons, api.sendInteractiveList];
+      senders.forEach((sender) => vi.mocked(sender).mockClear());
+      for (const message of [
+        { messageType: 'text', contentText: 'Oi' },
+        ...['image', 'audio', 'video', 'document'].map(messageType => ({ messageType, mediaUrl: 'https://example.com/media' })),
+        { messageType: 'interactive', interactivePayload: { kind: 'buttons' as const, body: 'Oi', buttons: [{ id: 'a', title: 'Sim' }] } },
+      ]) {
+        const captured: CapturedWrites = {};
+        await expect(sendMessageToConversation(
+          sendPathDb([], captured, undefined, { last_inbound_at: lastInboundAt }),
+          'acct-1', { conversationId: 'cv-1', ...message },
+        )).rejects.toMatchObject({ code: 'session_expired', status: 409 });
+        expect(captured.message).toBeUndefined();
+        expect(captured.conversation).toBeUndefined();
+      }
+      senders.forEach(sender => expect(sender).not.toHaveBeenCalled());
+    },
+  );
+
+  it('allows an approved template to initiate contact without opening a free-form window', async () => {
+    const captured: CapturedWrites = {};
+    const db = sendPathDb([TEMPLATE_ROW], captured, undefined, { last_inbound_at: null });
+    await sendMessageToConversation(db, 'acct-1', {
+      conversationId: 'cv-1', messageType: 'template', templateName: 'order_update',
+    });
+    expect(captured.message?.content_type).toBe('template');
+    expect(captured.conversation).not.toHaveProperty('last_inbound_at');
+    await expect(sendMessageToConversation(db, 'acct-1', {
+      conversationId: 'cv-1', messageType: 'text', contentText: 'Oi',
+    })).rejects.toMatchObject({ code: 'session_expired' });
+  });
+});
 
 describe('shared team queue sends', () => {
   it.each([null, 'colleague'])('requires the attendant to claim before sending when assigned to %s', async (assignee) => {

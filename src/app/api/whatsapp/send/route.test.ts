@@ -348,9 +348,21 @@ describe('POST /api/whatsapp/send — role enforcement', () => {
     expect(sendTemplateMessage).toHaveBeenCalledTimes(1)
   })
 
+  it('blocks a first free-form message without sending to Meta or saving a message', async () => {
+    const response = await POST(new Request('http://localhost/api/whatsapp/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: 'conv-existing', message_type: 'text', content_text: 'Oi' }),
+    }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ error: expect.any(String) })
+    expect(sendTextMessage).not.toHaveBeenCalled()
+    expect(messageInserts).toHaveLength(0)
+  })
+
   it.each([true, false])('uses the authenticated sender signature preference: %s', async (enabled) => {
     signatureEnabled = enabled
     callerRole = 'agent'
+    existingConversation!.last_inbound_at = new Date(Date.now() - 60_000).toISOString()
     const response = await POST(new Request('http://localhost/api/whatsapp/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversation_id: 'conv-existing', message_type: 'text', content_text: 'Olá!', full_name: 'Forged name' }),
@@ -375,6 +387,7 @@ describe('POST /api/whatsapp/send — role enforcement', () => {
   it('uses the signature name saved in the profile instead of changing the account name', async () => {
     signatureEnabled = true
     signatureName = 'Ana · Atendimento'
+    existingConversation!.last_inbound_at = new Date(Date.now() - 60_000).toISOString()
     const response = await POST(new Request('http://localhost/api/whatsapp/send', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conversation_id: 'conv-existing', message_type: 'text', content_text: 'Olá!' }),
