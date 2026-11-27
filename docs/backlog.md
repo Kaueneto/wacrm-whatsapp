@@ -84,6 +84,18 @@ Proposta técnica e jurídica revisável com escopo inicial, limitações das ev
 - Manter autoria local do CRM e identidade técnica separadas, com contrato/parcelas e resultado; prever limites, duplicidade e resultado incerto antes de executar efeitos externos.
 - **Conferência:** [emissão de boletos UAU](architecture/uau-emissao-boletos.md). Nenhum boleto foi emitido nesta análise.
 
+## BL-008 — Resumo da jornada do atendimento no chat
+
+- **Registrado em:** 25/11/2026.
+- **Status:** ideia registrada no backlog; implementação futura.
+- **Objetivo:** permitir que o usuário entenda rapidamente por quais etapas o atendimento passou e quem ficou responsável em cada momento.
+- **Entrada e apresentação:** adicionar uma ação no chat que abra um modal compacto com uma linha do tempo sequencial dos principais eventos do atendimento. Exibir etapas e mudanças de responsabilidade, sem listar mensagem por mensagem.
+- **Eventos:** início do atendimento; entrada e saída do fluxo automático; início e fim do atendimento por IA; encaminhamento e espera na fila humana; início do atendimento humano; retorno do humano para a IA, quando esse recurso estiver disponível; transferências entre atendentes e equipes; encerramento e reabertura em um novo ciclo de atendimento.
+- **Informações por evento:** data e hora, tipo da etapa, fluxo ou assistente envolvido, atendente/equipe de origem e destino quando aplicável e motivo da transferência, se registrado. Indicar a etapa atual e apresentar a duração das etapas quando houver início e fim conhecidos.
+- **Histórico e ciclos:** manter a sequência mesmo quando houver várias transferências ou alternâncias entre automação, IA e humano. Distinguir os ciclos de atendimento dentro da mesma conversa, sem confundir encerramento do atendimento com a janela de mensagens do WhatsApp.
+- **Origem dos dados:** aproveitar os registros existentes de execução de fluxos, sessões de IA e atribuição de responsáveis; avaliar os eventos adicionais necessários para registrar todas as transições de forma persistente. Não deduzir transições apenas pelo texto das mensagens nem inventar etapas em históricos incompletos; indicar quando os dados não estiverem disponíveis.
+- **Critério de aceite:** ao abrir o resumo no chat, o usuário identifica quando o atendimento começou, quais trechos foram automáticos, com IA ou humanos, quando e para quem ocorreram as transferências e se o atendimento está em andamento ou foi encerrado, sem precisar percorrer toda a conversa.
+
 ## BL-009 — Exibir a descrição dos telefones cadastrados no UAU
 
 - **Registrado em:** 26/11/2026.
