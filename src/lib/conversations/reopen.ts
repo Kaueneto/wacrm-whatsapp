@@ -9,8 +9,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * automation step closed — stayed `closed` while accumulating unread
  * customer messages. It read as resolved, and it dropped out of the
  * inbox's Open filter, so an agent working that filter never saw the
- * reply. (Automation dispatch is unaffected either way: it keys on
- * account + trigger + contact, never conversation status.)
+ * reply. Reopening also releases the previous attendance's human/AI
+ * ownership so a new menu can receive follow-up messages normally.
+ * The durable inbound path performs the same reset atomically in SQL.
  *
  * Lives here rather than inline in the webhook so it can be tested
  * without standing up the whole route, and so any future inbound path
@@ -26,7 +27,15 @@ export async function reopenClosedConversation(
 
   const { error } = await db
     .from('conversations')
-    .update({ status: 'open', updated_at: new Date().toISOString() })
+    .update({
+      status: 'open',
+      assigned_agent_id: null,
+      team_queue_enabled: false,
+      ai_autoreply_disabled: false,
+      ai_flow_context: null,
+      ai_reply_count: 0,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', conversation.id)
     // Re-checked in SQL, not just in the `if` above: the caller's row was
     // read earlier in the request, so two concurrent inbound deliveries

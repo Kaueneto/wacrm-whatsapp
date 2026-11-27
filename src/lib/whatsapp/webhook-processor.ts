@@ -777,8 +777,17 @@ async function processMessage(
   // no active flows take the runner's early-exit "no_match" path
   // basically for free (one indexed SELECT for the active run).
   // ============================================================
-  const flowAiActive = isFlowAiActive(conversation);
-  const flowResult = flowAiActive
+  // Use the status read BEFORE inbound storage reopens a closed thread.
+  // Human ownership lasts until closure, including an unassigned queue:
+  // a repeated greeting must never restart a menu while someone waits.
+  const humanSupportActive = conversation.status !== 'closed' && (
+    !!conversation.assigned_agent_id ||
+    conversation.status === 'pending' ||
+    conversation.team_queue_enabled === true ||
+    conversation.ai_autoreply_disabled === true
+  );
+  const flowAiActive = conversation.status !== 'closed' && isFlowAiActive(conversation);
+  const flowResult = humanSupportActive || flowAiActive
     ? { consumed: false }
     : await dispatchInboundToFlows({
         accountId,
@@ -820,7 +829,7 @@ async function processMessage(
   // never also resume it. Flows still win: only checked if no flow
   // consumed the message. Never throws.
   const automationConsumed =
-    flowConsumed || flowAiActive
+    humanSupportActive || flowConsumed || flowAiActive
       ? false
       : await resumeAwaitingReply({
           accountId,
@@ -840,9 +849,9 @@ async function processMessage(
     | 'keyword_match'
     | 'interactive_reply'
   )[] = [];
-  // Content-level triggers are suppressed when a flow or a waiting
-  // automation consumed the message — see the comment blocks above.
-  if (!contentConsumed && !flowAiActive) {
+  // Human support owns the message even after its originating flow ended.
+  // Keep relationship events below, but suppress competing bot responders.
+  if (!humanSupportActive && !contentConsumed && !flowAiActive) {
     automationTriggers.push('new_message_received', 'keyword_match');
     // Interactive tap → fire the interactive_reply trigger too (only
     // meaningful when a button/list reply actually arrived). Enables
@@ -890,7 +899,7 @@ async function processMessage(
   // the account has enabled it. Awaited inside `after()` (same reason as
   // the webhook dispatch below); `dispatchInboundToAiReply` owns its
   // eligibility gates + try/catch and never throws.
-  if (!contentConsumed && !interactiveReplyId && inboundText.trim()) {
+  if (!humanSupportActive && !contentConsumed && !interactiveReplyId && inboundText.trim()) {
     await dispatchInboundToAiReply({
       accountId,
       conversationId: conversation.id,

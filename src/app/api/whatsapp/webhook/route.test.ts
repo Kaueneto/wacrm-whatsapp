@@ -1137,6 +1137,86 @@ describe('status webhook: failed statuses keep Meta\'s reason (#535)', () => {
   })
 })
 
+describe('inbound webhook: human support owns the conversation until closure', () => {
+  it.each([
+    ['an assigned attendant', { status: 'open', assigned_agent_id: 'agent-1' }],
+    ['an unassigned human queue', { status: 'pending', assigned_agent_id: null }],
+    ['a team self-service queue', { status: 'open', team_queue_enabled: true }],
+    ['a prior human handoff', { status: 'open', ai_autoreply_disabled: true }],
+  ])('stores a repeated greeting without restarting bots for %s', async (_label, ownership) => {
+    Object.assign(h.state.conversation, ownership, { first_inbound_at: '2026-01-01T10:00:00Z' })
+    h.state.firstInboundUnclaimed = false
+
+    await runWebhook({ ...TEXT_MESSAGE, text: { body: 'oi' } })
+
+    expect(h.state.upsertCalls).toHaveLength(1)
+    expect(h.state.rpcCalls.map(call => call.name)).toContain('bump_conversation_on_inbound')
+    expect(h.dispatchInboundToFlows).not.toHaveBeenCalled()
+    expect(h.resumeAwaitingReply).not.toHaveBeenCalled()
+    expect(h.runAutomationsForTrigger).not.toHaveBeenCalled()
+    expect(h.dispatchInboundToAiReply).not.toHaveBeenCalled()
+    expect(h.dispatchWebhookEvent).toHaveBeenCalledWith(
+      expect.anything(), 'acc-1', 'message.received',
+      expect.objectContaining({ conversation_id: 'conv-1', text: 'oi' }),
+    )
+  })
+
+  it('also protects durable inbound processing while a human is assigned', async () => {
+    h.state.durableReceipt = true
+    Object.assign(h.state.conversation, { status: 'open', assigned_agent_id: 'agent-1' })
+
+    await runWebhook({ ...TEXT_MESSAGE, text: { body: 'oi' } })
+
+    expect(h.state.rpcCalls.map(call => call.name)).toContain('store_whatsapp_inbound_event')
+    expect(h.dispatchInboundToFlows).not.toHaveBeenCalled()
+    expect(h.resumeAwaitingReply).not.toHaveBeenCalled()
+    expect(h.dispatchInboundToAiReply).not.toHaveBeenCalled()
+    const triggers = h.runAutomationsForTrigger.mock.calls.map(call => call[0].triggerType)
+    expect(triggers).not.toContain('new_message_received')
+    expect(triggers).not.toContain('keyword_match')
+  })
+
+  it('does not route a tap on an old menu back into bots during human support', async () => {
+    Object.assign(h.state.conversation, { status: 'pending', first_inbound_at: '2026-01-01T10:00:00Z' })
+    await runWebhook({
+      ...TEXT_MESSAGE, type: 'interactive',
+      interactive: { type: 'button_reply', button_reply: { id: 'menu-1', title: 'Financeiro' } },
+    })
+    expect(h.dispatchInboundToFlows).not.toHaveBeenCalled()
+    expect(h.resumeAwaitingReply).not.toHaveBeenCalled()
+    expect(h.runAutomationsForTrigger).not.toHaveBeenCalled()
+    expect(h.dispatchInboundToAiReply).not.toHaveBeenCalled()
+  })
+
+  it('keeps normal flow routing available before human support starts', async () => {
+    Object.assign(h.state.conversation, {
+      status: 'open', assigned_agent_id: null, team_queue_enabled: false, ai_autoreply_disabled: false,
+    })
+    await runWebhook({ ...TEXT_MESSAGE, text: { body: 'oi' } })
+    expect(h.dispatchInboundToFlows).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.objectContaining({ text: 'oi' }),
+    }))
+  })
+
+  it('allows configured entry triggers again when the previous attendance was closed', async () => {
+    h.state.durableReceipt = true
+    Object.assign(h.state.conversation, {
+      status: 'closed', assigned_agent_id: 'previous-agent', ai_autoreply_disabled: true,
+    })
+    await runWebhook({ ...TEXT_MESSAGE, text: { body: 'oi' } })
+    expect(h.dispatchInboundToFlows).toHaveBeenCalled()
+  })
+
+  it('does not resume an AI session left over from a closed attendance', async () => {
+    h.state.durableReceipt = true
+    Object.assign(h.state.conversation, {
+      status: 'closed', ai_flow_context: { kind: 'flow' }, ai_autoreply_disabled: false,
+    })
+    await runWebhook({ ...TEXT_MESSAGE, text: { body: 'oi' } })
+    expect(h.dispatchInboundToFlows).toHaveBeenCalled()
+  })
+})
+
 describe('inbound webhook: automation waiting for a reply', () => {
   it('keeps an explicit flow AI session out of menus and message automations', async () => {
     Object.assign(h.state.conversation, { ai_flow_context: { kind: 'flow' }, assigned_agent_id: null, ai_autoreply_disabled: false });

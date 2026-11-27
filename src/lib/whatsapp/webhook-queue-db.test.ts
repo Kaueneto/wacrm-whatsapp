@@ -52,7 +52,8 @@ describe('durable WhatsApp webhook inbox in PostgreSQL', () => {
       create table accounts(id uuid primary key);
       create table whatsapp_config(account_id uuid references accounts(id),phone_number_id text,waba_id text);
       create table conversations(id uuid primary key,account_id uuid references accounts(id),unread_count integer default 0,
-        first_inbound_at timestamptz,last_inbound_at timestamptz,last_message_at timestamptz,last_message_text text,status text default 'open',updated_at timestamptz default now());
+        first_inbound_at timestamptz,last_inbound_at timestamptz,last_message_at timestamptz,last_message_text text,status text default 'open',updated_at timestamptz default now(),
+        assigned_agent_id uuid,team_queue_enabled boolean default false,ai_autoreply_disabled boolean default false,ai_flow_context jsonb,ai_reply_count integer default 0);
       create table messages(id uuid primary key default gen_random_uuid(),conversation_id uuid references conversations(id),sender_type text,content_type text,content_text text,
         media_url text,media_type text,message_id text,status text,created_at timestamptz,reply_to_message_id uuid,interactive_reply_id text,error_code integer,error_title text,error_details text,
         unique(conversation_id,message_id));
@@ -65,6 +66,9 @@ describe('durable WhatsApp webhook inbox in PostgreSQL', () => {
     );
     await db.exec(
       readFileSync('supabase/migrations/093_late_webhook_recovery.sql', 'utf8')
+    );
+    await db.exec(
+      readFileSync('supabase/migrations/105_inbound_attendance_lifecycle.sql', 'utf8')
     );
   });
   beforeEach(async () => {
@@ -156,6 +160,59 @@ describe('durable WhatsApp webhook inbox in PostgreSQL', () => {
       ).rows
     ).toEqual([{ advanced: false }]);
   });
+  it.each(['open', 'pending'])('preserves human ownership on inbound during %s support', async (status) => {
+    await db.query(`update conversations set status=$1,assigned_agent_id=$2,
+      team_queue_enabled=true,ai_autoreply_disabled=true,ai_reply_count=3`, [status, other]);
+    await enqueue();
+    await store(await claim());
+    expect((await db.query(`select status,assigned_agent_id,team_queue_enabled,
+      ai_autoreply_disabled,ai_reply_count from conversations`)).rows).toEqual([{
+      status, assigned_agent_id: other, team_queue_enabled: true,
+      ai_autoreply_disabled: true, ai_reply_count: 3,
+    }]);
+  });
+
+  it('releases previous attendance ownership on a fresh message after closure, including follow-up replies', async () => {
+    await db.query(`update conversations set status='closed',assigned_agent_id=$1,
+      team_queue_enabled=true,ai_autoreply_disabled=true,ai_reply_count=3,
+      ai_flow_context='{"kind":"flow"}',first_inbound_at=now()-interval '1 day'`, [other]);
+    await enqueue('reopen');
+    expect(await store(await claim())).toMatchObject({ inserted: true, first_inbound: false, history_only: false });
+    const expected = {
+      status: 'open', assigned_agent_id: null, team_queue_enabled: false,
+      ai_autoreply_disabled: false, ai_flow_context: null, ai_reply_count: 0,
+    };
+    const ownership = () => db.query(`select status,assigned_agent_id,team_queue_enabled,
+      ai_autoreply_disabled,ai_flow_context,ai_reply_count from conversations`);
+    expect((await ownership()).rows).toEqual([expected]);
+    await enqueue('reply', 'another-partition');
+    await store(await claim(), message('wamid.reply'));
+    expect((await ownership()).rows).toEqual([expected]);
+  });
+
+  it('does not release previous ownership for a delayed message after closure', async () => {
+    await db.query(`update conversations set status='closed',assigned_agent_id=$1,
+      ai_autoreply_disabled=true,team_queue_enabled=true`, [other]);
+    await enqueue();
+    expect(await store(await claim(), message('wamid.late', new Date(Date.now() - 3600000).toISOString())))
+      .toMatchObject({ history_only: true });
+    expect((await db.query(`select assigned_agent_id,ai_autoreply_disabled,team_queue_enabled from conversations`)).rows)
+      .toEqual([{ assigned_agent_id: other, ai_autoreply_disabled: true, team_queue_enabled: true }]);
+  });
+
+  it('does not release a new human owner when retrying a stored receipt', async () => {
+    await db.exec("update conversations set status='closed'");
+    await enqueue();
+    const job = await claim();
+    const inbound = message();
+    await store(job, inbound);
+    await db.query(`update conversations set status='pending',assigned_agent_id=$1,
+      ai_autoreply_disabled=true`, [other]);
+    expect(await store(job, inbound)).toMatchObject({ inserted: false, resume: true });
+    expect((await db.query('select status,assigned_agent_id,ai_autoreply_disabled from conversations')).rows)
+      .toEqual([{ status: 'pending', assigned_agent_id: other, ai_autoreply_disabled: true }]);
+  });
+
   it('stores late messages without moving the last-message summary backwards', async () => {
     const current = new Date().toISOString();
     await db.query(
