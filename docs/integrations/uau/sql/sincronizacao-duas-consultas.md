@@ -35,3 +35,36 @@ houve pagamento: os recebimentos anteriores dos testes foram estornados.
 O piloto não homologa sozinho pagamento integral, parcial, estorno e renegociação
 nas novas SQLs. A sintaxe atualizada foi conferida com o parser oficial T-SQL 2016
 instalado com o SSMS; isso não substitui execução, avaliação de plano ou teste da API.
+
+## Reversão do distrato observada em 26/11/2026 às 23:57
+
+Depois de desfazer o distrato da venda piloto, o responsável forneceu os dois resultados:
+
+| Evidência | Resultado |
+| --- | --- |
+| Chave do contrato | `900_00001_1`, preservada |
+| Cancelamento atual | `DataCancelamentoEncontrada = NULL` |
+| Distratos atuais | `[]` |
+| Parcelas abertas na conciliação | 55 chaves distintas, sem duplicidade na amostra |
+| Principal total aberto | R$ 168.485,68 |
+| Parcelas vencidas na referência de 26/11 | 1, principal de R$ 314,43, vencimento original 18/11/2026 |
+| Demais parcelas abertas | 54, principal de R$ 168.171,25 |
+| Próxima parcela | Tipo E, número 51 / geral 55, R$ 345,57 em 28/11/2026 |
+| Recebimentos atuais | `[]` |
+| Tipos de manutenção preservados | 4, 4, 13; o tipo 0 anterior deixou de aparecer |
+
+A consulta de inadimplência retornou apenas a parcela E / 1 / 1 de R$ 314,43.
+A conciliação preservou também o saldo futuro de R$ 345,57 e as demais parcelas.
+Essas duas parcelas iniciais somam os R$ 660,00 do principal dos testes anteriores,
+mas não estão ambas vencidas na referência de 26/11.
+
+Neste caso, a reversão retirou evidências atuais de cancelamento/distrato e fez a
+parcela vencida reaparecer. A integração deve registrar essa mudança, preservar o
+evento anterior de distrato no próprio histórico e reavaliar o bloqueio atual;
+não manter bloqueio eterno por ter observado um distrato em uma execução anterior.
+O tipo histórico 13 segue sem descrição homologada e não deve ser interpretado
+como cancelamento, pagamento ou reativação por si só.
+
+As coleções vazias agora retornaram `[]`, confirmando o ajuste de formato no SSMS.
+Ainda falta a validação das consultas cadastradas via API e dos outros cenários nas
+novas SQLs. Não houve envio, baixa ou alteração no UAU pela plataforma nesta análise.
