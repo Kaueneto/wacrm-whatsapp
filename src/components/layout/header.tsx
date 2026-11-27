@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, Menu, Settings as SettingsIcon, User } from "lucide-react";
+import { LogOut, Menu, User } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -50,7 +50,7 @@ import { useTranslations } from "next-intl";
 export function Header({ onOpenSidebar }: HeaderProps) {
   const t = useTranslations("Header");
   const pathname = usePathname();
-  const { account, profile, canEditSettings, signOut } = useAuth();
+  const { account, profile, signOut } = useAuth();
   const titleKey = getPageTitleKey(pathname);
 
   const initial =
@@ -128,21 +128,10 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             <User className="size-4" />
             {t("menuProfile")}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            render={
-              <Link
-                href={canEditSettings ? "/settings?tab=whatsapp" : "/settings?tab=appearance"}
-                className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"
-              />
-            }
-          >
-            <SettingsIcon className="size-4" />
-            {t("menuSettings")}
-          </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-border" />
           <DropdownMenuItem
             onClick={signOut}
-            className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"
+            className="mt-1 min-h-9 bg-red-600 px-3 font-semibold text-white hover:bg-red-700 focus:bg-red-700 focus:text-white [&_svg]:text-white"
           >
             <LogOut className="size-4" />
             {t("menuSignOut")}

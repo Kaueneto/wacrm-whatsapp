@@ -29,6 +29,7 @@ import {
   X,
   Zap,
   Loader2,
+  Settings,
 } from 'lucide-react';
 import type { AccountRole } from '@/lib/auth/roles';
 import { canAccessWorkspacePage } from '@/lib/auth/workspace-access';
@@ -103,6 +104,7 @@ const groups: NavGroup[] = [
 const organizationItem: NavItem = {
   href: '/organization', labelKey: 'organization', icon: UsersRound,
 };
+const settingsItem: NavItem = { href: '/settings', labelKey: 'settings', icon: Settings };
 
 const desktopQuery = '(min-width: 64rem)';
 const collapsePreference = 'wacrm.sidebar.collapsed';
@@ -313,7 +315,7 @@ function SidebarNavigation({
   const visibleGroups = groups
     .map((group) => ({ ...group, items: visibleItems(group.items) }))
     .filter((group) => group.items.length > 0);
-  const showOrganization = visibleItems([organizationItem]).length > 0;
+  const administrationItems = visibleItems([organizationItem, settingsItem]);
 
   return (
     <nav
@@ -348,9 +350,9 @@ function SidebarNavigation({
           ))}
         </ul>
       )}
-      {showOrganization && (
-        <ul className="border-border mt-auto border-t pt-3">
-          {renderItem(organizationItem)}
+      {administrationItems.length > 0 && (
+        <ul className="border-border mt-auto space-y-1 border-t pt-3">
+          {administrationItems.map(renderItem)}
         </ul>
       )}
     </nav>
