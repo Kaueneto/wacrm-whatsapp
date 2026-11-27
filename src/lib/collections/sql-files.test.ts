@@ -7,6 +7,7 @@ const pilot = read('teste-sincronizacao-900-00001.sql');
 function expand(sql: string) {
   return sql
     .replaceAll('<EmpresaObra>', "'900|00001'")
+    .replaceAll('<ExclusoesXml>', "N'<exclusoes />'")
     .replaceAll('<MinimoDiasAtraso>', '1')
     .replaceAll('<Pagina>', '1')
     .replaceAll('<TamanhoPagina>', '100')

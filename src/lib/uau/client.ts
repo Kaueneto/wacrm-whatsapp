@@ -240,11 +240,14 @@ export interface UauQuery {
 
 /** Read-only operations verified against the installation's 1.0/swagger. */
 export interface UauReadRequests {
+  'Empresa/ObterEmpresasAtivas': Record<string, never>;
+  'Obras/ObterObrasAtivas': Record<string, never>;
   'Atendimento/ConsultarCategoriaAtendimentoWeb': { tipo_atend: string };
   'Atendimento/ConsultarConfiguracaoAtendimentoUAUWEB': Record<string, never>;
   'Atendimento/ConsultarCategDeComentAtivas': Record<string, never>;
   'RotinasGerais/ConsultarParamConsultaGeral': { Id: number; Personalizado: 0 | 1 };
   'Pessoas/ConsultarPessoasPorCPFCNPJ': { cpf_cnpj: string; status: 0 | 1 | 2 };
+  'Pessoas/ConsultarPessoasPorCondicao': { condicaoConsultarPessoa: `cod_pes = ${number}` };
   'Pessoas/ConsultarTelefones': { Numero: number };
   'Venda/ConsultarUnidadesCompradasPorCPFCNPJ': { CpfCnpj: string };
   'Recebiveis/ParcelasECobrancasDoCliente': { Cpf: string; ValorReajustado: boolean; PesquisaPorNaoTitulares: boolean };
@@ -256,6 +259,13 @@ export interface UauReadRequests {
 export type UauRead = <K extends keyof UauReadRequests>(operation: K, payload: UauReadRequests[K]) => Promise<unknown>;
 
 export function executeUauRead<K extends keyof UauReadRequests>(connection: UauConnection, token: string, operation: K, payload: UauReadRequests[K]) {
+  if (operation === 'Pessoas/ConsultarPessoasPorCondicao') {
+    const condition = (payload as UauReadRequests['Pessoas/ConsultarPessoasPorCondicao']).condicaoConsultarPessoa;
+    if (typeof condition !== 'string' || !/^cod_pes = [1-9]\d{0,9}$/.test(condition) || Number(condition.slice(10)) > 2147483647)
+      throw new UauError('Código do cliente inválido.', 400);
+    return post(connection, operation, payload, token);
+  }
+  if (operation === 'Empresa/ObterEmpresasAtivas' || operation === 'Obras/ObterObrasAtivas') return post(connection, operation, payload, token);
   const allowed: readonly string[] = ['RotinasGerais/ConsultarParamConsultaGeral', 'Pessoas/ConsultarPessoasPorCPFCNPJ', 'Pessoas/ConsultarTelefones', 'Venda/ConsultarUnidadesCompradasPorCPFCNPJ', 'Recebiveis/ParcelasECobrancasDoCliente', 'Venda/BuscarParcelasRecebidas', 'Venda/BuscarParcelasAReceber', 'Atendimento/ConsultarAtendimentoPorPessoa'];
   if (!allowed.includes(operation) && !['Atendimento/ConsultarCategDeComentAtivas', 'Atendimento/ConsultarCategoriaAtendimentoWeb', 'Atendimento/ConsultarConfiguracaoAtendimentoUAUWEB'].includes(operation)) throw new UauError('Consulta UAU não permitida.', 400);
   return post(connection, operation, payload, token);

@@ -38,6 +38,17 @@ beforeEach(() => {
   mocks.limit.mockReturnValue({ success: true });
 });
 describe('portfolio configuration API', () => {
+  it('saves an enabled recurrence with a future execution for the authenticated organization', async () => {
+    const setup = defaultPortfolioSetup();
+    setup.schedule.enabled = true;
+    setup.queries.open.id = 144;
+    setup.queries.reconciliation.id = 145;
+    expect((await PUT(request(setup))).status).toBe(200);
+    const saved = mocks.upsert.mock.calls[0][0];
+    expect(saved.account_id).toBe('account-a');
+    expect(saved.setup.schedule.enabled).toBe(true);
+    expect(Date.parse(saved.schedule_next_at)).toBeGreaterThan(Date.now());
+  });
   it('scopes reads to the authenticated organization and disables caching', async () => {
     const response = await GET();
     expect(response.status).toBe(200);

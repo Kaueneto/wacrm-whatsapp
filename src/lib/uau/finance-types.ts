@@ -28,9 +28,11 @@ export interface UauInstallment {
   daysOverdue: number;
   description?: string | null;
   originalDueDate?: string | null;
+  extensionDate?: string | null;
   principalCents?: number | null;
   adjustmentIndex?: string | null;
   correctionCents?: number | null;
+  lateCorrectionCents?: number | null;
   interestCents?: number | null;
   lateInterestCents?: number | null;
   fineCents?: number | null;

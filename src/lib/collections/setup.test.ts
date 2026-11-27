@@ -20,7 +20,7 @@ describe('collection portfolio configuration', () => {
       },
     };
     expect(parsePortfolioSetup(previous)).toMatchObject({
-      version: 2,
+      version: 3,
       queries: {
         open: { id: 144 },
         reconciliation: { id: null },
@@ -77,7 +77,6 @@ describe('collection portfolio configuration', () => {
         { id: 'b', name: 'B', fromDay: 1 },
       ],
     },
-    { stages: [{ id: 'a', name: 'A', fromDay: 5 }] },
     { queries: { open: { id: -1, custom: 1, parameters: [] } } },
   ])('rejects ambiguous or invalid settings %j', (patch) => {
     expect(() =>

@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { validatePortfolioRows, pilotXml } from './query-validation';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  validatePortfolioRows,
+  pilotXml,
+  parsePilot,
+  validatePortfolioQueries,
+} from './query-validation';
+import { defaultPortfolioSetup } from './setup';
+const plan = vi.hoisted(() => ({ create: vi.fn(), execute: vi.fn() }));
+vi.mock('./query-plan', () => ({ createPortfolioPlan: plan.create }));
 
 function cancelledContract() {
   return {
@@ -112,5 +120,185 @@ describe('portfolio pilot evidence', () => {
       '<contratos><contrato empresa="900" obra="00001" venda="1" /></contratos>'
     );
     expect(() => pilotXml({ company: 900, work: "00001'", sale: 1 })).toThrow();
+  });
+});
+
+describe('validation of real portfolio contracts', () => {
+  const setup = () => ({
+    ...defaultPortfolioSetup(),
+    scope: {
+      mode: 'selected' as const,
+      projects: [{ company: '1', work: 'INPSG' }],
+    },
+  });
+  const contract = () => ({
+    ...cancelledContract(),
+    CodEmpresa: 1,
+    CodObra: 'INPSG',
+    Venda: 25,
+    ChaveContrato: '1_INPSG_25',
+  });
+  const discovery = () => ({
+    ...contract(),
+    TipoRegistro: 'INADIMPLENCIA',
+    EscopoParcelas: 'SOMENTE_VENCIDAS',
+  });
+  beforeEach(() => {
+    vi.resetAllMocks();
+    plan.create.mockResolvedValue({ execute: plan.execute });
+  });
+  it('automatically reconciles a real contract discovered in the configured scope', async () => {
+    plan.execute
+      .mockResolvedValueOnce([discovery()])
+      .mockResolvedValueOnce([contract()]);
+    const result = await validatePortfolioQueries('account', setup());
+    expect(plan.create).toHaveBeenCalledWith('account', setup());
+    expect(plan.execute).toHaveBeenNthCalledWith(2, 'reconciliation', {
+      contracts: [
+        expect.objectContaining({ company: 1, work: 'INPSG', sale: 25 }),
+      ],
+    });
+    expect(result.reconciliation[0].key).toBe('1_INPSG_25');
+    expect(result.persisted).toBe(false);
+  });
+  it('does not invent a sample or run reconciliation when discovery is empty', async () => {
+    plan.execute.mockResolvedValueOnce([]);
+    const result = await validatePortfolioQueries('account', setup());
+    expect(result.reconciliation).toEqual([]);
+    expect(plan.execute).toHaveBeenCalledTimes(1);
+  });
+  it('validates company 900 in a temporary scope without modifying the portfolio scope', async () => {
+    const original = setup();
+    const before = structuredClone(original);
+    plan.execute
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([cancelledContract()]);
+    const result = await validatePortfolioQueries('account', original, {
+      company: 900,
+      work: '00001',
+      sale: 1,
+    });
+    expect(plan.create).toHaveBeenCalledWith(
+      'account',
+      expect.objectContaining({
+        scope: {
+          mode: 'selected',
+          projects: [{ company: '900', work: '00001' }],
+        },
+      })
+    );
+    expect(plan.execute).toHaveBeenNthCalledWith(2, 'reconciliation', {
+      contracts: [{ company: 900, work: '00001', sale: 1 }],
+    });
+    expect(result.reconciliation[0].key).toBe('900_00001_1');
+    expect(original).toEqual(before);
+    expect(result.persisted).toBe(false);
+  });
+  it('allows read-only manual validation of an excluded project without changing exclusions', async () => {
+    const original = {
+      ...setup(),
+      excludedCompanies: ['1'],
+      excludedProjects: [{ company: '1', work: 'INPSG' }],
+    };
+    const before = structuredClone(original);
+    plan.execute.mockResolvedValueOnce([]).mockResolvedValueOnce([contract()]);
+    await validatePortfolioQueries('account', original, {
+      company: 1,
+      work: 'INPSG',
+      sale: 25,
+    });
+    expect(plan.create).toHaveBeenCalledWith(
+      'account',
+      expect.objectContaining({ excludedCompanies: [], excludedProjects: [] })
+    );
+    expect(original).toEqual(before);
+  });
+  it('chooses a discovered sale in a manual company/work scope when sale is omitted', async () => {
+    const original = setup();
+    const row = {
+      ...cancelledContract(),
+      TipoRegistro: 'INADIMPLENCIA',
+      EscopoParcelas: 'SOMENTE_VENCIDAS',
+    };
+    plan.execute
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([cancelledContract()]);
+    const result = await validatePortfolioQueries('account', original, {
+      company: 900,
+      work: '00001',
+    });
+    expect(plan.create).toHaveBeenCalledWith(
+      'account',
+      expect.objectContaining({
+        scope: {
+          mode: 'selected',
+          projects: [{ company: '900', work: '00001' }],
+        },
+      })
+    );
+    expect(plan.execute).toHaveBeenNthCalledWith(2, 'reconciliation', {
+      contracts: [
+        expect.objectContaining({ company: 900, work: '00001', sale: 1 }),
+      ],
+    });
+    expect(result.reconciliation[0].key).toBe('900_00001_1');
+    expect(original.scope.projects).toEqual([{ company: '1', work: 'INPSG' }]);
+  });
+  it('does not invent a sale when the selected company/work has no overdue results', async () => {
+    plan.execute.mockResolvedValueOnce([]);
+    const result = await validatePortfolioQueries('account', setup(), {
+      company: 900,
+      work: '00001',
+    });
+    expect(result.reconciliation).toEqual([]);
+    expect(plan.execute).toHaveBeenCalledTimes(1);
+  });
+  it('allows an omitted sale but rejects an invalid sale supplied explicitly', () => {
+    expect(parsePilot({ company: 900, work: '00001' })).toMatchObject({
+      company: 900,
+      work: '00001',
+    });
+    for (const sale of [0, -1, null, '', '1', 1.5, 2147483648])
+      expect(() => parsePilot({ company: 900, work: '00001', sale })).toThrow();
+  });
+  it('keeps exclusions active in automatic validation', async () => {
+    plan.execute.mockResolvedValueOnce([discovery()]);
+    await expect(
+      validatePortfolioQueries('account', {
+        ...setup(),
+        excludedCompanies: ['1'],
+      })
+    ).rejects.toThrow('fora do escopo');
+    expect(plan.execute).toHaveBeenCalledTimes(1);
+  });
+  it('rejects discovery queries that ignore the configured scope', async () => {
+    plan.execute.mockResolvedValueOnce([
+      { ...discovery(), CodEmpresa: 900, ChaveContrato: '900_INPSG_25' },
+    ]);
+    await expect(validatePortfolioQueries('account', setup())).rejects.toThrow(
+      'fora do escopo'
+    );
+    expect(plan.execute).toHaveBeenCalledTimes(1);
+  });
+  it('can reconcile an explicit contract even without overdue discovery results', async () => {
+    plan.execute.mockResolvedValueOnce([]).mockResolvedValueOnce([contract()]);
+    const result = await validatePortfolioQueries('account', setup(), {
+      company: 1,
+      work: 'INPSG',
+      sale: 25,
+    });
+    expect(result.reconciliation).toHaveLength(1);
+  });
+  it('does not report success for a sale that UAU could not locate', async () => {
+    plan.execute
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...contract(), ContratoLocalizado: 0 }]);
+    await expect(
+      validatePortfolioQueries('account', setup(), {
+        company: 1,
+        work: 'INPSG',
+        sale: 25,
+      })
+    ).rejects.toThrow('não foi localizada');
   });
 });

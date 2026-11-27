@@ -1,3 +1,9 @@
+import {
+  defaultPortfolioSchedule,
+  parsePortfolioSchedule,
+  type PortfolioSchedule,
+} from './schedule';
+
 export const queryKinds = ['open', 'reconciliation'] as const;
 export type QueryKind = (typeof queryKinds)[number];
 
@@ -7,8 +13,14 @@ export function isManagedPortfolioParameter(
 ): boolean {
   const names =
     kind === 'open'
-      ? ['minimodiasatraso', 'pagina', 'tamanhopagina']
-      : ['contratosxml'];
+      ? [
+          'empresaobra',
+          'exclusoesxml',
+          'minimodiasatraso',
+          'pagina',
+          'tamanhopagina',
+        ]
+      : ['empresaobra', 'exclusoesxml', 'contratosxml'];
   return names.includes(name.trim().toLowerCase());
 }
 export interface PortfolioQuery {
@@ -21,23 +33,42 @@ export interface CollectionStage {
   name: string;
   fromDay: number;
 }
+export interface ProjectKey {
+  company: string;
+  work: string;
+}
+export interface ProjectRule {
+  id: string;
+  name: string;
+  company: string;
+  work: string;
+  stages: CollectionStage[];
+}
 export interface PortfolioSetup {
-  version: 2;
+  version: 3;
   timezone: string;
   times: string[];
+  schedule: PortfolioSchedule;
   minimumDays: number;
   excludedCompanies: string[];
+  excludedProjects: ProjectKey[];
+  scope: { mode: 'all' | 'selected'; projects: ProjectKey[] };
+  projectRules: ProjectRule[];
   queries: Record<QueryKind, PortfolioQuery>;
   stages: CollectionStage[];
 }
 
 export function defaultPortfolioSetup(): PortfolioSetup {
   return {
-    version: 2,
+    version: 3,
     timezone: 'America/Sao_Paulo',
     times: ['08:00', '14:00'],
+    schedule: defaultPortfolioSchedule(),
     minimumDays: 1,
     excludedCompanies: [],
+    excludedProjects: [],
+    scope: { mode: 'all', projects: [] },
+    projectRules: [],
     queries: {
       open: { id: null, custom: 1, parameters: [] },
       reconciliation: { id: null, custom: 1, parameters: [] },
@@ -51,7 +82,7 @@ export function defaultPortfolioSetup(): PortfolioSetup {
   };
 }
 
-/** Only a draft can be saved in this release; it cannot start jobs or messages. */
+/** Normalize saved settings, including older configurations without recurrence. */
 export function parsePortfolioSetup(value: unknown): PortfolioSetup {
   const fail = (message: string): never => {
     throw new Error(message);
@@ -71,8 +102,32 @@ export function parsePortfolioSetup(value: unknown): PortfolioSetup {
       },
     });
   }
+  if ((value as { version?: number }).version === 2) {
+    const legacy = value as Record<string, unknown>;
+    const queries = legacy.queries as PortfolioSetup['queries'];
+    const literal =
+      queries?.open?.parameters?.find(
+        (p) => p.name.toLowerCase() === 'empresaobra'
+      )?.value ?? '';
+    const projects = literal
+      .replace(/^N?'/, '')
+      .replace(/'$/, '')
+      .split(',')
+      .filter(Boolean)
+      .map((pair) => {
+        const [company, work] = pair.split('|');
+        return { company, work };
+      });
+    return parsePortfolioSetup({
+      ...legacy,
+      version: 3,
+      excludedProjects: [],
+      projectRules: [],
+      scope: { mode: projects.length ? 'selected' : 'all', projects },
+    });
+  }
   const input = value as PortfolioSetup;
-  if (input.version !== 2)
+  if (input.version !== 3)
     return fail('Versão de configuração não reconhecida.');
   if (typeof input.timezone !== 'string' || input.timezone.length > 80)
     return fail('Informe um fuso horário válido.');
@@ -139,10 +194,77 @@ export function parsePortfolioSetup(value: unknown): PortfolioSetup {
       );
     return { id: stage.id, name: stage.name.trim(), fromDay: stage.fromDay };
   });
-  if (stages[0].fromDay > input.minimumDays)
-    return fail(
-      'A primeira etapa deve começar até o atraso mínimo da carteira.'
-    );
+  const project = (value: ProjectKey): ProjectKey => {
+    if (
+      !value ||
+      typeof value.company !== 'string' ||
+      !/^[1-9]\d{0,9}$/.test(value.company) ||
+      Number(value.company) > 2147483647 ||
+      typeof value.work !== 'string' ||
+      !/^[A-Za-z0-9_.-]{1,50}$/.test(value.work)
+    )
+      return fail(
+        'Confira o código da empresa e da obra. Preserve os zeros da obra.'
+      );
+    return { company: value.company, work: value.work };
+  };
+  if (
+    !input.scope ||
+    !['all', 'selected'].includes(input.scope.mode) ||
+    !Array.isArray(input.scope.projects) ||
+    input.scope.projects.length > 500 ||
+    !Array.isArray(input.excludedProjects) ||
+    input.excludedProjects.length > 1000 ||
+    !Array.isArray(input.projectRules) ||
+    input.projectRules.length > 500
+  )
+    return fail('Configuração de empreendimentos inválida.');
+  const uniqueProjects = (items: ProjectKey[]) => {
+    const parsed = items.map(project);
+    if (
+      new Set(parsed.map((p) => `${p.company}|${p.work.toUpperCase()}`))
+        .size !== parsed.length
+    )
+      return fail('Há empresas/obras repetidas.');
+    return parsed;
+  };
+  const scope = {
+    mode: input.scope.mode,
+    projects: uniqueProjects(input.scope.projects),
+  };
+  if (scope.mode === 'selected' && scope.projects.length === 0)
+    return fail('Selecione ao menos uma empresa e obra.');
+  const excludedProjects = uniqueProjects(input.excludedProjects);
+  const targets = new Set<string>(),
+    ruleIds = new Set<string>();
+  const projectRules = input.projectRules.map((rule) => {
+    const key = project(rule);
+    if (
+      typeof rule.id !== 'string' ||
+      !/^[A-Za-z0-9_-]{1,64}$/.test(rule.id) ||
+      ruleIds.has(rule.id) ||
+      typeof rule.name !== 'string' ||
+      !rule.name.trim() ||
+      rule.name.length > 80 ||
+      targets.has(`${key.company}|${key.work.toUpperCase()}`)
+    )
+      return fail(
+        'Cada empresa/obra deve ter uma única régua, com nome e identificador válidos.'
+      );
+    targets.add(`${key.company}|${key.work.toUpperCase()}`);
+    ruleIds.add(rule.id);
+    const parsed = parsePortfolioSetup({
+      ...input,
+      stages: rule.stages,
+      projectRules: [],
+    });
+    return {
+      ...key,
+      id: rule.id,
+      name: rule.name.trim(),
+      stages: parsed.stages,
+    };
+  });
   const queries = {} as PortfolioSetup['queries'];
   for (const kind of queryKinds) {
     const query = input.queries?.[kind];
@@ -175,15 +297,63 @@ export function parsePortfolioSetup(value: unknown): PortfolioSetup {
     });
     queries[kind] = { id: query.id, custom: query.custom, parameters };
   }
+  const schedule = parsePortfolioSchedule(
+    input.schedule,
+    input.timezone,
+    input.times
+  );
+  if (schedule.enabled && (!queries.open.id || !queries.reconciliation.id))
+    return fail(
+      'Configure as duas consultas do UAU antes de ativar o agendamento.'
+    );
   return {
-    version: 2,
+    version: 3,
     timezone: input.timezone,
     times: [...input.times].sort(),
+    schedule,
     minimumDays: input.minimumDays,
     excludedCompanies: [...new Set(input.excludedCompanies)],
+    excludedProjects,
+    scope,
+    projectRules,
     stages,
     queries,
   };
+}
+
+export function isExcludedProject(
+  setup: PortfolioSetup,
+  company: string,
+  work: string
+): boolean {
+  return (
+    setup.excludedCompanies.includes(company) ||
+    setup.excludedProjects.some(
+      (p) =>
+        p.company === company && p.work.toUpperCase() === work.toUpperCase()
+    )
+  );
+}
+export function stagesForProject(
+  setup: PortfolioSetup,
+  company: string,
+  work: string
+): CollectionStage[] {
+  return (
+    setup.projectRules.find(
+      (rule) =>
+        rule.company === company &&
+        rule.work.toUpperCase() === work.toUpperCase()
+    )?.stages ?? setup.stages
+  );
+}
+export function scopeLiteral(setup: PortfolioSetup): string {
+  return setup.scope.mode === 'all'
+    ? "'*'"
+    : `'${setup.scope.projects.map((p) => `${p.company}|${p.work}`).join(',')}'`;
+}
+export function exclusionsLiteral(setup: PortfolioSetup): string {
+  return `N'<exclusoes>${setup.excludedCompanies.map((company) => `<empresa codigo="${company}" />`).join('')}${setup.excludedProjects.map((p) => `<obra empresa="${p.company}" codigo="${p.work}" />`).join('')}</exclusoes>'`;
 }
 
 export function stageForDelay(

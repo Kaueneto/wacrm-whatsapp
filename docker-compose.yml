@@ -1,6 +1,15 @@
 name: wacrm
 
 services:
+  collection-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ['npm', 'run', 'worker:collections']
+    env_file:
+      - .env.local
+    restart: unless-stopped
+    stop_grace_period: 30m
   campaign-worker:
     build:
       context: .

@@ -1,13 +1,14 @@
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
 import { parsePortfolioSetup } from '@/lib/collections/setup';
+import { nextPortfolioSync } from '@/lib/collections/schedule';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const headers = { 'Cache-Control': 'no-store' };
 const storageError = (code: string | undefined) =>
   Response.json(
     {
-      error: ['42P01', 'PGRST205'].includes(code ?? '')
-        ? 'A configuração da carteira ainda não está disponível no banco. Aplique a migration 106.'
+      error: ['42P01', '42703', 'PGRST204', 'PGRST205'].includes(code ?? '')
+        ? 'A configuração da carteira ainda não está disponível no banco. Confira as migrations 106 e 110.'
         : 'Não foi possível acessar a configuração da carteira. Tente novamente.',
     },
     { status: 503, headers }
@@ -53,6 +54,9 @@ export async function PUT(request: Request) {
       .upsert({
         account_id: accountId,
         setup,
+        ...(setup.schedule.enabled
+          ? { schedule_next_at: nextPortfolioSync(setup), schedule_error: null }
+          : {}),
         status: 'draft',
         updated_by: userId,
         updated_at: new Date().toISOString(),

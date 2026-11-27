@@ -49,6 +49,7 @@ describe('detailed UAU receivables', () => {
       discountCents: 0,
       adjustmentIndex: 'IGPM',
       originalDueDate: '2026-11-01',
+      extensionDate: '2026-11-20',
       dueDate: '2026-11-01',
       daysOverdue: 23,
     });

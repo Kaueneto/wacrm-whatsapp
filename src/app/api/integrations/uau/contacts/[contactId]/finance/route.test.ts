@@ -38,8 +38,13 @@ vi.mock('@/lib/uau/contact-link-store', () => ({
 import { GET, POST, PUT, DELETE } from './route';
 import { uauFinanceCache } from '@/lib/uau/finance-cache';
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption';
+import { createUauLinkSuggestion } from '@/lib/uau/link-suggestion';
 const contactId = '00000000-0000-0000-0000-000000000001';
 const context = () => ({ params: Promise.resolve({ contactId }) });
+const suggestionToken = (patch = {}) => createUauLinkSuggestion({
+  accountId: 'account-a', contactId, revision: 'revision-1',
+  personId: 7, personName: 'Cliente', contractKey: '900_00001_1', ...patch,
+});
 const request = (body?: object) =>
   new Request(
     'http://localhost/api/integrations/uau/contacts/' + contactId + '/finance',
@@ -73,6 +78,53 @@ beforeEach(() => {
   });
 });
 describe('contact UAU finance access', () => {
+  it('shows the origin suggestion without saving a link or loading financial data', async () => {
+    const response = await POST(request({ action: 'suggestion', token: suggestionToken() }), context());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ suggestion: {
+      personId: 7, personName: 'Cliente', contractKey: '900_00001_1',
+    } });
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(mocks.find).not.toHaveBeenCalled();
+  });
+
+  it('does not reveal a suggestion for a different contact or changed connection', async () => {
+    for (const patch of [{ contactId: 'other-contact' }, { accountId: 'other-account' }, { revision: 'old' }]) {
+      const response = await POST(request({ action: 'suggestion', token: suggestionToken(patch) }), context());
+      expect(response.status).toBe(409);
+    }
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it('only suggests the origin customer after verifying the entered CPF', async () => {
+    mocks.find.mockResolvedValue([{ id: 7, name: 'Cliente' }, { id: 8, name: 'Outro cadastro' }]);
+    const response = await POST(request({ action: 'lookup', cpf: '52998224725', suggestionToken: suggestionToken() }), context());
+    expect(await response.json()).toEqual({ candidates: [{ id: 7, name: 'Cliente' }] });
+    expect(mocks.find).toHaveBeenCalledWith(mocks.read, '52998224725');
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it('saves the suggested link only on explicit confirmation with a matching CPF and person', async () => {
+    const token = suggestionToken();
+    const response = await PUT(request({ cpf: '52998224725', personId: 7, suggestionToken: token }), context());
+    expect(response.status).toBe(200);
+    expect(mocks.save).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ person_id: 7, contact_id: contactId }), 'agent-a');
+    expect(mocks.load).not.toHaveBeenCalled();
+    mocks.save.mockClear();
+    expect((await PUT(request({ cpf: '52998224725', personId: 8, suggestionToken: token }), context())).status).toBe(409);
+    mocks.find.mockResolvedValue([{ id: 8, name: 'Outro cliente' }]);
+    expect((await PUT(request({ cpf: '52998224725', personId: 7, suggestionToken: token }), context())).status).toBe(409);
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite a different link created while the suggestion was open', async () => {
+    mocks.get.mockResolvedValue({ person_id: 8, connection_revision: 'revision-1' });
+    const response = await PUT(request({ cpf: '52998224725', personId: 7, suggestionToken: suggestionToken() }), context());
+    expect(response.status).toBe(409);
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
   it('checks role and RLS-scoped contact before exposing the saved identity', async () => {
     const response = await GET(request(), context());
     expect(mocks.role).toHaveBeenCalledWith('agent');

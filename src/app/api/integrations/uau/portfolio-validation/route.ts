@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     let setup, pilot;
     try {
       setup = parsePortfolioSetup(body?.setup);
-      pilot = parsePilot(body?.pilot);
+      pilot = body?.pilot === undefined ? undefined : parsePilot(body.pilot);
     } catch (error) {
       return Response.json(
         {

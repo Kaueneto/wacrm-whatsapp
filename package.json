@@ -39,6 +39,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "worker:campaigns": "tsx scripts/campaign-worker.ts",
+    "worker:collections": "tsx scripts/collection-worker.ts",
+    "worker:collections:check": "tsx scripts/collection-worker.ts --check",
     "worker:check": "tsx scripts/campaign-worker.ts --check",
     "worker:webhooks": "tsx scripts/whatsapp-webhook-worker.ts",
     "worker:webhooks:check": "tsx scripts/whatsapp-webhook-worker.ts --check"

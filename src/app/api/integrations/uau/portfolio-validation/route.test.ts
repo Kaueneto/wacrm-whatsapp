@@ -38,6 +38,26 @@ beforeEach(() => {
   });
 });
 describe('portfolio query validation endpoint', () => {
+  it('allows automatic selection without a development pilot', async () => {
+    const response = await POST(request({ pilot: undefined }));
+    expect(response.status).toBe(200);
+    expect(mocks.validate).toHaveBeenCalledExactlyOnceWith(
+      'account-a',
+      defaultPortfolioSetup(),
+      undefined
+    );
+  });
+  it('accepts a company/work pilot without requiring a sale', async () => {
+    const response = await POST(
+      request({ pilot: { company: 900, work: '00001' } })
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.validate).toHaveBeenCalledWith(
+      'account-a',
+      defaultPortfolioSetup(),
+      expect.objectContaining({ company: 900, work: '00001' })
+    );
+  });
   it('uses the authenticated organization and returns a no-store read-only result', async () => {
     const response = await POST(request({ accountId: 'account-b' }));
     expect(response.status).toBe(200);

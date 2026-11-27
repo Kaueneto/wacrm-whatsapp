@@ -24,6 +24,7 @@ import {
   removeContactUauLink,
   saveContactUauLink,
 } from '@/lib/uau/contact-link-store';
+import { readUauLinkSuggestion } from '@/lib/uau/link-suggestion';
 
 export const runtime = 'nodejs';
 type Context = { params: Promise<{ contactId: string }> };
@@ -123,6 +124,13 @@ export async function POST(request: Request, context: Context) {
     const auth = await scope(context);
     if ('limited' in auth) return auth.limited;
     const body = await request.json().catch(() => null);
+    if (body?.action === 'suggestion') {
+      const suggestion = readUauLinkSuggestion(body.token, {
+        accountId: auth.accountId, contactId: auth.contactId,
+        revision: await getUauConnectionRevision(auth.accountId),
+      });
+      return respond({ suggestion });
+    }
     if (body?.action === 'refresh' || body?.action === 'select') {
       if (
         body.contractKey !== undefined &&
@@ -134,9 +142,13 @@ export async function POST(request: Request, context: Context) {
     if (body?.action !== 'lookup')
       throw new UauError('Consulta inválida.', 400);
     const cpf = normalizeCpf(body.cpf);
-    return await withUauReadSession(auth.accountId, async (read) =>
-      respond({ candidates: await findUauCustomers(read, cpf) })
-    );
+    return await withUauReadSession(auth.accountId, async (read, revision) => {
+      const suggestion = body.suggestionToken === undefined ? null : readUauLinkSuggestion(body.suggestionToken, {
+        accountId: auth.accountId, contactId: auth.contactId, revision,
+      });
+      const candidates = await findUauCustomers(read, cpf);
+      return respond({ candidates: suggestion ? candidates.filter(person => person.id === suggestion.personId) : candidates });
+    });
   } catch (error) {
     return failed(error);
   }
@@ -150,6 +162,16 @@ export async function PUT(request: Request, context: Context) {
     if (!Number.isSafeInteger(body?.personId) || body.personId < 1)
       throw new UauError('Selecione o cadastro do cliente.', 400);
     return await withUauReadSession(auth.accountId, async (read, revision) => {
+      if (body.suggestionToken !== undefined) {
+        const suggestion = readUauLinkSuggestion(body.suggestionToken, {
+          accountId: auth.accountId, contactId: auth.contactId, revision,
+        });
+        if (body.personId !== suggestion.personId)
+          throw new UauError('O cadastro selecionado não corresponde à sugestão.', 409);
+        const existing = await getContactUauLink(auth.accountId, auth.contactId);
+        if (existing && existing.connection_revision === revision && existing.person_id !== suggestion.personId)
+          throw new UauError('Este contato já tem outro vínculo UAU. Atualize o painel e confira antes de alterar.', 409);
+      }
       const person = (await findUauCustomers(read, cpf)).find(
         (person) => person.id === body.personId
       );

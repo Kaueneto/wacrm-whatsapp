@@ -1,20 +1,7 @@
 /** Fictional examples, never read by a sync or a sending workflow. */
-export interface PortfolioExample {
-  id: string;
-  customer: string;
-  company: string;
-  project: string;
-  work: string;
-  sale: number;
-  unit: string;
-  delay: number;
-  principalCents: number;
-  confirmedPrincipalCents: number;
-  installments: number;
-  operation: 'contact' | 'negotiation' | 'promise' | 'legal' | 'paid';
-  agent: string | null;
-}
-export const portfolioExamples: PortfolioExample[] = [
+import type { PortfolioCard } from './portfolio-types';
+export type PortfolioExample = PortfolioCard;
+export const portfolioExamples: PortfolioCard[] = [
   {
     id: 'example-1',
     customer: 'Marina Almeida',

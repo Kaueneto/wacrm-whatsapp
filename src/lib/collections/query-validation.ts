@@ -1,18 +1,18 @@
 import { uauRows } from '@/lib/uau/finance-normalize';
-import { normalizeQueryParameters } from '@/lib/uau/query-parameters-normalize';
-import {
-  withUauReadSession,
-  runSavedUauQuery,
-  getUauConnectionRevision,
-} from '@/lib/uau/connection-store';
 import { UauError } from '@/lib/uau/client';
-import { queryKinds, type PortfolioSetup, type QueryKind } from './setup';
+import {
+  isExcludedProject,
+  type PortfolioSetup,
+  type QueryKind,
+} from './setup';
+import { createPortfolioPlan } from './query-plan';
 
 export interface PilotContract {
   company: number;
   work: string;
   sale: number;
 }
+export type PilotSelection = Omit<PilotContract, 'sale'> & { sale?: number };
 export interface PortfolioValidationRow {
   key: string;
   company: number;
@@ -38,12 +38,12 @@ export interface PortfolioValidationResult {
 const fail = (message: string): never => {
   throw new UauError(message, 422);
 };
-export function parsePilot(value: unknown): PilotContract {
+export function parsePilot(value: unknown): PilotSelection {
   if (!value || typeof value !== 'object')
-    return fail('Informe empresa, obra e venda do teste.');
-  const pilot = value as PilotContract;
+    return fail('Informe empresa e obra do teste.');
+  const pilot = value as PilotSelection;
   if (
-    ![pilot.company, pilot.sale].every(
+    ![pilot.company, ...(pilot.sale === undefined ? [] : [pilot.sale])].every(
       (number) =>
         Number.isSafeInteger(number) && number > 0 && number <= 2147483647
     ) ||
@@ -56,6 +56,8 @@ export function parsePilot(value: unknown): PilotContract {
 
 export function pilotXml(pilot: PilotContract): string {
   const valid = parsePilot(pilot);
+  if (valid.sale === undefined)
+    return fail('Informe a venda para montar a consulta de conciliação.');
   return `<contratos><contrato empresa="${valid.company}" obra="${valid.work}" venda="${valid.sale}" /></contratos>`;
 }
 
@@ -210,99 +212,73 @@ export function validatePortfolioRows(
 export async function validatePortfolioQueries(
   accountId: string,
   setup: PortfolioSetup,
-  pilot: PilotContract
+  pilot?: PilotSelection
 ): Promise<PortfolioValidationResult> {
-  const valid = parsePilot(pilot);
-  const plan = await withUauReadSession(accountId, async (read, revision) => {
-    const planned = [];
-    let scope: string | null = null;
-    for (const kind of queryKinds) {
-      const query = setup.queries[kind];
-      if (!query.id)
-        return fail('Cadastre os códigos das duas consultas antes de testar.');
-      const definitions = normalizeQueryParameters(
-        await read('RotinasGerais/ConsultarParamConsultaGeral', {
-          Id: query.id,
-          Personalizado: query.custom,
-        })
-      );
-      const required =
-        kind === 'open'
-          ? ['empresaobra', 'minimodiasatraso', 'pagina', 'tamanhopagina']
-          : ['empresaobra', 'contratosxml'];
-      if (
-        required.some(
-          (name) =>
-            !definitions.some(
-              (parameter) => parameter.name.toLowerCase() === name
-            )
-        )
-      )
-        return fail(
-          `Confira os parâmetros da consulta de ${kind === 'open' ? 'inadimplência' : 'conciliação'}. Use o SQL atualizado.`
-        );
-      const supplied = new Map(
-        query.parameters.map((parameter) => [
-          parameter.name.toLowerCase(),
-          parameter.value,
-        ])
-      );
-      const currentScope = supplied.get('empresaobra')?.trim();
-      if (!currentScope || (scope !== null && scope !== currentScope))
-        return fail(
-          'Preencha EmpresaObra com o mesmo escopo nas duas consultas.'
-        );
-      scope = currentScope;
-      const automatic: Record<string, string> =
-        kind === 'open'
-          ? {
-              minimodiasatraso: String(setup.minimumDays),
-              pagina: '1',
-              tamanhopagina: '100',
-            }
-          : { contratosxml: `N'${pilotXml(valid)}'` };
-      const parameters = definitions.flatMap((parameter) => {
-        const value =
-          automatic[parameter.name.toLowerCase()] ??
-          supplied.get(parameter.name.toLowerCase());
-        if (!value?.trim())
-          return fail(`Preencha o parâmetro ${parameter.name}.`);
-        return [parameter.name, value];
-      });
-      planned.push({
-        kind,
-        query: {
-          Id: query.id,
-          Personalizado: query.custom,
-          Parameters: parameters,
+  const selection = pilot === undefined ? undefined : parsePilot(pilot);
+  let valid: PilotContract | undefined =
+    selection?.sale === undefined
+      ? undefined
+      : { ...selection, sale: selection.sale };
+  // A manual check is read-only and uses its own temporary scope. It must not
+  // change which companies or works are imported into the saved portfolio.
+  const validationSetup: PortfolioSetup = selection
+    ? {
+        ...setup,
+        scope: {
+          mode: 'selected',
+          projects: [
+            { company: String(selection.company), work: selection.work },
+          ],
         },
-      });
-    }
-    return { revision, planned };
-  });
-  if ((await getUauConnectionRevision(accountId)) !== plan.revision)
-    return fail('A conexão UAU mudou. Repita a validação.');
+        excludedCompanies: [],
+        excludedProjects: [],
+      }
+    : setup;
+  const inScope = (contract: PilotContract) =>
+    !isExcludedProject(
+      validationSetup,
+      String(contract.company),
+      contract.work
+    ) &&
+    (validationSetup.scope.mode === 'all' ||
+      validationSetup.scope.projects.some(
+        (project) =>
+          project.company === String(contract.company) &&
+          project.work.toUpperCase() === contract.work.toUpperCase()
+      ));
+  const plan = await createPortfolioPlan(accountId, validationSetup);
   const result: PortfolioValidationResult = {
     discovery: [],
     reconciliation: [],
     possiblyMorePages: false,
     persisted: false,
   };
-  for (const item of plan.planned) {
-    const raw = await runSavedUauQuery(accountId, item.query);
-    if ((await getUauConnectionRevision(accountId)) !== plan.revision)
-      return fail('A conexão UAU mudou durante o teste. Repita a validação.');
-    const rows = validatePortfolioRows(raw, item.kind, setup.minimumDays);
-    if (item.kind === 'open') {
+  for (const kind of ['open', 'reconciliation'] as const) {
+    if (kind === 'reconciliation' && !valid) break;
+    const raw = await plan.execute(
+      kind,
+      kind === 'open' ? { page: 1, size: 100 } : { contracts: [valid!] }
+    );
+    const rows = validatePortfolioRows(raw, kind, setup.minimumDays);
+    if (kind === 'open') {
+      if (rows.some((row) => !inScope(row)))
+        return fail(
+          'A consulta de inadimplência retornou contratos fora do escopo. Confira o filtro EmpresaObra no SQL cadastrado no UAU.'
+        );
       result.discovery = rows;
       result.possiblyMorePages = rows.length === 100;
+      valid ??= rows[0];
     } else {
       if (
         rows.length !== 1 ||
-        rows[0].key !== `${valid.company}_${valid.work}_${valid.sale}`
+        rows[0].key !== `${valid!.company}_${valid!.work}_${valid!.sale}`
       )
         return fail(
           'A conciliação não retornou exatamente o contrato solicitado. Confira o escopo EmpresaObra.'
+        );
+      if (!rows[0].contractFound)
+        return fail(
+          'A venda informada não foi localizada no UAU para essa empresa e obra. Confira o número da venda ou use a seleção automática.'
         );
       result.reconciliation = rows;
     }

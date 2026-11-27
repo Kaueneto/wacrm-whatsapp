@@ -2,13 +2,31 @@
 -- SQL Server 2016+ para FOR JSON PATH; lista de contratos recebida em XML.
 -- Uma linha por contrato. Colecoes JSON evitam multiplicar valores por unidade/recebimento.
 -- Valores base e componentes confirmados sao separados. Nao somar totais repetidos.
+-- EmpresaObra = '*' abrange todas as obras da base acessivel a esta consulta.
+-- ExclusoesXml (texto) e obrigatorio; sem exclusoes: N'<exclusoes />'.
 -- Parametros: EmpresaObra e ContratosXml (lista dos contratos acompanhados).
 -- Retorna uma linha mesmo que a venda nao esteja mais nas fontes atuais.
 -- Sem corte por data: inclui saldos futuros e permite detectar recebimentos removidos por estorno.
 ;WITH Configuracao AS (
     SELECT CAST(GETDATE() AS date) AS DataReferencia, GETDATE() AS DataHoraConsulta
+), Exclusoes AS (
+    SELECT CAST(<ExclusoesXml> AS xml) AS Lista
+), EscopoBruto AS (
+    SELECT O.Empresa_obr AS Empresa, O.Cod_obr AS Obra
+    FROM Obras AS O WHERE CAST(<EmpresaObra> AS varchar(max)) = '*'
+    UNION
+    SELECT E.Empresa, E.Obra
+    FROM fn_ListEmpObr(CASE WHEN CAST(<EmpresaObra> AS varchar(max)) = '*'
+        THEN '0|00000' ELSE CAST(<EmpresaObra> AS varchar(max)) END, ',') AS E
+    WHERE CAST(<EmpresaObra> AS varchar(max)) <> '*'
 ), Escopo AS (
-    SELECT DISTINCT Empresa, Obra FROM fn_ListEmpObr(<EmpresaObra>, ',')
+    SELECT DISTINCT E.Empresa, E.Obra FROM EscopoBruto AS E
+    CROSS JOIN Exclusoes AS X
+    WHERE NOT EXISTS (SELECT 1 FROM X.Lista.nodes('/exclusoes/empresa') AS N(Item)
+        WHERE N.Item.value('(@codigo)[1]', 'int') = E.Empresa)
+      AND NOT EXISTS (SELECT 1 FROM X.Lista.nodes('/exclusoes/obra') AS N(Item)
+        WHERE N.Item.value('(@empresa)[1]', 'int') = E.Empresa
+          AND N.Item.value('(@codigo)[1]', 'varchar(50)') = E.Obra)
 ), ListaContratos AS (
     SELECT CAST(<ContratosXml> AS xml) AS Lista
 ), Solicitados AS (

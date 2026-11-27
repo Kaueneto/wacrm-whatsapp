@@ -175,7 +175,8 @@ export function phones(input: unknown): UauPhone[] {
     if (!phone) throw badResponse();
     return {
       number: ddd ? `(${ddd}) ${phone}` : phone,
-      complement: complement && complement.toLowerCase() !== 'null' ? complement : null,
+      complement:
+        complement && complement.toLowerCase() !== 'null' ? complement : null,
       type: integer(field(row, 'Tipo')),
       primary: integer(field(row, 'Principal')) === 1,
     };
@@ -205,9 +206,18 @@ export function contracts(input: unknown): UauContract[] {
       .join(' · ');
     if (unit && !contract.units.includes(unit)) contract.units.push(unit);
     if (unit) {
-      const detail = { description: text(field(row, 'DescPerson')), identifier: text(field(row, 'IdentificadorUnid')) };
+      const detail = {
+        description: text(field(row, 'DescPerson')),
+        identifier: text(field(row, 'IdentificadorUnid')),
+      };
       contract.unitDetails ??= [];
-      if (!contract.unitDetails.some(item => item.description === detail.description && item.identifier === detail.identifier))
+      if (
+        !contract.unitDetails.some(
+          (item) =>
+            item.description === detail.description &&
+            item.identifier === detail.identifier
+        )
+      )
         contract.unitDetails.push(detail);
     }
     grouped.set(key, contract);
@@ -360,12 +370,14 @@ export function detailedOpenInstallments(
           optionalText(field(row, 'Descr_ctp')),
         dueDate,
         originalDueDate,
+        extensionDate: date(field(row, 'DataPror_prc')),
         paidDate: null,
         // Keep the ERP's calculated amount verbatim. Never add charges to it again.
         amountCents: cents(field(row, 'ValorReaj')),
         principalCents: cents(field(row, 'Valor_prc')),
         adjustmentIndex: optionalText(field(row, 'IdxReaj_prc')),
         correctionCents: optionalCents(field(row, 'vlrCorrecao')),
+        lateCorrectionCents: optionalCents(field(row, 'vlrCorrecaoAtra')),
         interestCents: optionalCents(field(row, 'vlrJurosParcela')),
         lateInterestCents: optionalCents(field(row, 'vlrJurosAtraso')),
         fineCents: optionalCents(field(row, 'ValorMulta')),

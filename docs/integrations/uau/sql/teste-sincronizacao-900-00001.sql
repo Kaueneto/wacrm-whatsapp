@@ -1,16 +1,33 @@
--- TESTE DIRETO NO SSMS. Executar inteiro: dois resultados, sem editar parametros.
--- Empresa 900 / obra 00001 / conciliacao da venda 1. Apenas leitura.
+-- TESTE DIRETO NO SSMS. Dois resultados, sem editar parametros. Apenas leitura.
 -- CARTEIRA OCTA v1 - leitura para homologacao no UAU. Nao altera dados nem envia mensagens.
 -- SQL Server 2016+ para FOR JSON PATH; lista de contratos recebida em XML.
 -- Uma linha por contrato. Colecoes JSON evitam multiplicar valores por unidade/recebimento.
 -- Valores base e componentes confirmados sao separados. Nao somar totais repetidos.
+-- EmpresaObra = '*' abrange todas as obras da base acessivel a esta consulta.
+-- ExclusoesXml (texto) e obrigatorio; sem exclusoes: N'<exclusoes />'.
 -- Parametros: EmpresaObra, MinimoDiasAtraso, Pagina (inicia em 1), TamanhoPagina.
 -- Inclui evidencias de bloqueio: distratados/cancelados NAO sao liberados para cobranca.
 ;WITH Configuracao AS (
     SELECT CAST(GETDATE() AS date) AS DataReferencia, GETDATE() AS DataHoraConsulta,
         CAST(1 AS int) AS MinimoDiasAtraso
+), Exclusoes AS (
+    SELECT CAST(N'<exclusoes />' AS xml) AS Lista
+), EscopoBruto AS (
+    SELECT O.Empresa_obr AS Empresa, O.Cod_obr AS Obra
+    FROM Obras AS O WHERE CAST('900|00001' AS varchar(max)) = '*'
+    UNION
+    SELECT E.Empresa, E.Obra
+    FROM fn_ListEmpObr(CASE WHEN CAST('900|00001' AS varchar(max)) = '*'
+        THEN '0|00000' ELSE CAST('900|00001' AS varchar(max)) END, ',') AS E
+    WHERE CAST('900|00001' AS varchar(max)) <> '*'
 ), Escopo AS (
-    SELECT DISTINCT Empresa, Obra FROM fn_ListEmpObr('900|00001', ',')
+    SELECT DISTINCT E.Empresa, E.Obra FROM EscopoBruto AS E
+    CROSS JOIN Exclusoes AS X
+    WHERE NOT EXISTS (SELECT 1 FROM X.Lista.nodes('/exclusoes/empresa') AS N(Item)
+        WHERE N.Item.value('(@codigo)[1]', 'int') = E.Empresa)
+      AND NOT EXISTS (SELECT 1 FROM X.Lista.nodes('/exclusoes/obra') AS N(Item)
+        WHERE N.Item.value('(@empresa)[1]', 'int') = E.Empresa
+          AND N.Item.value('(@codigo)[1]', 'varchar(50)') = E.Obra)
 ), Alvos AS (
     SELECT C.Empresa_prc AS CodEmpresa, C.Obra_prc AS CodObra, C.NumVend_prc AS Venda
     FROM ContasReceber AS C
@@ -95,13 +112,31 @@ ORDER BY A.CodEmpresa, A.CodObra, A.Venda;
 -- SQL Server 2016+ para FOR JSON PATH; lista de contratos recebida em XML.
 -- Uma linha por contrato. Colecoes JSON evitam multiplicar valores por unidade/recebimento.
 -- Valores base e componentes confirmados sao separados. Nao somar totais repetidos.
+-- EmpresaObra = '*' abrange todas as obras da base acessivel a esta consulta.
+-- ExclusoesXml (texto) e obrigatorio; sem exclusoes: N'<exclusoes />'.
 -- Parametros: EmpresaObra e ContratosXml (lista dos contratos acompanhados).
 -- Retorna uma linha mesmo que a venda nao esteja mais nas fontes atuais.
 -- Sem corte por data: inclui saldos futuros e permite detectar recebimentos removidos por estorno.
 ;WITH Configuracao AS (
     SELECT CAST(GETDATE() AS date) AS DataReferencia, GETDATE() AS DataHoraConsulta
+), Exclusoes AS (
+    SELECT CAST(N'<exclusoes />' AS xml) AS Lista
+), EscopoBruto AS (
+    SELECT O.Empresa_obr AS Empresa, O.Cod_obr AS Obra
+    FROM Obras AS O WHERE CAST('900|00001' AS varchar(max)) = '*'
+    UNION
+    SELECT E.Empresa, E.Obra
+    FROM fn_ListEmpObr(CASE WHEN CAST('900|00001' AS varchar(max)) = '*'
+        THEN '0|00000' ELSE CAST('900|00001' AS varchar(max)) END, ',') AS E
+    WHERE CAST('900|00001' AS varchar(max)) <> '*'
 ), Escopo AS (
-    SELECT DISTINCT Empresa, Obra FROM fn_ListEmpObr('900|00001', ',')
+    SELECT DISTINCT E.Empresa, E.Obra FROM EscopoBruto AS E
+    CROSS JOIN Exclusoes AS X
+    WHERE NOT EXISTS (SELECT 1 FROM X.Lista.nodes('/exclusoes/empresa') AS N(Item)
+        WHERE N.Item.value('(@codigo)[1]', 'int') = E.Empresa)
+      AND NOT EXISTS (SELECT 1 FROM X.Lista.nodes('/exclusoes/obra') AS N(Item)
+        WHERE N.Item.value('(@empresa)[1]', 'int') = E.Empresa
+          AND N.Item.value('(@codigo)[1]', 'varchar(50)') = E.Obra)
 ), ListaContratos AS (
     SELECT CAST(N'<contratos><contrato empresa="900" obra="00001" venda="1" /></contratos>' AS xml) AS Lista
 ), Solicitados AS (
