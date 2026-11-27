@@ -285,6 +285,36 @@ baixa ou execução no banco UAU foi realizada pelo assistente.
 
 ## Consulta 125 — evidências de distrato e cancelamento
 
+### Atualização do teste parcial — 26/11/2026
+
+Após estorno informado da baixa integral e nova baixa parcial, o responsável
+forneceu recebimento 7 para E/1/geral 1, confirmado, com principal 314,43, multa
+6,29 e juros 0,83 (soma desses componentes: 321,55). A chave antiga não tem registro
+aberto, mas o contrato tem 54 abertas, valor base 168.171,25 e menor vencimento
+28/11/2026, com zero vencidas no dia 26/11.
+
+Comparando a posição original (168.485,68) com o total atual, a diferença é 314,43,
+igual ao principal recebido. O restante candidato da antiga parcela base de 660
+é 345,57. Isso é compatível com desdobramento e nova data de vencimento, mas ainda
+não confirma qual linha contém o saldo nem a relação de origem. Não marcar a
+obrigação original como integralmente paga apenas por sua chave sair das abertas.
+
+É necessário separar liquidação integral, pagamento parcial com saldo em atraso
+e pagamento parcial com saldo reprogramado sem atraso. Manter o primeiro vencimento
+observado (18/11) na trilha e a data atual retornada pelo ERP separadamente; a
+estratégia de original versus reprogramado deve ser explícita na política da régua.
+Não atribuir automaticamente a data antiga a toda parcela nova sem vínculo validado.
+
+Recebimentos precisam ser reconciliados também em estornos: não somar novamente o
+recebimento 6 já estornado segundo o relato. O desaparecimento/substituição de um
+recebimento previamente importado exige revisão e evento corretivo com evidência.
+
+Preparado `teste-saldo-parcial-900-00001.sql` para listar todas as abertas/recebidas
+da venda e as descrições de Origem_Prc/OrigParc_Rec, sem presumir que apontem para
+os identificadores anteriores. A nova listagem ainda não foi fornecida.
+
+## Consulta 125 — evidências de distrato e cancelamento (análise)
+
 SQL completo recebido em 25/11/2026. Traz os campos que permitem preparar a
 reconciliação com a situação da venda:
 
