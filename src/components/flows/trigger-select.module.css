@@ -1,0 +1,44 @@
+.trigger {
+  width: 100%;
+  min-height: 44px;
+  height: auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  white-space: normal;
+}
+
+.trigger [data-slot='select-value'] {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.popup {
+  width: max(var(--anchor-width), 24rem);
+  max-width: min(var(--available-width), calc(100vw - 24px));
+  padding: 6px;
+  border-radius: 14px;
+}
+
+.option {
+  min-height: 44px;
+  padding: 10px 32px 10px 12px;
+  border-radius: 8px;
+}
+
+.option > span:first-child {
+  min-width: 0;
+  flex-shrink: 1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.option[data-highlighted] {
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}

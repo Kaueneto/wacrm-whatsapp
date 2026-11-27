@@ -30,6 +30,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import glass from '@/components/ui/morph-menu.module.css';
+import triggerSelect from './trigger-select.module.css';
 import {
   Select,
   SelectContent,
@@ -276,7 +278,7 @@ function TriggerPanel({
     <section className="border-border bg-card rounded-lg border p-4">
       <h2 className="text-foreground mb-3 text-sm font-semibold">{t('triggerTitle')}</h2>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div>
+        <div className="min-w-0">
           <label className="text-muted-foreground mb-1 block text-xs">
             {t('whenLabel')}
           </label>
@@ -291,17 +293,28 @@ function TriggerPanel({
               }))
             }
           >
-            <SelectTrigger className="bg-muted">
-              <SelectValue />
+            <SelectTrigger className={cn(glass.glass, triggerSelect.trigger)}>
+              <SelectValue>
+                {t(state.trigger_type === 'keyword'
+                  ? 'triggerKeywordTitle'
+                  : state.trigger_type === 'first_inbound_message'
+                    ? 'triggerFirstInboundTitle'
+                    : 'triggerManualTitle')}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="keyword">
+            <SelectContent
+              align="start"
+              alignItemWithTrigger={false}
+              sideOffset={6}
+              className={cn(glass.glass, triggerSelect.popup)}
+            >
+              <SelectItem value="keyword" className={triggerSelect.option}>
                 {t('triggerKeywordTitle')}
               </SelectItem>
-              <SelectItem value="first_inbound_message">
+              <SelectItem value="first_inbound_message" className={triggerSelect.option}>
                 {t('triggerFirstInboundTitle')}
               </SelectItem>
-              <SelectItem value="manual">
+              <SelectItem value="manual" className={triggerSelect.option}>
                 {t('triggerManualTitle')}
               </SelectItem>
             </SelectContent>
