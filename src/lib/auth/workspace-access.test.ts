@@ -7,6 +7,11 @@ import {
 import { canSupervise, hasMinRole } from './roles';
 
 describe('support roles', () => {
+  it('allows attendants to claim a team queue without opening supervisor assignment', () => {
+    expect(canAccessWorkspaceApi('agent', '/api/support/claim', 'POST')).toBe(true);
+    expect(canAccessWorkspaceApi('agent', '/api/support/assignment', 'POST')).toBe(false);
+    expect(canAccessWorkspaceApi('viewer', '/api/support/claim', 'POST')).toBe(false);
+  });
   it('allows contact finance reads and confirmed links without opening administrative ERP queries', () => {
     const path='/api/integrations/uau/contacts/00000000-0000-0000-0000-000000000001/finance';
     for(const role of ['agent','supervisor'] as const){

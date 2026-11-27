@@ -58,6 +58,7 @@ export function canAccessWorkspaceApi(
       '/api/whatsapp/send',
       '/api/whatsapp/react',
       '/api/whatsapp/typing',
+      '/api/support/claim',
     ].includes(path)
   )
     return true;

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { AiAssistantNodeConfig } from '@/lib/flows/types';
 import { TextRow } from './fields';
+import { useRoutingCatalog } from '../routing-catalog';
 
 export function AiAssistantForm({
   cfg,
@@ -13,33 +13,9 @@ export function AiAssistantForm({
   onUpdateConfig: (patch: Record<string, unknown>) => void;
 }) {
   const t = useTranslations('Flows.builder.form');
-  const [organization, setOrganization] = useState<{
-    teams: { id: string; name: string; department_id: string }[];
-    departments: { id: string; name: string }[];
-  } | null>(null);
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/account/teams', {
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json();
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setOrganization(data);
-          setError(false);
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setError(true);
-      });
-    return () => controller.abort();
-  }, [attempt]);
+  const { organization: resource } = useRoutingCatalog();
+  const organization = resource.data;
+  const error = resource.error;
   const selectClass =
     'border-input bg-background h-9 w-full rounded-md border px-3 text-sm';
   return (
@@ -55,7 +31,7 @@ export function AiAssistantForm({
           disabled={!organization || error}
           onChange={(event) => onUpdateConfig({ team_id: event.target.value })}
         >
-          <option value="">{t('aiChooseTeam')}</option>
+          <option value="">{t(organization ? 'aiChooseTeam' : error ? 'routingLoadError' : 'routingLoading')}</option>
           {organization?.teams.map((team) => (
             <option key={team.id} value={team.id}>
               {
@@ -68,7 +44,7 @@ export function AiAssistantForm({
           ))}
           {cfg.team_id &&
             !organization?.teams.some((team) => team.id === cfg.team_id) && (
-              <option value={cfg.team_id}>{t('routingUnavailable')}</option>
+              <option value={cfg.team_id}>{t(organization ? 'routingUnavailable' : error ? 'routingLoadError' : 'routingLoading')}</option>
             )}
         </select>
       </label>
@@ -78,7 +54,7 @@ export function AiAssistantForm({
           <button
             type="button"
             className="underline"
-            onClick={() => setAttempt((value) => value + 1)}
+            onClick={resource.retry}
           >
             {t('routingRetry')}
           </button>

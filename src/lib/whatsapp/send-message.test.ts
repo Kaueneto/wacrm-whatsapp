@@ -212,11 +212,13 @@ interface CapturedWrites {
 function sendPathDb(
   templateRows: unknown[],
   captured: CapturedWrites,
-  contact: Record<string, unknown> = { id: 'ct-1', phone: '+15551234567' }
+  contact: Record<string, unknown> = { id: 'ct-1', phone: '+15551234567' },
+  conversationPatch: Record<string, unknown> = {},
 ): SupabaseClient {
   const conversation = {
     id: 'cv-1',
     contact,
+    ...conversationPatch,
   };
   const config = {
     id: 'cfg-1',
@@ -271,6 +273,21 @@ const TEMPLATE_ROW = {
   body_text: 'Your order {{1}} ships on {{2}}',
   created_at: '2026-01-01T00:00:00Z',
 };
+
+describe('shared team queue sends', () => {
+  it.each([null, 'colleague'])('requires the attendant to claim before sending when assigned to %s', async (assignee) => {
+    const captured: CapturedWrites = {};
+    const before = sendTemplateMessage.mock.calls.length;
+    await expect(sendMessageToConversation(sendPathDb([TEMPLATE_ROW], captured, undefined, {
+      team_queue_enabled: true, assigned_agent_id: assignee,
+    }), 'acct-1', {
+      conversationId: 'cv-1', messageType: 'template', templateName: 'order_update',
+      senderId: 'agent', requireAssignedAgent: true,
+    })).rejects.toMatchObject({ code: 'claim_required', status: 409 });
+    expect(sendTemplateMessage.mock.calls).toHaveLength(before);
+    expect(captured.message).toBeUndefined();
+  });
+});
 
 describe('sendMessageToConversation — template persistence (#483)', () => {
   it('stores the substituted body when the caller sends no text', async () => {

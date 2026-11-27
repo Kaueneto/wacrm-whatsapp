@@ -8,7 +8,7 @@ import {
   matchesContactFilters,
   normalizeConversations,
 } from "@/lib/inbox/conversations";
-import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
+import { applyInboxFilter, filterByAssignee, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, ListFilter, Tag as TagIcon, X, UserRound } from "lucide-react";
@@ -69,6 +69,7 @@ export function ConversationList({
   const canManageTags = useCan("edit-settings");
   const { accountId, user } = useAuth();
   const [assignees, setAssignees] = useState<{ accountId: string; names: Record<string, string> } | null>(null);
+  const [assigneeLoadError, setAssigneeLoadError] = useState<string | null>(null);
   const assigneeNames = assignees?.accountId === accountId ? assignees.names : null;
 
   useEffect(() => {
@@ -77,13 +78,16 @@ export function ConversationList({
     void createClient().from("profiles")
       .select("user_id,full_name")
       .eq("account_id", accountId)
+      .in("account_role", ["owner", "admin", "supervisor", "agent"])
       .abortSignal(controller.signal)
       .then(({ data, error }) => {
         if (controller.signal.aborted) return;
         if (error) {
           console.error("Failed to load conversation assignee names:", error.code);
+          setAssigneeLoadError(accountId);
           return;
         }
+        setAssigneeLoadError(null);
         setAssignees({ accountId, names: Object.fromEntries((data ?? []).map((member) => [member.user_id, member.full_name?.trim() ?? ""])) });
       });
     return () => controller.abort();
@@ -110,14 +114,26 @@ export function ConversationList({
     return () => window.clearInterval(id);
   }, []);
   const [loading, setLoading] = useState(true);
+  const [queueResyncToken, setQueueResyncToken] = useState(0);
+  const hasTeamQueue = conversations.some(c => c.team_queue_enabled && !c.assigned_agent_id && c.status !== "closed");
+  // Once assigned, a queue row can leave this user's RLS scope and stop
+  // delivering realtime updates. Reconcile it without requiring a page reload.
+  useEffect(() => {
+    if (!hasTeamQueue) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") setQueueResyncToken(value => value + 1);
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [hasTeamQueue]);
   // Contact-based filters (issue #272). Tags use OR logic (a conversation
   // matches if its contact carries any selected tag), consistent with
   // Broadcast audience filtering. Company is an exact match on the field.
   const [tags, setTags] = useState<Tag[]>([]);
-  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const [tagCatalogState, setTagCatalogState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
 
   // Keep the latest callback in a ref so the fetch effect below can
   // have a stable, empty-dep identity. Previously the fetch useCallback
@@ -170,10 +186,10 @@ export function ConversationList({
     // `resyncToken` is included so the parent can force a refetch when
     // the realtime channel reconnects or the tab regains focus — catches
     // up on any events sent while the WS was disconnected or throttled.
-  }, [resyncToken]);
+  }, [resyncToken, queueResyncToken]);
 
   useEffect(() => {
-    if (!filterMenuOpen || !accountId) return;
+    if (!tagMenuOpen || !accountId) return;
     let cancelled = false;
     void fetchAccountTags(createClient(), accountId).then(data => {
       if (cancelled) return;
@@ -185,7 +201,7 @@ export function ConversationList({
     return () => {
       cancelled = true;
     };
-  }, [accountId, filterMenuOpen]);
+  }, [accountId, tagMenuOpen]);
 
   // Company options are derived from the loaded conversations — there's no
   // separate companies table, and only companies with a live conversation
@@ -206,7 +222,7 @@ export function ConversationList({
   }, [tags]);
 
   const filtered = useMemo(() => {
-    let result = applyInboxFilter(conversations, filter, now);
+    let result = filterByAssignee(applyInboxFilter(conversations, filter, now), selectedAssignee, user?.id);
 
     // Contact-based filters (tags via OR logic, exact company match).
     if (selectedTagIds.length > 0 || selectedCompany !== null) {
@@ -229,7 +245,7 @@ export function ConversationList({
     }
 
     return result;
-  }, [conversations, filter, now, search, selectedTagIds, selectedCompany]);
+  }, [conversations, filter, now, search, selectedTagIds, selectedCompany, selectedAssignee, user?.id]);
 
   const toggleTag = useCallback((id: string) => {
     setSelectedTagIds((prev) =>
@@ -240,9 +256,16 @@ export function ConversationList({
   const clearContactFilters = useCallback(() => {
     setSelectedTagIds([]);
     setSelectedCompany(null);
+    setSelectedAssignee(null);
   }, []);
 
-  const hasContactFilters = selectedTagIds.length > 0 || selectedCompany !== null;
+  const hasContactFilters = selectedTagIds.length > 0 || selectedCompany !== null || selectedAssignee !== null;
+  const assigneeLabel = selectedAssignee === "mine"
+    ? t("filterMine")
+    : selectedAssignee === "unassigned"
+      ? t("filterUnassigned")
+      : selectedAssignee ? assigneeNames?.[selectedAssignee] || t("assignedToAgent") : t("allAgents");
+  const assigneeOptions = Object.entries(assigneeNames ?? {}).sort((a, b) => a[1].localeCompare(b[1]));
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,16 +301,13 @@ export function ConversationList({
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
-          <DropdownMenu onOpenChange={setFilterMenuOpen}>
-            <DropdownMenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-foreground hover:bg-muted">
-              <ListFilter className="size-3.5" aria-hidden />
+        <div className="grid grid-cols-2 items-center gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-foreground hover:bg-muted">
+              <ListFilter className="size-3.5 shrink-0" aria-hidden />
               {t("filters")}
-              <span className="text-muted-foreground">{activeFilter?.label ?? t("filterAll")}</span>
-              {selectedTagIds.length > 0 && (
-                <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{selectedTagIds.length}</span>
-              )}
-              <ChevronDown className="size-3" aria-hidden />
+              <span className="truncate text-muted-foreground">{activeFilter?.label ?? t("filterAll")}</span>
+              <ChevronDown className="ml-auto size-3 shrink-0" aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
@@ -304,7 +324,24 @@ export function ConversationList({
                   ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuGroup>
-              <DropdownMenuSeparator />
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu onOpenChange={setTagMenuOpen}>
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-border px-2 text-xs hover:bg-muted",
+                selectedTagIds.length > 0 ? "border-primary/40 bg-primary/10 text-primary" : "text-foreground",
+              )}
+            >
+              <TagIcon className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{t("filterByTags")}</span>
+              {selectedTagIds.length > 0 && (
+                <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{selectedTagIds.length}</span>
+              )}
+              <ChevronDown className="ml-auto size-3 shrink-0" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 border-border bg-popover">
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="flex items-center gap-1.5">
                   <TagIcon className="size-3.5" aria-hidden />
@@ -336,11 +373,45 @@ export function ConversationList({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(
+                "col-span-2 inline-flex h-8 max-w-full items-center gap-1.5 rounded-md border border-border px-2 text-xs hover:bg-muted",
+                selectedAssignee !== null ? "border-primary/40 bg-primary/10 text-primary" : "text-foreground",
+              )}
+            >
+              <UserRound className="size-3.5 shrink-0" aria-hidden />
+              <span className="shrink-0">{t("filterByAgent")}</span>
+              <span className="truncate text-muted-foreground">{assigneeLabel}</span>
+              <ChevronDown className="size-3 shrink-0" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 border-border bg-popover">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>{t("filterByAgent")}</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={selectedAssignee ?? "all"} onValueChange={(value) => setSelectedAssignee(value === "all" ? null : value)}>
+                  <DropdownMenuRadioItem value="all">{t("allAgents")}</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="mine" disabled={!user?.id}>{t("filterMine")}</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="unassigned">{t("filterUnassigned")}</DropdownMenuRadioItem>
+                  <DropdownMenuSeparator />
+                  <div className="max-h-48 overflow-y-auto">
+                    {assigneeNames === null ? (
+                      <p role="status" className="px-2 py-1.5 text-xs text-muted-foreground">{t(accountId && assigneeLoadError === accountId ? "loadAgentsFailed" : "loadingAgents")}</p>
+                    ) : assigneeOptions.map(([id, name]) => (
+                      <DropdownMenuRadioItem key={id} value={id}>
+                        <span className="truncate">{name || t("assignedToAgent")}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </div>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {companies.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
-                  "inline-flex max-w-40 items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                  "col-span-2 inline-flex max-w-full items-center justify-start h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
                   selectedCompany
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -409,6 +480,17 @@ export function ConversationList({
               >
                 <span className="max-w-24 truncate">{selectedCompany}</span>
                 <X className="h-3 w-3" />
+              </button>
+            )}
+            {selectedAssignee !== null && (
+              <button
+                type="button"
+                onClick={() => setSelectedAssignee(null)}
+                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground hover:bg-muted/70"
+              >
+                <UserRound className="size-3" aria-hidden />
+                <span className="max-w-36 truncate">{assigneeLabel}</span>
+                <X className="size-3" aria-hidden />
               </button>
             )}
             <button
@@ -489,7 +571,7 @@ function ConversationItem({
     ? assigneeName
       ? t(conversation.status === "closed" ? "assignedTo" : "beingHandledBy", { name: assigneeName })
       : t("assignedToAgent")
-    : t("noAssignee");
+    : t(conversation.team_queue_enabled && conversation.status !== "closed" ? "teamQueue" : "noAssignee");
 
   const handleClick = useCallback(() => {
     onSelect(conversation);

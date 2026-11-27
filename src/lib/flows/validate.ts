@@ -840,7 +840,7 @@ function validateNode(
       const cfg = node.config;
       if (
         cfg.mode !== undefined &&
-        !["queue", "round_robin", "specific"].includes(cfg.mode as string)
+        !["queue", "team_queue", "round_robin", "specific"].includes(cfg.mode as string)
       ) {
         issues.push({
           severity: "error",
@@ -853,8 +853,8 @@ function validateNode(
       const uuid =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (
-        cfg.team_id &&
-        (typeof cfg.team_id !== "string" || !uuid.test(cfg.team_id))
+        (cfg.mode === "team_queue" && !cfg.team_id) ||
+        (cfg.team_id && (typeof cfg.team_id !== "string" || !uuid.test(cfg.team_id)))
       ) {
         issues.push({
           severity: "error",

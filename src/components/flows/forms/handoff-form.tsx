@@ -1,15 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { HandoffNodeConfig } from "@/lib/flows/types";
 import { TextRow } from "./fields";
-
-interface Organization {
-  departments: { id: string; name: string }[];
-  teams: { id: string; name: string; department_id: string }[];
-  members: { team_id: string; user_id: string }[];
-}
+import { useRoutingCatalog } from "../routing-catalog";
 
 export function HandoffForm({
   cfg,
@@ -19,37 +13,11 @@ export function HandoffForm({
   onUpdateConfig: (patch: Record<string, unknown>) => void;
 }) {
   const t = useTranslations("Flows.builder.form");
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [members, setMembers] = useState<
-    { user_id: string; full_name: string; role: string }[]
-  >([]);
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+  const catalog = useRoutingCatalog();
+  const organization = catalog.organization.data;
+  const members = catalog.roster.data?.members ?? [];
   const mode = cfg.mode ?? (cfg.assign_to ? "specific" : "legacy");
-  useEffect(() => {
-    let active = true;
-    Promise.all([
-      fetch("/api/account/teams", { cache: "no-store" }),
-      fetch("/api/account/members", { cache: "no-store" }),
-    ])
-      .then(async ([teamResponse, memberResponse]) => {
-        if (!teamResponse.ok || !memberResponse.ok) throw new Error();
-        const [teams, roster] = await Promise.all([
-          teamResponse.json(),
-          memberResponse.json(),
-        ]);
-        if (active) {
-          setOrganization(teams);
-          setMembers(roster.members);
-        }
-      })
-      .catch(() => {
-        if (active) setError(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [attempt]);
+  const error = catalog.organization.error || (mode === "specific" && catalog.roster.error);
   const eligible = members.filter(
     (member) =>
       ["owner", "admin", "supervisor", "agent"].includes(member.role) &&
@@ -70,8 +38,8 @@ export function HandoffForm({
             type="button"
             className="underline"
             onClick={() => {
-              setError(false);
-              setAttempt(attempt + 1);
+              if (catalog.organization.error) catalog.organization.retry();
+              if (catalog.roster.error) catalog.roster.retry();
             }}
           >
             {t("routingRetry")}
@@ -82,7 +50,7 @@ export function HandoffForm({
         <span>{t("routingTeam")}</span>
         <select
           className={selectClass}
-          disabled={!organization || error}
+          disabled={!organization}
           value={cfg.team_id ?? ""}
           onChange={(event) =>
             onUpdateConfig({
@@ -92,7 +60,7 @@ export function HandoffForm({
             })
           }
         >
-          <option value="">{t("routingKeepTeam")}</option>
+          <option value="">{t(organization ? "routingKeepTeam" : catalog.organization.error ? "routingLoadError" : "routingLoading")}</option>
           {organization?.teams.map((team) => (
             <option key={team.id} value={team.id}>
               {
@@ -105,7 +73,7 @@ export function HandoffForm({
           ))}
           {cfg.team_id &&
             !organization?.teams.some((team) => team.id === cfg.team_id) && (
-              <option value={cfg.team_id}>{t("routingUnavailable")}</option>
+              <option value={cfg.team_id}>{t(organization ? "routingUnavailable" : catalog.organization.error ? "routingLoadError" : "routingLoading")}</option>
             )}
         </select>
       </label>
@@ -122,6 +90,7 @@ export function HandoffForm({
             <option value="legacy">{t("routingLegacy")}</option>
           )}
           <option value="queue">{t("routingQueue")}</option>
+          <option value="team_queue">{t("routingTeamQueue")}</option>
           <option value="round_robin">{t("routingRoundRobin")}</option>
           <option value="specific">{t("routingSpecific")}</option>
         </select>
@@ -131,7 +100,7 @@ export function HandoffForm({
           <span>{t("routingAgent")}</span>
           <select
             className={selectClass}
-            disabled={!organization || error}
+            disabled={!organization || !catalog.roster.data}
             value={cfg.assign_to ?? ""}
             onChange={(event) =>
               onUpdateConfig({
@@ -140,7 +109,7 @@ export function HandoffForm({
               })
             }
           >
-            <option value="">{t("routingChooseAgent")}</option>
+            <option value="">{t(catalog.roster.data ? "routingChooseAgent" : catalog.roster.error ? "routingLoadError" : "routingLoading")}</option>
             {eligible.map((member) => (
               <option key={member.user_id} value={member.user_id}>
                 {member.full_name}
@@ -148,14 +117,14 @@ export function HandoffForm({
             ))}
             {cfg.assign_to &&
               !eligible.some((member) => member.user_id === cfg.assign_to) && (
-                <option value={cfg.assign_to}>{t("routingUnavailable")}</option>
+                <option value={cfg.assign_to}>{t(catalog.roster.data && organization ? "routingUnavailable" : error ? "routingLoadError" : "routingLoading")}</option>
               )}
           </select>
         </label>
       )}
-      {(mode === "queue" || mode === "round_robin") && (
+      {(mode === "queue" || mode === "team_queue" || mode === "round_robin") && (
         <p role="note" className="bg-muted rounded-md border p-3 text-xs">
-          {t(mode === "queue" ? "routingQueueHelp" : "routingRoundRobinHelp")}
+          {t(mode === "queue" ? "routingQueueHelp" : mode === "team_queue" ? "routingTeamQueueHelp" : "routingRoundRobinHelp")}
         </p>
       )}
       <p className="text-muted-foreground text-xs">{t("routingHelp")}</p>

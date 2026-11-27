@@ -90,6 +90,8 @@ export interface SendMessageParams {
   interactivePayload?: InteractiveMessagePayload | null;
   replyToMessageId?: string | null;
   senderId?: string | null;
+  /** Dashboard attendants must claim shared queue conversations before sending. */
+  requireAssignedAgent?: boolean;
 }
 
 export interface SendMessageResult {
@@ -234,6 +236,10 @@ export async function sendMessageToConversation(
 
   if (convError || !conversation) {
     throw new SendMessageError('not_found', 'Conversation not found', 404);
+  }
+
+  if (params.requireAssignedAgent && conversation.team_queue_enabled && conversation.assigned_agent_id !== senderId) {
+    throw new SendMessageError('claim_required', 'Assuma este atendimento antes de enviar mensagens.', 409);
   }
 
   const contact = conversation.contact;

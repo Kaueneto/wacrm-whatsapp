@@ -148,6 +148,7 @@ describe('support team authorization in PostgreSQL', () => {
     await db.exec(readFileSync('supabase/migrations/027_notifications.sql', 'utf8'));
     await db.exec(readFileSync('supabase/migrations/090_assignment_notification_context.sql', 'utf8'));
     await db.exec(readFileSync('supabase/migrations/091_preserve_ai_handoff_team_queue.sql', 'utf8'));
+    await db.exec(readFileSync('supabase/migrations/104_team_self_service_queue.sql', 'utf8'));
     expect((await db.query('select node_type from flow_nodes')).rows).toEqual([{ node_type: 'http_fetch' }]);
   }, 30000);
   beforeEach(async () => {
@@ -809,6 +810,58 @@ describe('support team authorization in PostgreSQL', () => {
       )
     ).toEqual([{ assigned_agent_id: agent }]);
   });
+  it('exposes a direct queue and its history only to the destination team', async () => {
+    await db.query('select route_support_conversation($1,$2,$3,null,$4)', [account, id(41), team, 'team_queue']);
+    await asUser(agent);
+    expect(await rows(`select id from conversations where id = '${conversation}'`)).toEqual([{ id: conversation }]);
+    expect(await rows(`select id from messages where conversation_id = '${conversation}'`)).toEqual([{ id: id(51) }]);
+    await expect(db.query(`insert into messages(id,conversation_id) values ($1,$2)`, [id(91), conversation])).rejects.toThrow();
+    await asUser(outsider);
+    expect(await rows(`select id from conversations where id = '${conversation}'`)).toEqual([]);
+    await expect(db.query('select claim_team_conversation($1)', [conversation])).rejects.toThrow();
+  });
+
+  it('reserves the direct queue for one attendant and removes it from colleagues', async () => {
+    await db.query('select route_support_conversation($1,$2,$3,null,$4)', [account, id(41), team, 'team_queue']);
+    await asUser(agent);
+    await db.query('select claim_team_conversation($1)', [conversation]);
+    expect(await rows(`select assigned_agent_id from conversations where id = '${conversation}'`)).toEqual([{ assigned_agent_id: agent }]);
+    await db.query(`insert into messages(id,conversation_id) values ($1,$2)`, [id(91), conversation]);
+    await asUser(colleague);
+    expect(await rows(`select id from conversations where id = '${conversation}'`)).toEqual([]);
+    await expect(db.query('select claim_team_conversation($1)', [conversation])).rejects.toThrow('já foi assumido');
+    await db.exec('reset role');
+    expect(await rows(`select assigned_agent_id from conversations where id = '${conversation}'`)).toEqual([{ assigned_agent_id: agent }]);
+  });
+
+  it('keeps supervisor assignment available for a direct queue', async () => {
+    await db.query('select route_support_conversation($1,$2,$3,null,$4)', [account, id(41), team, 'team_queue']);
+    await asUser(supervisor);
+    await db.query(`update conversations set assigned_agent_id = $1 where id = $2`, [colleague, conversation]);
+    expect(await rows(`select assigned_agent_id from conversations where id = '${conversation}'`)).toEqual([{ assigned_agent_id: colleague }]);
+    await expect(db.query(`update conversations set team_queue_enabled = false where id = $1`, [conversation])).rejects.toThrow();
+  });
+
+  it('does not let attendants switch queue policy, assign directly, or claim another team', async () => {
+    await db.query('select route_support_conversation($1,$2,$3,null,$4)', [account, id(41), team, 'team_queue']);
+    await asUser(agent);
+    await expect(db.query(`update conversations set assigned_agent_id = $1 where id = $2`, [agent, conversation])).rejects.toThrow();
+    await expect(db.query(`update conversations set team_queue_enabled = false where id = $1`, [conversation])).rejects.toThrow();
+    await db.query(`delete from conversations where id = $1`, [conversation]);
+    expect(await rows(`select id from conversations where id = '${conversation}'`)).toEqual([{ id: conversation }]);
+    await db.exec('reset role');
+    await db.query('select route_support_conversation($1,$2,$3,null,$4)', [account, id(42), otherTeam, 'team_queue']);
+    await asUser(agent);
+    await expect(db.query('select claim_team_conversation($1)', [otherConversation])).rejects.toThrow();
+  });
+
+  it('restores supervised visibility when the flow routes back to the supervised queue', async () => {
+    await db.query('select route_support_conversation($1,$2,$3,null,$4)', [account, id(41), team, 'team_queue']);
+    await db.query('select route_support_conversation($1,$2,$3,null,$4)', [account, id(41), team, 'queue']);
+    await asUser(agent);
+    expect(await rows(`select id from conversations where id = '${conversation}'`)).toEqual([]);
+  });
+
   it('can move to a team the user already belongs to without duplicating membership', async () => {
     await asUser(admin);
     await db.query('select move_support_team_member($1,$2,$3)', [

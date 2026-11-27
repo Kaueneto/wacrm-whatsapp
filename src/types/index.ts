@@ -175,6 +175,8 @@ export interface Conversation {
   status: ConversationStatus;
   assigned_agent_id?: string;
   team_id?: string | null;
+  /** Unassigned conversations in this queue can be claimed by destination team members. */
+  team_queue_enabled?: boolean;
   last_message_text?: string;
   last_message_at?: string;
   unread_count: number;

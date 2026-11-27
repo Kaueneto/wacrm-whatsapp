@@ -99,7 +99,7 @@ export interface SendMediaNodeConfig {
 
 export interface HandoffNodeConfig {
   /** Omitted on legacy nodes to preserve their current assignment. */
-  mode?: "queue" | "round_robin" | "specific";
+  mode?: "queue" | "team_queue" | "round_robin" | "specific";
   team_id?: string;
   /** Optional internal note written to flow_run_events.payload.note. */
   note?: string;

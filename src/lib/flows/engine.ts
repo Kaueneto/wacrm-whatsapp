@@ -504,7 +504,7 @@ async function executeHandoff(
   const cfg = node.config as HandoffNodeConfig;
   let assignedTo = cfg.assign_to || null;
   if (cfg.mode) {
-    if (!["queue", "round_robin", "specific"].includes(cfg.mode)) {
+    if (!["queue", "team_queue", "round_robin", "specific"].includes(cfg.mode)) {
       throw new Error("Invalid handoff routing mode");
     }
     if (!run.contact_id || !run.conversation_id) {

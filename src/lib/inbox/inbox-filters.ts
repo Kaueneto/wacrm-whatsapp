@@ -13,6 +13,18 @@ export const INBOX_FILTERS = [
 
 export type InboxFilter = (typeof INBOX_FILTERS)[number];
 
+/** null selects everyone; the other special values complement explicit user IDs. */
+export function filterByAssignee(
+  conversations: Conversation[],
+  assignee: string | null,
+  currentUserId?: string,
+): Conversation[] {
+  if (assignee === null) return conversations;
+  if (assignee === "unassigned") return conversations.filter((c) => !c.assigned_agent_id);
+  const userId = assignee === "mine" ? currentUserId : assignee;
+  return userId ? conversations.filter((c) => c.assigned_agent_id === userId) : [];
+}
+
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const EXPIRING_WITHIN_MS = 2 * 60 * 60 * 1000;
 

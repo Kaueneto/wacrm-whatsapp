@@ -242,6 +242,7 @@ export function MessageThread({
     };
   }, [sentTemplateNames]);
   // Purely visual spin state for the manual-refresh button. The actual
+  const [claiming, setClaiming] = useState(false);
   // refetch is fire-and-forget through `onRefresh` (which bumps the
   // parent's resyncToken); the 700ms spin is just feedback so the click
   // doesn't feel like a no-op. Cleared via the timer ref on unmount.
@@ -1002,6 +1003,7 @@ export function MessageThread({
 
   const displayName = contact.name || contactHandle(contact);
   const messageGroups = groupMessagesByDate(messages);
+  const canClaim = accountRole === "agent" && conversation.team_queue_enabled && !assignedAgentId && conversation.status !== "closed";
   const currentStatus = STATUS_OPTIONS.find(
     (s) => s.value === conversation.status
   );
@@ -1311,7 +1313,35 @@ export function MessageThread({
       />
 
       {/* Composer */}
-      <MessageComposer
+      {canClaim ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-card p-4">
+          <p className="min-w-0 flex-1 text-sm text-muted-foreground">{t("teamQueueHint")}</p>
+          <Button
+            disabled={claiming}
+            onClick={async () => {
+              setClaiming(true);
+              try {
+                const response = await fetch("/api/support/claim", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ conversationId: conversation.id }),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || t("claimFailed"));
+                onAssignChange(conversation.id, result.assignedAgentId);
+                toast.success(t("claimSuccess"));
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : t("claimFailed"));
+              } finally {
+                setClaiming(false);
+                onRefresh?.();
+              }
+            }}
+          >
+            {t(claiming ? "claiming" : "claimConversation")}
+          </Button>
+        </div>
+      ) : <MessageComposer
         conversationId={conversation.id}
         sessionExpired={sessionInfo.expired}
         onSend={handleSend}
@@ -1320,7 +1350,7 @@ export function MessageThread({
         onOpenTemplates={handleOpenTemplates}
         replyTo={replyTo}
         onClearReply={() => setReplyTo(null)}
-      />
+      />}
 
       <TemplatePicker
         open={templateModalOpen}

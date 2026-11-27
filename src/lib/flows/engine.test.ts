@@ -678,7 +678,7 @@ describe("handoff routing", () => {
     expect(h.route).toHaveBeenCalledWith('finish_flow_ai', expect.anything());
     expect(vi.mocked(engineSendText)).toHaveBeenCalledWith(expect.objectContaining({ text: 'Vou transferir.' }));
   });
-  it.each(["queue", "round_robin", "specific"])(
+  it.each(["queue", "team_queue", "round_robin", "specific"])(
     "routes %s through the existing team distribution",
     async (mode) => {
       setup({
@@ -688,7 +688,7 @@ describe("handoff routing", () => {
         note: "Customer {{vars.name}}",
       });
       h.route.mockResolvedValueOnce({
-        data: mode === "queue" ? null : "agent-1",
+        data: mode === "queue" || mode === "team_queue" ? null : "agent-1",
         error: null,
       });
       expect(await dispatch(text("Alice"))).toMatchObject({
@@ -714,7 +714,7 @@ describe("handoff routing", () => {
           event_type: "handoff",
           payload: expect.objectContaining({
             note: "Customer Alice",
-            assigned_to: mode === "queue" ? null : "agent-1",
+            assigned_to: mode === "queue" || mode === "team_queue" ? null : "agent-1",
           }),
         }),
       );

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Conversation } from "@/types";
 import {
   applyInboxFilter,
+  filterByAssignee,
   isAwaitingReply,
   isWindowClosing,
   parseInboxFilter,
@@ -22,6 +23,39 @@ function conv(id: string, patch: Partial<Conversation> = {}): Conversation {
     ...patch,
   };
 }
+
+describe("filterByAssignee", () => {
+  const list = [
+    conv("mine", { assigned_agent_id: "agent-1", last_inbound_at: ago(90) }),
+    conv("colleague", { assigned_agent_id: "agent-2", last_inbound_at: ago(5) }),
+    conv("queue", { last_inbound_at: ago(30) }),
+    conv("closed", { assigned_agent_id: "agent-1", status: "closed" }),
+  ];
+
+  it("shows all assignees when cleared", () => {
+    expect(filterByAssignee(list, null, "agent-1")).toBe(list);
+  });
+
+  it("filters by a chosen agent independently of the signed-in user", () => {
+    expect(filterByAssignee(list, "agent-2", "agent-1").map(c => c.id)).toEqual(["colleague"]);
+  });
+
+  it("resolves my conversations from the current user and never matches without a session", () => {
+    expect(filterByAssignee(list, "mine", "agent-1").map(c => c.id)).toEqual(["mine", "closed"]);
+    expect(filterByAssignee(list, "mine")).toEqual([]);
+  });
+
+  it("separates unassigned conversations", () => {
+    expect(filterByAssignee(list, "unassigned", "agent-1").map(c => c.id)).toEqual(["queue"]);
+  });
+
+  it("combines with waiting and status filters, keeping their ordering and the source intact", () => {
+    const before = [...list];
+    expect(filterByAssignee(applyInboxFilter(list, "waiting", NOW), "mine", "agent-1").map(c => c.id)).toEqual(["mine"]);
+    expect(filterByAssignee(applyInboxFilter(list, "closed", NOW), "mine", "agent-1").map(c => c.id)).toEqual(["closed"]);
+    expect(list).toEqual(before);
+  });
+});
 
 describe("parseInboxFilter", () => {
   it("accepts every known filter and falls back to all", () => {

@@ -681,6 +681,7 @@ describe("handoff routing validation", () => {
     [{ mode: "invalid" }, "mode"],
     [{ mode: "specific" }, "assign_to"],
     [{ mode: "queue", team_id: "invalid" }, "team_id"],
+    [{ mode: "team_queue" }, "team_id"],
   ])("rejects incomplete or malformed routing %j", (config, field) => {
     const nodes = validNodes.map((node) =>
       node.node_type === "handoff" ? { ...node, config } : node,
@@ -689,7 +690,7 @@ describe("handoff routing validation", () => {
       expect.objectContaining({ severity: "error", node_key: "ho", field }),
     );
   });
-  it.each(["queue", "round_robin", "specific"])(
+  it.each(["queue", "team_queue", "round_robin", "specific"])(
     "accepts %s routing",
     (mode) => {
       const nodes = validNodes.map((node) =>

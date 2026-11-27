@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 import { FlowEditorShell } from "@/components/flows/flow-editor-shell";
+import { RoutingCatalogProvider } from "@/components/flows/routing-catalog";
 import type { FlowRow, FlowNodeRow } from "@/lib/flows/types";
 
 /**
@@ -23,6 +24,10 @@ import type { FlowRow, FlowNodeRow } from "@/lib/flows/types";
  * "Flow not found" state below.
  */
 export default function FlowEditorPage() {
+  return <RoutingCatalogProvider><FlowEditorContent /></RoutingCatalogProvider>;
+}
+
+function FlowEditorContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const t = useTranslations("Flows.edit");
