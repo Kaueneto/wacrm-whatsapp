@@ -20,6 +20,10 @@ describe('WhatsApp webhook callback URLs', () => {
     'https://example.trycloudflare.com/dashboard',
     'https://user@example.trycloudflare.com',
     'https://example.trycloudflare.com?token=value',
+    'https://example.trycloudflare.com/api/whatsapp/web hook',
+    'https://exam\tple.trycloudflare.com',
+    'https://example.trycloudflare.com/api/whats\napp/webhook',
+    'https://exam\u200bple.trycloudflare.com',
   ])('rejects %s as a callback', (value) => {
     expect(normalizeWhatsAppWebhookUrl(value)).toBeNull();
   });

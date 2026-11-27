@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { normalizeWhatsAppWebhookUrl } from '@/lib/whatsapp/webhook-callback-url';
+import { normalizeWhatsAppWebhookUrl, WHATSAPP_WEBHOOK_PATH } from '@/lib/whatsapp/webhook-callback-url';
 
 export function WhatsAppWebhookCallback({
   accountId,
@@ -33,11 +33,14 @@ export function WhatsAppWebhookCallback({
     if (typeof window === 'undefined') return '';
     try {
       const saved = storageKey && window.localStorage.getItem(storageKey);
-      if (saved) return normalizeWhatsAppWebhookUrl(saved) ?? '';
+      if (saved) {
+        const normalized = normalizeWhatsAppWebhookUrl(saved);
+        if (normalized) return new URL(normalized).origin;
+      }
     } catch {
       // The callback can still be prepared when browser storage is unavailable.
     }
-    return normalizeWhatsAppWebhookUrl(window.location.origin) ?? '';
+    return normalizeWhatsAppWebhookUrl(window.location.origin) ? window.location.origin : '';
   });
   const callbackUrl = normalizeWhatsAppWebhookUrl(value);
   const invalid = Boolean(value.trim() && !callbackUrl);
@@ -46,7 +49,7 @@ export function WhatsAppWebhookCallback({
 
   function rememberCallback() {
     if (!editable || invalid) return;
-    if (callbackUrl) setValue(callbackUrl);
+    if (callbackUrl) setValue(new URL(callbackUrl).origin);
     if (!storageKey) return;
     try {
       if (callbackUrl) window.localStorage.setItem(storageKey, callbackUrl);
@@ -106,21 +109,35 @@ export function WhatsAppWebhookCallback({
         >
           {t('webhookUrl')}
         </Label>
-        <div className="flex gap-2">
-          <Input
-            id="whatsapp-webhook-callback"
-            type="url"
-            value={value}
-            placeholder="https://seu-tunel.trycloudflare.com"
-            onChange={(event) => setValue(event.target.value)}
-            onBlur={rememberCallback}
-            readOnly={!editable || publishing}
-            aria-invalid={invalid}
-            aria-describedby="whatsapp-webhook-callback-help"
-            autoComplete="off"
-            spellCheck={false}
-            className="border-border font-mono text-sm"
-          />
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col overflow-hidden rounded-lg border border-border focus-within:ring-2 focus-within:ring-ring/50 sm:flex-row sm:items-center">
+              <Input
+                id="whatsapp-webhook-callback"
+                type="url"
+                value={value}
+                placeholder="https://seu-tunel.trycloudflare.com"
+                onChange={(event) => setValue(event.target.value)}
+                onPaste={(event) => {
+                  const pasted = event.clipboardData.getData('text');
+                  const normalized = normalizeWhatsAppWebhookUrl(pasted);
+                  // Preserve invalid pasted characters in state; URL inputs may
+                  // otherwise silently strip tabs/newlines before onChange.
+                  event.preventDefault();
+                  setValue(normalized ? new URL(normalized).origin : pasted);
+                }}
+                onBlur={rememberCallback}
+                readOnly={!editable || publishing}
+                aria-invalid={invalid}
+                aria-describedby="whatsapp-webhook-callback-help"
+                autoComplete="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 rounded-none border-0 font-mono text-sm shadow-none focus-visible:ring-0"
+              />
+              <span className="shrink-0 border-t border-border bg-muted px-3 py-2 font-mono text-xs text-muted-foreground sm:border-t-0 sm:border-l" aria-hidden="true">{WHATSAPP_WEBHOOK_PATH}</span>
+            </div>
+            {callbackUrl && <p className="mt-1 break-all font-mono text-xs text-muted-foreground" aria-live="polite">{callbackUrl}</p>}
+          </div>
           <Button
             type="button"
             variant="outline"

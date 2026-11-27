@@ -2,7 +2,10 @@ export const WHATSAPP_WEBHOOK_PATH = '/api/whatsapp/webhook';
 
 export function normalizeWhatsAppWebhookUrl(value: string): string | null {
   try {
-    const url = new URL(value.trim());
+    const candidate = value.trim();
+    // URL() silently removes tabs and line breaks; reject them inside the URL.
+    if (/[\s\p{Cf}]/u.test(candidate)) return null;
+    const url = new URL(candidate);
     const host = url.hostname.replace(/\.$/, '');
     if (
       url.protocol !== 'https:' ||
