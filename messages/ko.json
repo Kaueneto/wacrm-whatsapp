@@ -73,7 +73,8 @@
     "menuProfile": "프로필",
     "menuSettings": "설정",
     "menuSignOut": "로그아웃",
-    "campaigns": "캠페인"
+    "campaigns": "캠페인",
+    "collections": "수금 관리"
   },
   "Header": {
     "organization": "사용자 및 팀",
@@ -92,7 +93,8 @@
     "menuProfile": "프로필",
     "menuSettings": "설정",
     "menuSignOut": "로그아웃",
-    "campaigns": "캠페인"
+    "campaigns": "캠페인",
+    "collections": "수금 관리"
   },
   "ModeToggle": {
     "switchMode": "{mode} 모드로 전환"

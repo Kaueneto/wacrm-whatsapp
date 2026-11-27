@@ -73,7 +73,8 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
-    "campaigns": "Campañas"
+    "campaigns": "Campañas",
+    "collections": "Cobranza"
   },
   "Header": {
     "organization": "Usuarios y equipos",
@@ -92,7 +93,8 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
-    "campaigns": "Campañas"
+    "campaigns": "Campañas",
+    "collections": "Cobranza"
   },
   "ModeToggle": {
     "switchMode": "Cambiar al modo {mode}"

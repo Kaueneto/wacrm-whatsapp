@@ -73,7 +73,8 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
     "menuSignOut": "Sair",
-    "campaigns": "Campanhas"
+    "campaigns": "Campanhas",
+    "collections": "Cobrança"
   },
   "Header": {
     "organization": "Usuários e equipes",
@@ -92,7 +93,8 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
     "menuSignOut": "Sair",
-    "campaigns": "Campanhas"
+    "campaigns": "Campanhas",
+    "collections": "Cobrança"
   },
   "ModeToggle": {
     "switchMode": "Mudar para o modo {mode}"

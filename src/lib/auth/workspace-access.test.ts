@@ -7,6 +7,14 @@ import {
 import { canSupervise, hasMinRole } from './roles';
 
 describe('support roles', () => {
+  it('restricts the first portfolio preview and its query configuration to administrators', () => {
+    for (const role of ['owner', 'admin', 'supervisor', 'agent', 'viewer'] as const) {
+      const allowed = role === 'owner' || role === 'admin';
+      expect(canAccessWorkspacePage(role, '/collections')).toBe(allowed);
+      expect(canAccessWorkspaceApi(role, '/api/integrations/uau/portfolio-settings', 'GET')).toBe(allowed);
+      expect(canAccessWorkspaceApi(role, '/api/integrations/uau/portfolio-settings', 'PUT')).toBe(allowed);
+    }
+  });
   it('allows attendants to claim a team queue without opening supervisor assignment', () => {
     expect(canAccessWorkspaceApi('agent', '/api/support/claim', 'POST')).toBe(true);
     expect(canAccessWorkspaceApi('agent', '/api/support/assignment', 'POST')).toBe(false);

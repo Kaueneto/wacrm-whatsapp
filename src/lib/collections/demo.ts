@@ -1,0 +1,123 @@
+/** Fictional examples, never read by a sync or a sending workflow. */
+export interface PortfolioExample {
+  id: string;
+  customer: string;
+  company: string;
+  project: string;
+  work: string;
+  sale: number;
+  unit: string;
+  delay: number;
+  principalCents: number;
+  confirmedPrincipalCents: number;
+  installments: number;
+  operation: 'contact' | 'negotiation' | 'promise' | 'legal' | 'paid';
+  agent: string | null;
+}
+export const portfolioExamples: PortfolioExample[] = [
+  {
+    id: 'example-1',
+    customer: 'Marina Almeida',
+    company: '101',
+    project: 'Jardim das Acácias',
+    work: 'JAC01',
+    sale: 248,
+    unit: 'Quadra 08 · Lote 12',
+    delay: 4,
+    principalCents: 84000,
+    confirmedPrincipalCents: 0,
+    installments: 1,
+    operation: 'contact',
+    agent: null,
+  },
+  {
+    id: 'example-2',
+    customer: 'Gabriel Santos',
+    company: '101',
+    project: 'Jardim das Acácias',
+    work: 'JAC01',
+    sale: 312,
+    unit: 'Quadra 03 · Lote 07',
+    delay: 9,
+    principalCents: 125000,
+    confirmedPrincipalCents: 0,
+    installments: 1,
+    operation: 'promise',
+    agent: 'Ana',
+  },
+  {
+    id: 'example-3',
+    customer: 'Beatriz Oliveira',
+    company: '102',
+    project: 'Reserva do Lago',
+    work: 'RLG01',
+    sale: 86,
+    unit: 'Quadra 12 · Lote 04',
+    delay: 18,
+    principalCents: 236000,
+    confirmedPrincipalCents: 0,
+    installments: 2,
+    operation: 'negotiation',
+    agent: 'Pedro',
+  },
+  {
+    id: 'example-4',
+    customer: 'Lucas Ferreira',
+    company: '101',
+    project: 'Jardim das Acácias',
+    work: 'JAC01',
+    sale: 417,
+    unit: 'Quadra 02 · Lote 19',
+    delay: 25,
+    principalCents: 68000,
+    confirmedPrincipalCents: 32000,
+    installments: 1,
+    operation: 'negotiation',
+    agent: 'Ana',
+  },
+  {
+    id: 'example-5',
+    customer: 'Helena Costa',
+    company: '102',
+    project: 'Reserva do Lago',
+    work: 'RLG01',
+    sale: 193,
+    unit: 'Quadra 06 · Lote 03',
+    delay: 44,
+    principalCents: 378000,
+    confirmedPrincipalCents: 0,
+    installments: 3,
+    operation: 'contact',
+    agent: 'Pedro',
+  },
+  {
+    id: 'example-6',
+    customer: 'Rafael Martins',
+    company: '102',
+    project: 'Reserva do Lago',
+    work: 'RLG01',
+    sale: 209,
+    unit: 'Quadra 15 · Lote 09',
+    delay: 76,
+    principalCents: 692000,
+    confirmedPrincipalCents: 0,
+    installments: 4,
+    operation: 'legal',
+    agent: 'Júlia',
+  },
+  {
+    id: 'example-7',
+    customer: 'Camila Rocha',
+    company: '101',
+    project: 'Jardim das Acácias',
+    work: 'JAC01',
+    sale: 158,
+    unit: 'Quadra 04 · Lote 11',
+    delay: 0,
+    principalCents: 0,
+    confirmedPrincipalCents: 94000,
+    installments: 0,
+    operation: 'paid',
+    agent: 'Ana',
+  },
+];

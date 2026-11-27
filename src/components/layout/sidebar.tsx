@@ -30,6 +30,7 @@ import {
   Zap,
   Loader2,
   Settings,
+  Wallet,
 } from 'lucide-react';
 import type { AccountRole } from '@/lib/auth/roles';
 import { canAccessWorkspacePage } from '@/lib/auth/workspace-access';
@@ -73,6 +74,7 @@ const groups: NavGroup[] = [
     icon: Users,
     items: [
       { href: '/contacts', labelKey: 'contacts', icon: Users },
+      { href: '/collections', labelKey: 'collections', icon: Wallet },
       { href: '/pipelines', labelKey: 'pipelines', icon: GitBranch },
       { href: '/tags', labelKey: 'tags', icon: Tags },
     ],
