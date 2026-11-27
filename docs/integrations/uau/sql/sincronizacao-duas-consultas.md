@@ -15,6 +15,12 @@ Cadastrar as duas SQLs como consultas personalizadas e informar os códigos gera
 Esta etapa é de homologação: não libera envios nem confirma pagamento automaticamente.
 Os rascunhos antigos em quatro consultas foram substituídos por este modelo para o novo fluxo.
 
+Em 27/11/2026, o responsável informou os códigos **144** (inadimplência) e **145**
+(conciliação). Metadados e execução de ambas foram validados pela API no piloto:
+1 parcela vencida de R$ 314,43 na 144; 55 abertas, total de R$ 168.485,68, sem
+recebimentos/distratos atuais na 145. A configuração foi salva como rascunho na
+organização do piloto, mantendo sincronização programada e envios desativados.
+
 ## Retorno observado em 26/11/2026 às 23:53
 
 Resultado fornecido pelo responsável após executar o piloto no SSMS:

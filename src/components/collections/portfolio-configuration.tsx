@@ -14,12 +14,14 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PortfolioValidation } from './portfolio-validation';
 import {
   mergeQueryParameterValues,
   type UauQueryParameter,
 } from '@/lib/uau/query-parameters';
 import {
   parsePortfolioSetup,
+  isManagedPortfolioParameter,
   queryKinds,
   type PortfolioQuery,
   type PortfolioSetup,
@@ -28,24 +30,14 @@ import {
 
 const queryLabels: Record<QueryKind, { title: string; description: string }> = {
   open: {
-    title: 'Carteira e parcelas em aberto',
+    title: '1. Inadimplência atual',
     description:
-      'Saldo em aberto e vencimento original. Incluir as parcelas futuras dos contratos acompanhados.',
+      'Encontra os contratos com parcelas vencidas pelo vencimento original, dentro das empresas e obras escolhidas.',
   },
-  received: {
-    title: 'Recebimentos',
+  reconciliation: {
+    title: '2. Conciliação dos contratos acompanhados',
     description:
-      'Recebimentos confirmados, pagamentos parciais e identificadores para conciliação.',
-  },
-  cancellations: {
-    title: 'Distratos',
-    description:
-      'Identificar contratos distratados e impedir novas cobranças indevidas.',
-  },
-  maintenance: {
-    title: 'Manutenções da venda',
-    description:
-      'Acompanhar renegociações e alterações do contrato sem tratá-las como pagamento.',
+      'Uma única SQL reúne saldo restante, recebimentos, distratos e manutenções dos contratos solicitados pelo sistema.',
   },
 };
 
@@ -176,21 +168,27 @@ function QueryEditor({
               >
                 {parameter.name}
               </Label>
-              <Input
-                id={`${kind}-param-${index}`}
-                value={parameter.value}
-                placeholder="Valor para esta carteira"
-                onChange={(event) =>
-                  onChange({
-                    ...query,
-                    parameters: query.parameters.map((item, i) =>
-                      i === index
-                        ? { ...item, value: event.target.value }
-                        : item
-                    ),
-                  })
-                }
-              />
+              {isManagedPortfolioParameter(kind, parameter.name) ? (
+                <p className="border-border text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs">
+                  Preenchido automaticamente pelo sistema
+                </p>
+              ) : (
+                <Input
+                  id={`${kind}-param-${index}`}
+                  value={parameter.value}
+                  placeholder="Valor para esta carteira"
+                  onChange={(event) =>
+                    onChange({
+                      ...query,
+                      parameters: query.parameters.map((item, i) =>
+                        i === index
+                          ? { ...item, value: event.target.value }
+                          : item
+                      ),
+                    })
+                  }
+                />
+              )}
               <p className="text-muted-foreground text-xs">
                 {
                   definitions?.find((item) => item.name === parameter.name)
@@ -279,6 +277,7 @@ export function PortfolioConfiguration({
             />
           ))}
         </fieldset>
+        <PortfolioValidation setup={setup} disabled={disabled || saving} />
       </div>
       <div className="space-y-4 xl:sticky xl:top-0">
         <section className="border-border bg-card rounded-xl border p-5">

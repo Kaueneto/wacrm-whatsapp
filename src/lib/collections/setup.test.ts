@@ -7,6 +7,30 @@ import {
 } from './setup';
 
 describe('collection portfolio configuration', () => {
+  it('upgrades the former four-query draft without reusing a receipts SQL as reconciliation', () => {
+    const current = defaultPortfolioSetup();
+    const previous = {
+      ...current,
+      version: 1,
+      queries: {
+        open: { id: 144, custom: 1, parameters: [] },
+        received: { id: 23, custom: 1, parameters: [] },
+        cancellations: { id: 125, custom: 1, parameters: [] },
+        maintenance: { id: 20, custom: 1, parameters: [] },
+      },
+    };
+    expect(parsePortfolioSetup(previous)).toMatchObject({
+      version: 2,
+      queries: {
+        open: { id: 144 },
+        reconciliation: { id: null },
+      },
+    });
+    expect(Object.keys(parsePortfolioSetup(previous).queries)).toEqual([
+      'open',
+      'reconciliation',
+    ]);
+  });
   it('saves an incomplete draft without manufacturing query IDs or activating jobs', () => {
     const parsed = parsePortfolioSetup({
       ...defaultPortfolioSetup(),

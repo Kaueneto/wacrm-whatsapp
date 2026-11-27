@@ -1,10 +1,16 @@
-export const queryKinds = [
-  'open',
-  'received',
-  'cancellations',
-  'maintenance',
-] as const;
+export const queryKinds = ['open', 'reconciliation'] as const;
 export type QueryKind = (typeof queryKinds)[number];
+
+export function isManagedPortfolioParameter(
+  kind: QueryKind,
+  name: string
+): boolean {
+  const names =
+    kind === 'open'
+      ? ['minimodiasatraso', 'pagina', 'tamanhopagina']
+      : ['contratosxml'];
+  return names.includes(name.trim().toLowerCase());
+}
 export interface PortfolioQuery {
   id: number | null;
   custom: 0 | 1;
@@ -16,7 +22,7 @@ export interface CollectionStage {
   fromDay: number;
 }
 export interface PortfolioSetup {
-  version: 1;
+  version: 2;
   timezone: string;
   times: string[];
   minimumDays: number;
@@ -27,16 +33,14 @@ export interface PortfolioSetup {
 
 export function defaultPortfolioSetup(): PortfolioSetup {
   return {
-    version: 1,
+    version: 2,
     timezone: 'America/Sao_Paulo',
     times: ['08:00', '14:00'],
     minimumDays: 1,
     excludedCompanies: [],
     queries: {
       open: { id: null, custom: 1, parameters: [] },
-      received: { id: null, custom: 1, parameters: [] },
-      cancellations: { id: null, custom: 1, parameters: [] },
-      maintenance: { id: null, custom: 1, parameters: [] },
+      reconciliation: { id: null, custom: 1, parameters: [] },
     },
     stages: [
       { id: 'initial', name: 'Primeiro contato', fromDay: 1 },
@@ -54,8 +58,21 @@ export function parsePortfolioSetup(value: unknown): PortfolioSetup {
   };
   if (!value || typeof value !== 'object')
     return fail('Configuração inválida.');
+  if ((value as { version?: number }).version === 1) {
+    const legacy = value as Record<string, unknown>;
+    // A former receipts query is not a reconciliation query. Never silently
+    // reinterpret its code; require the newly registered SQL explicitly.
+    return parsePortfolioSetup({
+      ...legacy,
+      version: 2,
+      queries: {
+        open: (legacy.queries as Record<string, unknown> | undefined)?.open,
+        reconciliation: { id: null, custom: 1, parameters: [] },
+      },
+    });
+  }
   const input = value as PortfolioSetup;
-  if (input.version !== 1)
+  if (input.version !== 2)
     return fail('Versão de configuração não reconhecida.');
   if (typeof input.timezone !== 'string' || input.timezone.length > 80)
     return fail('Informe um fuso horário válido.');
@@ -159,7 +176,7 @@ export function parsePortfolioSetup(value: unknown): PortfolioSetup {
     queries[kind] = { id: query.id, custom: query.custom, parameters };
   }
   return {
-    version: 1,
+    version: 2,
     timezone: input.timezone,
     times: [...input.times].sort(),
     minimumDays: input.minimumDays,
