@@ -375,6 +375,24 @@ O próximo teste de renegociação deve ser feito pelo responsável que conhece 
 procedimento UAU no ambiente de teste, comparando abertas, recebidas e VendaHist
 antes/depois. Não orientar manutenção financeira por uma sequência presumida da UI.
 
+### Estorno parcial — conferência SQL concluída no caso piloto
+
+O novo retorno de abertas confirma 55 linhas e 55 chaves distintas, principal total
+168.485,68, com uma vencida de principal 314,43 (E/1/geral 1, vencimento 18/11) e o
+saldo 345,57 a vencer (E/51/geral 55, vencimento 28/11). O responsável informa que
+a segunda tabela, de Recebidas para toda a venda 900/00001/1, veio sem linhas.
+
+Os resultados são consistentes com o estorno integral do recebimento parcial no
+caso testado: o recebimento 7 não consta nessa consulta, a parte paga retornou às
+abertas e o saldo desdobrado permaneceu. A ausência atual não deve apagar o evento
+anterior do histórico local, mas retirar sua contribuição dos pagamentos vigentes
+após reconciliação. A terceira tabela contém apenas descrições de metadados, não
+parcelas ou pagamentos; seu preenchimento não contradiz Recebidas vazia.
+
+Essa validação cobre o caso piloto observado. Permanecem pendentes a identificação
+determinística da linhagem no desdobramento, renegociação formal, distrato vigente
+e estratégia de detectar estornos/alterações retroativas nas sincronizações.
+
 ## Consulta 125 — evidências de distrato e cancelamento
 
 SQL completo recebido em 25/11/2026. Traz os campos que permitem preparar a
