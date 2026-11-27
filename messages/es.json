@@ -74,7 +74,10 @@
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
     "campaigns": "Campañas",
-    "collections": "Cobranza"
+    "collections": "Cobranza",
+    "collectionPortfolio": "Cartera",
+    "collectionSync": "Configuración de sincronización",
+    "collectionRules": "Reglas de cobranza"
   },
   "Header": {
     "organization": "Usuarios y equipos",
@@ -94,7 +97,10 @@
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
     "campaigns": "Campañas",
-    "collections": "Cobranza"
+    "collections": "Cobranza",
+    "collectionPortfolio": "Cartera",
+    "collectionSync": "Configuración de sincronización",
+    "collectionRules": "Reglas de cobranza"
   },
   "ModeToggle": {
     "switchMode": "Cambiar al modo {mode}"
@@ -561,7 +567,7 @@
     },
     "composer": {
       "draftHint": "Toca ✨ para redactar una respuesta con IA; puedes editarla antes de enviarla",
-      "sessionExpiredHint": "La sesión de 24 horas expiró. Usa una plantilla para retomar el contacto.",
+      "sessionExpiredHint": "Los mensajes libres requieren un mensaje del cliente en las últimas 24 horas. Envía una plantilla aprobada y espera su respuesta para abrir la ventana de conversación.",
       "templates": "Plantillas",
       "readOnlyPlaceholder": "Solo lectura: los observadores pueden navegar, pero no responder",
       "sessionExpiredPlaceholder": "Sesión expirada - usa una plantilla",
@@ -2744,6 +2750,11 @@
     "COP": "Peso colombiano"
   },
   "UauFinance": {
+    "suggestedLinkTitle": "Vínculo sugerido · pendiente de confirmación",
+    "suggestedLinkOrigin": "Abriste este chat desde el contrato {contract} en la cartera UAU.",
+    "suggestedLinkConfirmHint": "Comprueba que este contacto pertenece al cliente indicado. Introduce su CPF para verificar el registro y confirma el vínculo.",
+    "suggestedLinkNotFound": "Este CPF no corresponde al registro sugerido. Revisa el CPF o busca otro cliente.",
+    "dismissSuggestion": "Ignorar y buscar otro cliente",
     "title": "Finanzas · UAU",
     "requestFailed": "No se pudo consultar UAU.",
     "refresh": "Actualizar",

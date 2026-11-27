@@ -74,7 +74,10 @@
     "menuSettings": "설정",
     "menuSignOut": "로그아웃",
     "campaigns": "캠페인",
-    "collections": "수금 관리"
+    "collections": "수금 관리",
+    "collectionPortfolio": "채권 현황",
+    "collectionSync": "동기화 설정",
+    "collectionRules": "수금 규칙"
   },
   "Header": {
     "organization": "사용자 및 팀",
@@ -94,7 +97,10 @@
     "menuSettings": "설정",
     "menuSignOut": "로그아웃",
     "campaigns": "캠페인",
-    "collections": "수금 관리"
+    "collections": "수금 관리",
+    "collectionPortfolio": "채권 현황",
+    "collectionSync": "동기화 설정",
+    "collectionRules": "수금 규칙"
   },
   "ModeToggle": {
     "switchMode": "{mode} 모드로 전환"
@@ -561,7 +567,7 @@
     },
     "composer": {
       "draftHint": "✨를 눌러 AI로 답장 초안을 작성하세요 — 보내기 전에 수정할 수 있습니다",
-      "sessionExpiredHint": "24시간 세션이 만료되었습니다. 다시 연결하려면 템플릿을 사용하세요.",
+      "sessionExpiredHint": "일반 메시지는 고객이 최근 24시간 이내에 메시지를 보낸 경우에만 전송할 수 있습니다. 승인된 템플릿을 보내고 고객의 답장을 기다리세요.",
       "templates": "템플릿",
       "readOnlyPlaceholder": "읽기 전용 — 뷰어는 열람만 가능하고 답장할 수 없습니다",
       "sessionExpiredPlaceholder": "세션 만료 - 템플릿을 사용하세요",
@@ -2744,6 +2750,11 @@
     "COP": "콜롬비아 페소"
   },
   "UauFinance": {
+    "suggestedLinkTitle": "추천 연결 · 확인 대기 중",
+    "suggestedLinkOrigin": "UAU 포트폴리오의 계약 {contract}에서 이 채팅을 열었습니다.",
+    "suggestedLinkConfirmHint": "이 연락처가 위 고객의 것인지 확인하세요. CPF를 입력하여 고객 정보를 확인한 후 연결을 확정하세요.",
+    "suggestedLinkNotFound": "입력한 CPF가 추천 고객과 일치하지 않습니다. CPF를 확인하거나 다른 고객을 검색하세요.",
+    "dismissSuggestion": "무시하고 다른 고객 검색",
     "title": "재무 · UAU",
     "requestFailed": "UAU를 조회할 수 없습니다.",
     "refresh": "새로고침",

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsPanelHead } from './settings-panel-head';
 
+import { useUauProjectCatalog } from '@/hooks/use-uau-project-catalog';
+
 const endpoint = '/api/integrations/uau';
 const initialForm = {
   baseUrl: '',
@@ -18,6 +20,7 @@ const initialForm = {
 };
 
 export function UauSettings() {
+  const catalog = useUauProjectCatalog();
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
   const [configured, setConfigured] = useState(false);
@@ -67,6 +70,7 @@ export function UauSettings() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       if (action === 'save') {
+        void catalog.refresh();
         setConfigured(true);
         setForm((current) => ({
           ...current,
@@ -132,7 +136,8 @@ export function UauSettings() {
                     }
                   />
                   <span className="text-muted-foreground block text-xs">
-                    Use o endereço HTTP ou HTTPS até a raiz da API, antes do caminho da operação.
+                    Use o endereço HTTP ou HTTPS até a raiz da API, antes do
+                    caminho da operação.
                   </span>
                 </label>
                 <label className="block space-y-1.5">
@@ -148,7 +153,8 @@ export function UauSettings() {
               </div>
               {/^http:\/\//i.test(form.baseUrl.trim()) && (
                 <p className="text-xs text-amber-800 dark:text-amber-300">
-                  Em HTTP, o usuário, a senha e os tokens trafegam sem criptografia até o UAU.
+                  Em HTTP, o usuário, a senha e os tokens trafegam sem
+                  criptografia até o UAU.
                 </p>
               )}
               <label className="block space-y-1.5">

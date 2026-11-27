@@ -65,6 +65,8 @@ function InboxPageInner() {
   const [activeConversation, setActiveConversation] =
     useState<Conversation | null>(null);
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
+  const uauSuggestion = activeConversation?.id === deepLinkConvId
+    ? searchParams.get('uauSuggestion') : null;
   const [messages, setMessages] = useState<Message[]>([]);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null
@@ -672,7 +674,7 @@ function InboxPageInner() {
 
         {activeContact && ((contactPanelOpen && panelFits) || focusedContactId === activeContact.id) && (
           <ResizableContactPanel expanded={focusedContactId === activeContact.id} width={contactPanelWidth} onWidthChange={setContactPanelWidth}>
-            <ContactSidebar key={activeContact.id} contact={activeContact} conversationId={activeConversation?.id} onContactTagChange={handleContactTagChange} expanded={focusedContactId === activeContact.id} onToggleExpanded={() => { if (focusedContactId === activeContact.id) { setFocusedContactId(null); if (!panelFits) setMobileContactPanelOpen(true); } else setFocusedContactId(activeContact.id); }} />
+            <ContactSidebar key={activeContact.id} contact={activeContact} uauSuggestion={uauSuggestion} conversationId={activeConversation?.id} onContactTagChange={handleContactTagChange} expanded={focusedContactId === activeContact.id} onToggleExpanded={() => { if (focusedContactId === activeContact.id) { setFocusedContactId(null); if (!panelFits) setMobileContactPanelOpen(true); } else setFocusedContactId(activeContact.id); }} />
           </ResizableContactPanel>
         )}
         </div>
@@ -680,7 +682,7 @@ function InboxPageInner() {
           <Sheet open={mobileContactPanelOpen} onOpenChange={setMobileContactPanelOpen}>
             <SheetContent className="gap-0">
               <SheetTitle className="sr-only">{tSidebar("contactInfo")}</SheetTitle>
-              <ContactSidebar key={activeContact.id} contact={activeContact} conversationId={activeConversation?.id} onContactTagChange={handleContactTagChange} onToggleExpanded={() => { setMobileContactPanelOpen(false); setFocusedContactId(activeContact.id); }} className="border-l-0" />
+              <ContactSidebar key={activeContact.id} contact={activeContact} uauSuggestion={uauSuggestion} conversationId={activeConversation?.id} onContactTagChange={handleContactTagChange} onToggleExpanded={() => { setMobileContactPanelOpen(false); setFocusedContactId(activeContact.id); }} className="border-l-0" />
             </SheetContent>
           </Sheet>
         )}

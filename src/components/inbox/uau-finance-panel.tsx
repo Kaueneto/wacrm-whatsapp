@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { semanticChip } from '@/lib/semantic-chip';
 import type { UauCustomer, UauFinance } from '@/lib/uau/finance-types';
+import type { UauLinkSuggestion } from '@/lib/uau/link-suggestion';
 
 type Result = UauFinance | { linked: false; connectionChanged?: boolean };
 async function api<T>(
@@ -46,10 +47,12 @@ const cpfMask = (value: string) =>
 /** Always visible. The server checks access and reuses its contact-scoped snapshots. */
 export function UauFinancePanel({
   contactId,
+  suggestionToken,
   detailed = false,
   onDataChange,
 }: {
   contactId: string;
+  suggestionToken?: string | null;
   detailed?: boolean;
   onDataChange?: (data: UauFinance | null) => void;
 }) {
@@ -58,10 +61,13 @@ export function UauFinancePanel({
   const endpoint = `/api/integrations/uau/contacts/${contactId}/finance`;
   const [loaded, setLoaded] = useState(false);
   const [data, setData] = useState<UauFinance | null>(null);
+  const [suggestion, setSuggestion] = useState<UauLinkSuggestion | null>(null);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const [cpf, setCpf] = useState('');
   const [candidates, setCandidates] = useState<UauCustomer[]>([]);
   const [searched, setSearched] = useState(false);
   const [editing, setEditing] = useState(false);
+  const suggestedLink = !data && !editing && !suggestionDismissed ? suggestion : null;
   const [connectionChanged, setConnectionChanged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -94,10 +100,17 @@ export function UauFinancePanel({
   }, []);
   const refresh = useCallback(
     () =>
-      perform(async (signal) =>
-        update(await api<Result>(endpoint, 'GET', undefined, signal))
-      ),
-    [endpoint, perform, update]
+      perform(async (signal) => {
+        const result = await api<Result>(endpoint, 'GET', undefined, signal);
+        update(result);
+        if (!result.linked && suggestionToken) {
+          const origin = await api<{ suggestion: UauLinkSuggestion }>(
+            endpoint, 'POST', { action: 'suggestion', token: suggestionToken }, signal,
+          );
+          setSuggestion(origin.suggestion);
+        }
+      }),
+    [endpoint, perform, update, suggestionToken]
   );
   useEffect(() => {
     void refresh();
@@ -220,7 +233,7 @@ export function UauFinancePanel({
                 const result = await api<{ candidates: UauCustomer[] }>(
                   endpoint,
                   'POST',
-                  { action: 'lookup', cpf },
+                  { action: 'lookup', cpf, ...(suggestedLink ? { suggestionToken } : {}) },
                   signal
                 );
                 setCandidates(result.candidates);
@@ -228,8 +241,22 @@ export function UauFinancePanel({
               });
             }}
           >
+            {suggestedLink && (
+              <div className="border-primary/30 bg-primary/5 space-y-2 rounded-lg border p-3">
+                <p className="text-xs font-medium">{t('suggestedLinkTitle')}</p>
+                <p className="text-sm font-semibold break-words">{suggestedLink.personName}</p>
+                <p className="text-muted-foreground text-xs">{t('personCode', { code: suggestedLink.personId })}</p>
+                <p className="text-muted-foreground text-xs">{t('suggestedLinkOrigin', { contract: suggestedLink.contractKey })}</p>
+                <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => {
+                  setSuggestionDismissed(true);
+                  setCpf('');
+                  setCandidates([]);
+                  setSearched(false);
+                }}>{t('dismissSuggestion')}</Button>
+              </div>
+            )}
             <p className="text-muted-foreground text-xs">
-              {connectionChanged ? t('connectionChanged') : t('identifyHint')}
+              {suggestedLink ? t('suggestedLinkConfirmHint') : connectionChanged ? t('connectionChanged') : t('identifyHint')}
             </p>
             <Label htmlFor={`cpf-${contactId}`} className="text-xs">
               {t('cpf')}
@@ -266,7 +293,7 @@ export function UauFinancePanel({
             </div>
             {searched && !candidates.length && (
               <p role="status" className="text-muted-foreground text-xs">
-                {t('notFound')}
+                {t(suggestedLink ? 'suggestedLinkNotFound' : 'notFound')}
               </p>
             )}
             {!!candidates.length && (
@@ -300,10 +327,11 @@ export function UauFinancePanel({
                           await api(
                             endpoint,
                             'PUT',
-                            { cpf, personId: person.id },
+                            { cpf, personId: person.id, ...(suggestedLink ? { suggestionToken } : {}) },
                             signal
                           );
                           setEditing(false);
+                          setSuggestionDismissed(true);
                           setData(null);
                           setLoaded(false);
                           setCpf('');

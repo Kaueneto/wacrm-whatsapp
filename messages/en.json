@@ -74,7 +74,10 @@
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
     "campaigns": "Campaigns",
-    "collections": "Collections"
+    "collections": "Collections",
+    "collectionPortfolio": "Portfolio",
+    "collectionSync": "Sync configuration",
+    "collectionRules": "Collection rules"
   },
   "Header": {
     "organization": "Users & teams",
@@ -94,7 +97,10 @@
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
     "campaigns": "Campaigns",
-    "collections": "Collections"
+    "collections": "Collections",
+    "collectionPortfolio": "Portfolio",
+    "collectionSync": "Sync configuration",
+    "collectionRules": "Collection rules"
   },
   "ModeToggle": {
     "switchMode": "Switch to {mode} mode"
@@ -561,7 +567,7 @@
     },
     "composer": {
       "draftHint": "Tap the ✨ to draft a reply with AI — you can edit it before sending",
-      "sessionExpiredHint": "24-hour session expired. Use a template to re-engage.",
+      "sessionExpiredHint": "Free-form messages require a customer message within the last 24 hours. Send an approved template and wait for their reply to open the conversation window.",
       "templates": "Templates",
       "readOnlyPlaceholder": "Read-only — viewers can browse but not reply",
       "sessionExpiredPlaceholder": "Session expired - use a template",
@@ -2744,6 +2750,11 @@
     "COP": "Colombian Peso"
   },
   "UauFinance": {
+    "suggestedLinkTitle": "Suggested link · awaiting confirmation",
+    "suggestedLinkOrigin": "You opened this chat from contract {contract} in the UAU portfolio.",
+    "suggestedLinkConfirmHint": "Check that this contact belongs to the customer above. Enter their CPF to verify the record, then confirm the link.",
+    "suggestedLinkNotFound": "This CPF does not match the suggested record. Check the CPF or search for another customer.",
+    "dismissSuggestion": "Dismiss and find another customer",
     "title": "Finances · UAU",
     "requestFailed": "Could not query UAU.",
     "refresh": "Refresh",

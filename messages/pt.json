@@ -74,7 +74,10 @@
     "menuSettings": "Configurações",
     "menuSignOut": "Sair",
     "campaigns": "Campanhas",
-    "collections": "Cobrança"
+    "collections": "Cobrança",
+    "collectionPortfolio": "Carteira",
+    "collectionSync": "Configuração de sincronização",
+    "collectionRules": "Réguas de cobrança"
   },
   "Header": {
     "organization": "Usuários e equipes",
@@ -94,7 +97,10 @@
     "menuSettings": "Configurações",
     "menuSignOut": "Sair",
     "campaigns": "Campanhas",
-    "collections": "Cobrança"
+    "collections": "Cobrança",
+    "collectionPortfolio": "Carteira",
+    "collectionSync": "Configuração de sincronização",
+    "collectionRules": "Réguas de cobrança"
   },
   "ModeToggle": {
     "switchMode": "Mudar para o modo {mode}"
@@ -561,7 +567,7 @@
     },
     "composer": {
       "draftHint": "Toque em ✨ para redigir uma resposta com IA — você pode editá-la antes de enviar",
-      "sessionExpiredHint": "A sessão de 24 horas expirou. Use um modelo para retomar o contato.",
+      "sessionExpiredHint": "Mensagens livres exigem uma mensagem do cliente nas últimas 24 horas. Envie um modelo aprovado e aguarde a resposta para liberar a conversa.",
       "templates": "Modelos",
       "readOnlyPlaceholder": "Somente leitura — visualizadores podem navegar, mas não responder",
       "sessionExpiredPlaceholder": "Sessão expirada - use um modelo",
@@ -2744,6 +2750,11 @@
     "COP": "Peso colombiano"
   },
   "UauFinance": {
+    "suggestedLinkTitle": "Vínculo sugerido · aguardando confirmação",
+    "suggestedLinkOrigin": "Você abriu este chat pelo contrato {contract} na carteira UAU.",
+    "suggestedLinkConfirmHint": "Confira se este contato pertence ao cliente acima. Informe o CPF para validar o cadastro e depois confirme o vínculo.",
+    "suggestedLinkNotFound": "O CPF informado não corresponde ao cadastro sugerido. Confira o CPF ou busque outro cliente.",
+    "dismissSuggestion": "Ignorar e buscar outro cliente",
     "title": "Financeiro · UAU",
     "requestFailed": "Não foi possível consultar o UAU.",
     "refresh": "Atualizar consulta",

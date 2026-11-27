@@ -1,20 +1,15 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import {
-  Clock3,
-  Database,
-  Loader2,
-  Plus,
-  Save,
-  ShieldCheck,
-  Trash2,
-} from 'lucide-react';
+import { useState } from 'react';
+import { Clock3, Database, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PortfolioValidation } from './portfolio-validation';
+import { PortfolioScope } from './portfolio-scope';
+import { PortfolioScheduleFields } from './portfolio-schedule';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   mergeQueryParameterValues,
   type UauQueryParameter,
@@ -159,45 +154,50 @@ function QueryEditor({
         </p>
       )}
       {query.parameters.length > 0 && (
-        <div className="bg-muted/40 mt-4 grid gap-3 rounded-lg p-3 sm:grid-cols-2">
-          {query.parameters.map((parameter, index) => (
-            <div key={parameter.name} className="min-w-0 space-y-1.5">
-              <Label
-                htmlFor={`${kind}-param-${index}`}
-                className="font-mono text-xs break-all text-blue-700 dark:text-sky-300"
-              >
-                {parameter.name}
-              </Label>
-              {isManagedPortfolioParameter(kind, parameter.name) ? (
-                <p className="border-border text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs">
-                  Preenchido automaticamente pelo sistema
-                </p>
-              ) : (
-                <Input
-                  id={`${kind}-param-${index}`}
-                  value={parameter.value}
-                  placeholder="Valor para esta carteira"
-                  onChange={(event) =>
-                    onChange({
-                      ...query,
-                      parameters: query.parameters.map((item, i) =>
-                        i === index
-                          ? { ...item, value: event.target.value }
-                          : item
-                      ),
-                    })
+        <details className="mt-4">
+          <summary className="text-muted-foreground cursor-pointer text-xs">
+            Parâmetros ({query.parameters.length})
+          </summary>
+          <div className="bg-muted/40 mt-2 grid gap-3 rounded-lg p-3 sm:grid-cols-2">
+            {query.parameters.map((parameter, index) => (
+              <div key={parameter.name} className="min-w-0 space-y-1.5">
+                <Label
+                  htmlFor={`${kind}-param-${index}`}
+                  className="font-mono text-xs break-all text-blue-700 dark:text-sky-300"
+                >
+                  {parameter.name}
+                </Label>
+                {isManagedPortfolioParameter(kind, parameter.name) ? (
+                  <p className="border-border text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs">
+                    Preenchido automaticamente pelo sistema
+                  </p>
+                ) : (
+                  <Input
+                    id={`${kind}-param-${index}`}
+                    value={parameter.value}
+                    placeholder="Valor para esta carteira"
+                    onChange={(event) =>
+                      onChange({
+                        ...query,
+                        parameters: query.parameters.map((item, i) =>
+                          i === index
+                            ? { ...item, value: event.target.value }
+                            : item
+                        ),
+                      })
+                    }
+                  />
+                )}
+                <p className="text-muted-foreground text-xs">
+                  {
+                    definitions?.find((item) => item.name === parameter.name)
+                      ?.description
                   }
-                />
-              )}
-              <p className="text-muted-foreground text-xs">
-                {
-                  definitions?.find((item) => item.name === parameter.name)
-                    ?.description
-                }
-              </p>
-            </div>
-          ))}
-        </div>
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </section>
   );
@@ -207,29 +207,22 @@ export function PortfolioConfiguration({
   setup,
   onChange,
   savedAt,
+  running = false,
   onSaved,
   disabled,
 }: {
   setup: PortfolioSetup;
   onChange: (setup: PortfolioSetup) => void;
   savedAt: string | null;
+  running?: boolean;
   onSaved: () => void;
   disabled: boolean;
 }) {
   const [saving, setSaving] = useState(false);
-  const exclusionsInput = useRef<HTMLInputElement>(null);
   async function save() {
     setSaving(true);
     try {
-      const payload = parsePortfolioSetup({
-        ...setup,
-        excludedCompanies: (
-          exclusionsInput.current?.value ?? setup.excludedCompanies.join(',')
-        )
-          .split(',')
-          .map((code) => code.trim())
-          .filter(Boolean),
-      });
+      const payload = parsePortfolioSetup(setup);
       const response = await fetch('/api/integrations/uau/portfolio-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -241,7 +234,9 @@ export function PortfolioConfiguration({
       onChange(payload);
       onSaved();
       toast.success(
-        'Rascunho salvo para sua organização. A sincronização continua desativada.'
+        payload.schedule.enabled
+          ? 'Configuração e agendamento salvos.'
+          : 'Configuração salva. Atualização manual.'
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Falha ao salvar.');
@@ -250,146 +245,39 @@ export function PortfolioConfiguration({
     }
   }
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">Conecte a carteira ao UAU</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Uma configuração da organização, independente das campanhas de
-            disparo.
-          </p>
-        </div>
-        <fieldset
-          disabled={disabled || saving}
-          className="min-w-0 space-y-4 disabled:opacity-60"
+    <Tabs defaultValue="configuration" className="min-w-0 gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-2">
+        <TabsList
+          aria-label="Sincronização do UAU"
+          variant="line"
+          className="h-10 justify-start gap-4"
         >
-          {queryKinds.map((kind) => (
-            <QueryEditor
-              key={kind}
-              kind={kind}
-              query={setup.queries[kind]}
-              onChange={(query) =>
-                onChange({
-                  ...setup,
-                  queries: { ...setup.queries, [kind]: query },
-                })
-              }
-            />
-          ))}
-        </fieldset>
-        <PortfolioValidation setup={setup} disabled={disabled || saving} />
-      </div>
-      <div className="space-y-4 xl:sticky xl:top-0">
-        <section className="border-border bg-card rounded-xl border p-5">
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
-            <Clock3 className="text-primary size-4" />
-            Sincronização programada
-          </h3>
-          <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-            Prepare os horários de atualização. A rotina será ativada após a
-            validação das consultas.
-          </p>
-          <fieldset disabled={disabled || saving} className="mt-4 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="portfolio-timezone">Fuso horário</Label>
-              <Input
-                id="portfolio-timezone"
-                value={setup.timezone}
-                onChange={(event) =>
-                  onChange({ ...setup, timezone: event.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Horários diários</Label>
-              {setup.times.map((time, index) => (
-                <div key={index} className="flex gap-2">
-                  <Input
-                    type="time"
-                    aria-label={`Horário ${index + 1}`}
-                    value={time}
-                    onChange={(event) =>
-                      onChange({
-                        ...setup,
-                        times: setup.times.map((item, i) =>
-                          i === index ? event.target.value : item
-                        ),
-                      })
-                    }
-                  />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Remover horário ${index + 1}`}
-                    disabled={setup.times.length === 1}
-                    onClick={() =>
-                      onChange({
-                        ...setup,
-                        times: setup.times.filter((_, i) => i !== index),
-                      })
-                    }
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={setup.times.length >= 12}
-                onClick={() =>
-                  onChange({ ...setup, times: [...setup.times, '18:00'] })
-                }
-              >
-                <Plus className="size-3.5" />
-                Adicionar horário
-              </Button>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="portfolio-min-days">
-                Trazer a partir de quantos dias de atraso?
-              </Label>
-              <Input
-                id="portfolio-min-days"
-                type="number"
-                min={1}
-                max={36500}
-                value={setup.minimumDays}
-                onChange={(event) =>
-                  onChange({
-                    ...setup,
-                    minimumDays: Number(event.target.value),
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="portfolio-exclusions">Excluir empresas</Label>
-              <Input
-                id="portfolio-exclusions"
-                key={setup.excludedCompanies.join(',')}
-                ref={exclusionsInput}
-                placeholder="Códigos separados por vírgula"
-                defaultValue={setup.excludedCompanies.join(', ')}
-                onBlur={(event) =>
-                  onChange({
-                    ...setup,
-                    excludedCompanies: event.target.value
-                      .split(',')
-                      .map((code) => code.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
-              <p className="text-muted-foreground text-xs">
-                O filtro de empresa e obra também pode ser definido nos
-                parâmetros de cada consulta.
-              </p>
-            </div>
-          </fieldset>
+          <TabsTrigger value="configuration" className="px-3">
+            Configuração
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="px-3">
+            <Clock3 className="size-4" />
+            Agendamento
+          </TabsTrigger>
+        </TabsList>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+          {running && (
+            <span className="text-muted-foreground text-xs">
+              Importação em andamento
+            </span>
+          )}
+          {savedAt && (
+            <span className="text-muted-foreground text-xs">
+              Salvo em{' '}
+              {new Intl.DateTimeFormat('pt-BR', {
+                dateStyle: 'short',
+                timeStyle: 'short',
+                timeZone: setup.timezone,
+              }).format(new Date(savedAt))}
+            </span>
+          )}
           <Button
-            className="mt-5 w-full"
+            className="h-9"
             disabled={disabled || saving}
             onClick={() => void save()}
           >
@@ -398,28 +286,76 @@ export function PortfolioConfiguration({
             ) : (
               <Save className="size-4" />
             )}
-            Salvar rascunho
+            Salvar configuração
           </Button>
-          {savedAt && (
-            <p className="text-muted-foreground mt-2 text-center text-xs">
-              Salvo em{' '}
-              {new Intl.DateTimeFormat('pt-BR', {
-                dateStyle: 'short',
-                timeStyle: 'short',
-                timeZone: 'America/Sao_Paulo',
-              }).format(new Date(savedAt))}
-            </p>
-          )}
-        </section>
-        <div className="border-primary/20 bg-primary/5 rounded-xl border p-5">
-          <ShieldCheck className="text-primary mb-2 size-5" />
-          <h3 className="text-sm font-semibold">Primeiro, acompanhar.</h3>
-          <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-            Salvar não executa consultas, ativa agendamentos ou envia mensagens.
-            Os códigos devem corresponder a consultas já cadastradas no UAU.
-          </p>
         </div>
       </div>
-    </div>
+      <TabsContent value="configuration" className="space-y-4">
+        <fieldset
+          disabled={disabled || saving}
+          className="border-border bg-card flex flex-wrap items-center justify-between gap-4 rounded-xl border p-5"
+        >
+          <div>
+            <h2 className="text-sm font-semibold">Parâmetros da importação</h2>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Aplicados tanto à importação manual quanto à agendada.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="portfolio-min-days">Atraso mínimo (dias)</Label>
+            <Input
+              id="portfolio-min-days"
+              className="h-10 w-24"
+              type="number"
+              min={1}
+              max={36500}
+              value={setup.minimumDays}
+              onChange={(event) =>
+                onChange({ ...setup, minimumDays: Number(event.target.value) })
+              }
+            />
+          </div>
+        </fieldset>
+        <PortfolioScope
+          setup={setup}
+          onChange={onChange}
+          disabled={disabled || saving}
+        />
+        <details className="border-border bg-card rounded-xl border p-4">
+          <summary className="cursor-pointer text-sm font-semibold">
+            Consultas do UAU{' '}
+            <span className="text-muted-foreground ml-2 text-xs font-normal">
+              Configuração técnica
+            </span>
+          </summary>
+          <fieldset
+            disabled={disabled || saving}
+            className="mt-4 min-w-0 space-y-4 disabled:opacity-60"
+          >
+            {queryKinds.map((kind) => (
+              <QueryEditor
+                key={kind}
+                kind={kind}
+                query={setup.queries[kind]}
+                onChange={(query) =>
+                  onChange({
+                    ...setup,
+                    queries: { ...setup.queries, [kind]: query },
+                  })
+                }
+              />
+            ))}
+          </fieldset>
+        </details>
+        <PortfolioValidation setup={setup} disabled={disabled || saving} />
+      </TabsContent>
+      <TabsContent value="schedule">
+        <PortfolioScheduleFields
+          setup={setup}
+          onChange={onChange}
+          disabled={disabled || saving}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }

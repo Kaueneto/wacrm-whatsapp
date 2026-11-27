@@ -31,6 +31,7 @@ import { UauFinancePanel } from './uau-finance-panel';
 import { UauAttendanceDialog } from './uau-attendance-dialog';
 
 interface ContactSidebarProps {
+  uauSuggestion?: string | null;
   conversationId?: string;
   contact: Contact;
   onContactTagChange: (contactId: string, tag: Tag, assigned: boolean) => void;
@@ -40,6 +41,7 @@ interface ContactSidebarProps {
 }
 
 export function ContactSidebar({
+  uauSuggestion,
   conversationId,
   contact,
   onContactTagChange,
@@ -323,8 +325,9 @@ export function ContactSidebar({
 
             {canManageContactTags && (
               <UauFinancePanel
-                key={contact.id}
+                key={`${contact.id}:${uauSuggestion ?? ''}`}
                 contactId={contact.id}
+                suggestionToken={uauSuggestion}
                 detailed={expanded}
                 onDataChange={setUauFinance}
               />

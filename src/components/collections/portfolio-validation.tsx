@@ -5,6 +5,7 @@ import { CheckCheck, FlaskConical, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UauProjectPicker } from './uau-project-picker';
 import type { PortfolioSetup } from '@/lib/collections/setup';
 import type { PortfolioValidationResult } from '@/lib/collections/query-validation';
 
@@ -15,16 +16,24 @@ export function PortfolioValidation({
   setup: PortfolioSetup;
   disabled: boolean;
 }) {
-  const [company, setCompany] = useState('900');
-  const [work, setWork] = useState('00001');
-  const [sale, setSale] = useState('1');
+  const [manual, setManual] = useState(false);
+  const [project, setProject] = useState<{
+    company: string;
+    work: string;
+  } | null>(null);
+  const { company, work } = project ??
+    (setup.scope.mode === 'selected' ? setup.scope.projects[0] : undefined) ?? {
+      company: '',
+      work: '',
+    };
+  const [sale, setSale] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [response, setResponse] = useState<{
     signature: string;
     result: PortfolioValidationResult;
   } | null>(null);
-  const signature = JSON.stringify({ setup, company, work, sale });
+  const signature = JSON.stringify({ setup, manual, company, work, sale });
   const result = response?.signature === signature ? response.result : null;
   async function validate() {
     const testedSignature = signature;
@@ -39,7 +48,15 @@ export function PortfolioValidation({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             setup,
-            pilot: { company: Number(company), work, sale: Number(sale) },
+            ...(manual
+              ? {
+                  pilot: {
+                    company: Number(company),
+                    work,
+                    ...(sale.trim() ? { sale: Number(sale) } : {}),
+                  },
+                }
+              : {}),
           }),
         }
       );
@@ -60,45 +77,68 @@ export function PortfolioValidation({
         Validar dados reais do UAU
       </h3>
       <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-        Consulta a primeira página de inadimplência do escopo configurado e
-        concilia uma venda de teste. O resultado fica nesta tela; nenhum dado
-        financeiro é importado ou alterado.
+        {manual
+          ? 'Confere a empresa e obra escolhidas. Informe a venda somente se quiser testar um contrato específico.'
+          : 'Valida uma amostra real do escopo, sem importar ou alterar dados.'}
       </p>
       <fieldset
         disabled={disabled || loading}
-        className="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+        className={
+          manual
+            ? 'mt-4 grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]'
+            : 'mt-4 flex flex-wrap items-center gap-4'
+        }
       >
-        <div className="space-y-1.5">
-          <Label htmlFor="pilot-company">Empresa do teste</Label>
-          <Input
-            id="pilot-company"
-            type="number"
-            min={1}
-            value={company}
-            onChange={(event) => setCompany(event.target.value)}
+        <label className="text-muted-foreground flex items-center gap-2 text-xs sm:col-span-4">
+          <input
+            type="checkbox"
+            checked={manual}
+            onChange={(event) => {
+              setManual(event.target.checked);
+              setError('');
+            }}
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="pilot-work">Obra</Label>
-          <Input
-            id="pilot-work"
-            value={work}
-            onChange={(event) => setWork(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="pilot-sale">Venda</Label>
-          <Input
-            id="pilot-sale"
-            type="number"
-            min={1}
-            value={sale}
-            onChange={(event) => setSale(event.target.value)}
-          />
-        </div>
+          Escolher empresa e obra
+        </label>
+        {manual && (
+          <>
+            <div className="min-w-0 sm:col-span-2">
+              <UauProjectPicker
+                value={{ company, work }}
+                onChange={(value) => {
+                  setProject(value);
+                  setSale('');
+                  setError('');
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pilot-sale">Venda (opcional)</Label>
+              <Input
+                id="pilot-sale"
+                type="number"
+                min={1}
+                step={1}
+                placeholder="Escolher automaticamente"
+                value={sale}
+                onChange={(event) => setSale(event.target.value)}
+              />
+            </div>
+          </>
+        )}
         <Button
           type="button"
-          disabled={!setup.queries.open.id || !setup.queries.reconciliation.id}
+          disabled={
+            (manual &&
+              (!company ||
+                !work ||
+                (!!sale.trim() &&
+                  (!/^[1-9]\d*$/.test(sale) ||
+                    !Number.isSafeInteger(Number(sale)) ||
+                    Number(sale) > 2147483647)))) ||
+            !setup.queries.open.id ||
+            !setup.queries.reconciliation.id
+          }
           onClick={() => void validate()}
         >
           {loading ? (
@@ -110,9 +150,9 @@ export function PortfolioValidation({
         </Button>
       </fieldset>
       <p className="text-muted-foreground mt-3 text-xs">
-        Em EmpresaObra, use o mesmo escopo nas duas consultas. Para o piloto:{' '}
-        <code className="font-mono">{"'900|00001'"}</code>. A lista XML e a
-        paginação são montadas automaticamente.
+        {manual
+          ? 'Este teste usa apenas a empresa e obra escolhidas, independentemente do escopo e das exclusões da carteira. A configuração salva permanece igual.'
+          : 'O contrato é escolhido automaticamente entre os resultados do escopo.'}
       </p>
       {error && (
         <p role="alert" className="text-destructive mt-4 text-sm">
@@ -122,13 +162,16 @@ export function PortfolioValidation({
       {result && (
         <div className="mt-5 space-y-4" role="status">
           <p className="text-primary text-sm font-medium">
-            As duas consultas responderam no formato esperado.
+            {result.reconciliation.length
+              ? 'As duas consultas responderam no formato esperado.'
+              : 'A consulta de inadimplência respondeu sem contratos neste escopo.'}
           </p>
           <p className="text-muted-foreground text-xs">
             Inadimplência: {result.discovery.length} contrato(s) nesta página.{' '}
             {result.possiblyMorePages ? 'Pode haver outras páginas.' : ''}{' '}
-            Conciliação: {result.reconciliation.length} contrato(s) de teste.
-            Este resultado não comprova quitação.
+            {result.reconciliation.length
+              ? `Conciliação: ${result.reconciliation.length} contrato(s) da amostra. Este resultado não comprova quitação.`
+              : 'A conciliação não foi testada porque não há contratos na amostra. Você pode escolher um contrato específico para conferi-la.'}
           </p>
           <div className="border-border bg-card overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[640px] text-left text-xs">
