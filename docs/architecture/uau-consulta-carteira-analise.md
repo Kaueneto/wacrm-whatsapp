@@ -313,7 +313,43 @@ Preparado `teste-saldo-parcial-900-00001.sql` para listar todas as abertas/receb
 da venda e as descrições de Origem_Prc/OrigParc_Rec, sem presumir que apontem para
 os identificadores anteriores. A nova listagem ainda não foi fornecida.
 
-## Consulta 125 — evidências de distrato e cancelamento (análise)
+### Resultado da localização do saldo parcial
+
+Recebidos três CSVs sem cabeçalho correspondentes, na ordem de colunas, à consulta
+`teste-saldo-parcial-900-00001.sql`. A primeira tabela tem 54 abertas com 54 chaves
+distintas e soma base de 168.171,25. A chave antiga E/1/geral 1 não aparece.
+
+O saldo foi localizado na mesma venda 900/00001/1, tipo E, parcela 51, número geral
+55, Origem_Prc = 1, valor 345,57, cadastro 26/11/2026 e vencimento/prorrogação
+28/11/2026. A segunda tabela tem somente o recebimento 7, da chave antiga E/1/1,
+OrigParc_Rec = 1 e principal confirmado 314,43, multa 6,29 e juros 0,83.
+
+A composição de principal confere: 660,00 = 314,43 recebido + 345,57 aberto. As
+abertas exportadas estão todas sem atraso em 26/11. Registrar pagamento parcial
+com saldo reprogramado, e não quitação integral da obrigação/contrato. O ciclo
+operacional pode ficar aguardando o novo vencimento conforme política aprovada;
+não marcar como recuperação integral nem cobrar saldo ainda não vencido.
+
+As descrições nativas fornecidas são genéricas: Origem_Prc = 'Origem desta Parcela'
+e OrigParc_Rec = 'Origem de Geração da Parcela no Recebimento'. O valor 1 em ambas
+é compatível com o vínculo observado, mas a legenda não demonstra se aponta para
+número de parcela, número geral ou outro conceito. Não adotar igualdade de origem
+como FK suficiente. Neste exemplo número e número geral originais eram ambos 1;
+testar um caso em que diferem para desambiguar, ou consultar chave/documentação da
+instalação. Múltiplos candidatos devem permanecer pendentes de conciliação.
+
+O recebimento 6 anterior não consta na exportação da venda. A rotina deve detectar
+remoção/correção de recebimento observado anteriormente e preservar evidência do
+estorno informado, sem somar 6 e 7 como dois pagamentos ainda vigentes.
+
+Esse teste confirma desdobramento com mudança de chave e vencimento nesta operação.
+A coleta de inadimplentes permanece como descoberta, mas contratos em conciliação
+precisam ter as abertas futuras consultadas para não perder o saldo reprogramado.
+O vencimento originalmente observado de 18/11 permanece no histórico; a linha nova
+tem seu próprio vencimento atual de 28/11. Uma legenda genérica de Data_Prc como
+'Data de Recebimento' não substitui a validação de seu uso real nas abertas.
+
+## Consulta 125 — evidências de distrato e cancelamento
 
 SQL completo recebido em 25/11/2026. Traz os campos que permitem preparar a
 reconciliação com a situação da venda:
