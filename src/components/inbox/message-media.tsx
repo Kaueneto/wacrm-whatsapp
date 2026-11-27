@@ -32,7 +32,7 @@ import { useMediaBlobUrl } from "@/hooks/use-media-blob-url";
 type Translator = ReturnType<typeof useTranslations>;
 
 /** Inline media size cap, shared so the four bubbles can't drift apart. */
-const MEDIA_BOX = "max-h-64 max-w-60";
+const MEDIA_BOX = "max-h-72 max-w-full sm:max-w-72";
 
 export function MediaUnavailable({
   label,
@@ -148,13 +148,13 @@ export function MediaImageBubble({
     <img
       src={src}
       alt={t("imageAlt")}
-      className={cn(MEDIA_BOX, "rounded-lg object-contain")}
+      className={cn(MEDIA_BOX, "rounded-md object-contain", message.media_type === "image/webp" && !message.content_text && "max-h-48 sm:max-w-48")}
       onError={() => setBroken(true)}
     />
   );
 
   return (
-    <div className="group/media relative w-fit">
+    <div className="group/media relative w-fit max-w-full">
       {onOpen ? (
         <button
           type="button"

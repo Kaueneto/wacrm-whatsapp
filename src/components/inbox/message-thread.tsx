@@ -161,16 +161,12 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
 ];
 
 /**
- * WhatsApp-style doodle background applied to the chat area (both the
- * active thread and the empty state). The SVG tile lives at
- * `/public/inbox-doodle.svg`; the slate-950 colour sits underneath so
- * the doodles read as a subtle pattern rather than a stark grid.
+ * Shared subtle dotted wallpaper for the active thread and empty state.
  *
  * Defined once at module scope so the two render paths can't drift —
  * if we ever switch the asset, both spots update together.
  */
-const DOODLE_BG_CLASSES =
-  "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
+const CHAT_BG_CLASSES = "chat-wallpaper";
 
 export function MessageThread({
   conversation,
@@ -242,11 +238,11 @@ export function MessageThread({
     };
   }, [sentTemplateNames]);
   // Purely visual spin state for the manual-refresh button. The actual
-  const [claiming, setClaiming] = useState(false);
   // refetch is fire-and-forget through `onRefresh` (which bumps the
   // parent's resyncToken); the 700ms spin is just feedback so the click
   // doesn't feel like a no-op. Cleared via the timer ref on unmount.
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
@@ -982,12 +978,12 @@ export function MessageThread({
     [conversation, onAssignChange, t],
   );
 
-  // Empty state — same WhatsApp-style doodle background as the active
+  // Empty state — same subtle wallpaper as the active
   // thread below, so swapping between empty/selected doesn't change the
   // pattern under the user's eye.
   if (!conversation || !contact) {
     return (
-      <div className={cn("flex flex-1 flex-col items-center justify-center", DOODLE_BG_CLASSES)}>
+      <div className={cn("flex flex-1 flex-col items-center justify-center", CHAT_BG_CLASSES)}>
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
           <MessageSquare className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -1003,11 +999,11 @@ export function MessageThread({
 
   const displayName = contact.name || contactHandle(contact);
   const messageGroups = groupMessagesByDate(messages);
-  const canClaim = accountRole === "agent" && conversation.team_queue_enabled && !assignedAgentId && conversation.status !== "closed";
   const currentStatus = STATUS_OPTIONS.find(
     (s) => s.value === conversation.status
   );
   const assignedAgentId = conversation.assigned_agent_id ?? null;
+  const canClaim = accountRole === "agent" && conversation.team_queue_enabled && !assignedAgentId && conversation.status !== "closed";
   const currentAssignee = profiles.find((p) => p.user_id === assignedAgentId);
   const assignLabel = assignedAgentId
     ? (currentAssignee?.full_name ?? t("assigned"))
@@ -1022,8 +1018,8 @@ export function MessageThread({
     // clipped and the hover toolbar overlaps the Tags panel. Letting the
     // root shrink lets the bubbles' break-words / max-w caps apply.
     // Issue #257.
-    <div className={cn("flex min-w-0 flex-1 flex-col", DOODLE_BG_CLASSES)}>
-      {/* Header — solid card surface sits on top of the doodle so the
+    <div className={cn("flex min-w-0 flex-1 flex-col", CHAT_BG_CLASSES)}>
+      {/* Header — solid card surface sits on top of the wallpaper so the
           name/avatar/dropdowns stay legible. */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -1046,7 +1042,7 @@ export function MessageThread({
             title={t("contactDetails")}
             className="-m-1 flex min-w-0 items-center gap-2 rounded-lg p-1 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring sm:gap-3"
           >
-            <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-medium text-foreground">
+            <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-medium text-foreground">
               {contact.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={contact.avatar_url} alt="" className="size-full object-cover" />
@@ -1208,7 +1204,7 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4">
         {initialLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -1221,7 +1217,7 @@ export function MessageThread({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="w-full space-y-4">
             {hasOlderMessages && onOlderMessagesLoaded && (
               <div className="flex justify-center">
                 <Button
@@ -1238,13 +1234,13 @@ export function MessageThread({
               <div key={group.date}>
                 {/* Date separator */}
                 <div className="mb-4 flex items-center justify-center">
-                  <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-medium text-muted-foreground">
+                  <span className="rounded-md bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm">
                     {formatDateSeparator(group.date, t, locale)}
                   </span>
                 </div>
                 {/* Messages */}
-                <div className="space-y-2">
-                  {group.messages.map((msg) => {
+                <div className="space-y-1">
+                  {group.messages.map((msg, index) => {
                     const parent = msg.reply_to_message_id
                       ? messagesById.get(msg.reply_to_message_id)
                       : null;
@@ -1268,6 +1264,10 @@ export function MessageThread({
                       <MessageActions
                         key={msg.id}
                         message={msg}
+                        startsGroup={index > 0 && (
+                          group.messages[index - 1].sender_type !== msg.sender_type ||
+                          new Date(msg.created_at).getTime() - new Date(group.messages[index - 1].created_at).getTime() > 5 * 60 * 1000
+                        )}
                         onReply={() => handleStartReply(msg)}
                         onReact={(emoji) => {
                           if (emoji) void postReaction(msg.id, emoji);

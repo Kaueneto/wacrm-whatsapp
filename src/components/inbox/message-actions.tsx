@@ -22,6 +22,7 @@ interface MessageActionsProps {
   onReply: () => void;
   onReact: (emoji: string) => void;
   children: ReactNode;
+  startsGroup?: boolean;
 }
 
 /**
@@ -34,6 +35,7 @@ export function MessageActions({
   onReply,
   onReact,
   children,
+  startsGroup = false,
 }: MessageActionsProps) {
   const t = useTranslations("Inbox.actions");
 
@@ -92,6 +94,7 @@ export function MessageActions({
     <div
       className={cn(
         "flex w-full",
+        startsGroup && "pt-2",
         isAgent ? "justify-end" : "justify-start",
       )}
       onPointerDown={(e) => {
@@ -105,7 +108,7 @@ export function MessageActions({
        *  an unbroken URL) push past the cap and shove the row past
        *  100%, which used to bleed across into the contact-sidebar
        *  area. See issue #165. */}
-      <div className="group/actions relative min-w-0 max-w-[75%]">
+      <div className="group/actions relative min-w-0 max-w-[88%] sm:max-w-[78%] xl:max-w-[70%]">
         {children}
       <div
         data-touch-open={touchOpen || pickerOpen ? "true" : undefined}

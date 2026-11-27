@@ -72,6 +72,7 @@ function LocalizedInteractivePreview({
   return (
     <InteractivePreview
       payload={payload}
+      className="max-w-none rounded-none bg-transparent shadow-none ring-0"
       labels={{
         body: t("previewBody"),
         button: t("previewButton"),
@@ -171,6 +172,7 @@ function MessageContent({
   t,
   isAgent,
   onOpenMedia,
+  compactTime,
 }: {
   message: Message;
   template: TemplateMessageContent | null;
@@ -179,6 +181,7 @@ function MessageContent({
   /** Outbound bubbles sit on the primary fill — badges must invert. */
   isAgent: boolean;
   onOpenMedia?: (messageId: string) => void;
+  compactTime: boolean;
 }) {
   // Passed to the media bubbles as a no-arg callback; `undefined` when the
   // parent wired up no viewer, which is what makes them non-clickable.
@@ -189,6 +192,7 @@ function MessageContent({
       return (
         <p className="whitespace-pre-wrap break-words text-sm">
           <WhatsAppFormattedText text={message.content_text ?? ""} isAgent={isAgent} />
+          {compactTime && <span aria-hidden="true" className="inline-block w-16" />}
         </p>
       );
 
@@ -390,6 +394,12 @@ export function MessageBubble({
   const isAgent = message.sender_type === "agent" || message.sender_type === "bot";
   const time = format(new Date(message.created_at), "HH:mm");
   const failure = isAgent ? failureReason(message) : null;
+  // Meta stores stickers as images with a WebP MIME type.
+  const isSticker = message.content_type === "image" &&
+    message.media_type === "image/webp" && !message.content_text;
+  const isInteractiveCard = message.content_type === "interactive" && !!message.interactive_payload;
+  const isVisualMedia = message.content_type === "image" || message.content_type === "video";
+  const compactTime = message.content_type === "text" && !message.ai_generated && !templatePreview;
 
   // Row alignment + width cap are owned by <MessageActions> so its hover
   // group matches the bubble's content area, not the full row.
@@ -402,19 +412,22 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative px-3 py-2",
+          "relative min-w-0 max-w-full px-2.5 py-1.5 [overflow-wrap:anywhere]",
           templatePreview
             ? "w-fit max-w-[min(100%,18rem)] rounded-xl rounded-bl-sm bg-white text-[#17212a] shadow-[0_1px_2px_#12213026] before:pointer-events-none before:absolute before:-left-2 before:bottom-0 before:size-3 before:bg-white before:[clip-path:polygon(100%_0,100%_100%,0_100%)] [--primary-foreground:#17212a] [--chat-outgoing-meta:#475569] [--chat-outgoing-read:#0369a1] [--chat-outgoing-failed:#b91c1c]"
-            : cn("rounded-2xl", isAgent
-                ? "rounded-br-md bg-[var(--chat-outgoing)] text-[var(--chat-outgoing-foreground)] [--primary-foreground:var(--chat-outgoing-foreground)]"
-                : "rounded-bl-md bg-muted text-foreground"),
+            : cn("rounded-lg shadow-[0_1px_1px_#00000018]", isAgent
+                ? "rounded-tr-sm bg-[var(--chat-outgoing)] text-[var(--chat-outgoing-foreground)] [--primary-foreground:var(--chat-outgoing-foreground)]"
+                : "rounded-tl-sm bg-muted text-foreground",
+              isVisualMedia && "p-1 [&>div>p]:px-1.5 [&>div>p]:pt-1",
+              isInteractiveCard && "w-72 max-w-full bg-card p-0 text-foreground [--primary-foreground:var(--foreground)] [--chat-outgoing-meta:var(--muted-foreground)] [&>div:last-child]:px-2.5 [&>div:last-child]:pb-1.5",
+              isSticker && "bg-transparent p-0 shadow-none [--chat-outgoing-meta:var(--muted-foreground)]"),
         )}
       >
         {reply && (
           <ReplyQuote
             authorLabel={reply.authorLabel}
             preview={reply.preview}
-            onPrimary={isAgent}
+            onPrimary={isAgent && !isInteractiveCard && !isSticker}
           />
         )}
         <MessageContent
@@ -424,11 +437,13 @@ export function MessageBubble({
           t={t}
           isAgent={isAgent}
           onOpenMedia={onOpenMedia}
+          compactTime={compactTime}
         />
         <div
           className={cn(
-            "mt-1 flex items-center gap-1",
-            isAgent || templatePreview ? "justify-end" : "justify-start",
+            "mt-0.5 flex items-center justify-end gap-1",
+            compactTime && "absolute bottom-1 right-2.5",
+            isSticker && "ml-auto w-fit rounded-full bg-background/80 px-2 py-0.5",
           )}
         >
           {/* AI badge — only on replies the auto-reply bot generated
