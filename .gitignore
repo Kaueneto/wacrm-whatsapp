@@ -52,3 +52,7 @@ supabase/.temp/
 # Local validation output; commit the reports and SQL migrations instead
 /docs/architecture/baseline-logs/
 /docs/architecture/campaign-logs/
+
+# Local report previews and generated SQL used for manual comparison
+/tmp/
+/output/
